@@ -5,13 +5,8 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-ericzapater}/trainee-backend:latest
     container_name: trainee-backend
     restart: unless-stopped
-    depends_on:
-      - trainee-db
-    environment:
-      - DB_URL=postgres://${POSTGRES_USER:-trainee}:${POSTGRES_PASSWORD:-trainee_password}@trainee-db:5432/${POSTGRES_DB:-trainee_db}?sslmode=disable
-      - JWT_SECRET=${JWT_SECRET}
-      - PORT=8080
-      - ENV=production
+    env_file:
+      - .env.backend
     volumes:
       - backend_uploads:/app/uploads
     networks:
@@ -29,10 +24,8 @@ services:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-ericzapater}/trainee-frontend:latest
     container_name: trainee-frontend
     restart: unless-stopped
-    depends_on:
-      - trainee-backend
-    environment:
-      - VITE_API_PROXY_TARGET=https://api.trainee.ericzapater.cat
+    env_file:
+      - .env.frontend
     networks:
       - web
     labels:
