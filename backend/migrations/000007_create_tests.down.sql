@@ -1,0 +1,2 @@
+ALTER TABLE slot_entries DROP COLUMN IF EXISTS test_id;
+DROP TABLE IF EXISTS tests;

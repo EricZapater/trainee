@@ -1,0 +1,22 @@
+# Binaris per defecte de l'execució i compilació
+/bin/
+server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Entorn de treball Go
+go.work
+go.work.sum
+
+# Arxius d'entorn
+.env
+
+# Directoris temporals o de cobertura de tests
+coverage.txt
+profile.out
+vendor/

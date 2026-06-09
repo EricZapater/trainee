@@ -1,0 +1,22 @@
+# Fitxers de sistema operatiu
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+*.log
+
+# Editors de text i IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+
+# Variables d'entorn (secrets)
+.env
+.env.local
+.env.*
+!.env.example
