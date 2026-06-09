@@ -1,6 +1,6 @@
 # Binaris per defecte de l'execució i compilació
 /bin/
-server
+/server
 *.exe
 *.exe~
 *.dll
