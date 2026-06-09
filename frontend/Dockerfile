@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (forcing public registry and ignoring private lockfile)
+RUN rm -f package-lock.json && npm config set registry https://registry.npmjs.org/ && npm install
 
 # Copy source code
 COPY . .
