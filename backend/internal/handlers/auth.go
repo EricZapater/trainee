@@ -96,3 +96,37 @@ func (h *Handler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.AuthResponse{Token: token, Usuari: *user})
 }
+
+func (h *Handler) ChangePassword(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req models.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.Store.GetUsuariByID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha trobat l'usuari"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.OldPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "la contrasenya actual és incorrecta"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 12)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error processant la nova contrasenya"})
+		return
+	}
+
+	if err := h.Store.UpdateUsuariPassword(c.Request.Context(), userID, string(hash)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha pogut canviar la contrasenya"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "contrasenya actualitzada correctament"})
+}

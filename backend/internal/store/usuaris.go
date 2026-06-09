@@ -47,6 +47,14 @@ func (s *PostgresStore) GetUsuariByID(ctx context.Context, id string) (*models.U
 	return &u, nil
 }
 
+func (s *PostgresStore) UpdateUsuariPassword(ctx context.Context, id, passwordHash string) error {
+	_, err := s.pool.Exec(ctx,
+		`UPDATE usuaris SET password_hash = $1 WHERE id = $2`,
+		passwordHash, id,
+	)
+	return err
+}
+
 func (s *PostgresStore) ListEntrenadors(ctx context.Context) ([]models.Entrenador, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, usuari_id, nom, created_at

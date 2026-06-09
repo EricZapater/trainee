@@ -1,20 +1,54 @@
-services:
-  backend:
-    build: ./backend
-    ports:
-      - "8080:8080"
-    env_file:
-      - .env
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
+version: "3.8"
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_PROXY_TARGET=http://backend:8080
-    depends_on:
-      - backend
+services:
+  trainee-backend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-ericzapater}/trainee-backend:latest
+    container_name: trainee-backend
     restart: unless-stopped
+    depends_on:
+      - trainee-db
+    environment:
+      - DB_URL=postgres://${POSTGRES_USER:-trainee}:${POSTGRES_PASSWORD:-trainee_password}@trainee-db:5432/${POSTGRES_DB:-trainee_db}?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=8080
+      - ENV=production
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - postgres-network
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trainee-backend.rule=Host(`api.trainee.ericzapater.cat`)"
+      - "traefik.http.routers.trainee-backend.entrypoints=websecure"
+      - "traefik.http.routers.trainee-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.trainee-backend.loadbalancer.server.port=8080"
+      - "traefik.docker.network=web"
+
+  trainee-frontend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-ericzapater}/trainee-frontend:latest
+    container_name: trainee-frontend
+    restart: unless-stopped
+    depends_on:
+      - trainee-backend
+    environment:
+      - VITE_API_PROXY_TARGET=https://api.trainee.ericzapater.cat
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trainee-frontend.rule=Host(`trainee.ericzapater.cat`)"
+      - "traefik.http.routers.trainee-frontend.entrypoints=websecure"
+      - "traefik.http.routers.trainee-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.trainee-frontend.loadbalancer.server.port=80"
+      - "traefik.docker.network=web"
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  web:
+    external: true
+  postgres-network:
+    external: true

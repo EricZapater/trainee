@@ -1,0 +1,93 @@
+name: Deploy Trainee to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # BACKEND
+      - name: Extract metadata (tags, labels) for Backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
+
+      - name: Build and push Backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+
+      # FRONTEND
+      - name: Extract metadata (tags, labels) for Frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
+
+      - name: Build and push Frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push-images
+    
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Navegar a la carpeta del projecte (s'assumeix que hi ha el docker-compose.yml allà o bé el creem via comandes)
+            # IMPORTANT: El repositori o almenys l'arxiu docker-compose.yml ha d'existir prèviament al VPS
+            # per exemple a /opt/trainee o /home/trainee/app
+            cd /opt/trainee || cd ~/trainee
+            
+            # Fer login al Github Container Registry des del VPS
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Assegurar-nos d'estirar l'última versió de la branca main (si el projecte està clonat)
+            # O només fer docker compose pull si només tenim el fitxer .yml sol.
+            
+            # Si fas servir export per a les variables dins d'un .env. Aquest .env ja ha d'estar
+            # creat i configurat al VPS manualment com has esmentat: "el .env de backend i el .env de front els podem tindre al vps".
+            
+            # Descarregar noves imatges
+            docker compose pull
+            
+            # Reiniciar contenidors
+            docker compose up -d
+            
+            # Netejar imatges antigues (prune) per no omplir el disc del VPS
+            docker image prune -af

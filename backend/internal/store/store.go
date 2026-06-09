@@ -11,6 +11,7 @@ type Store interface {
 	CreateUsuari(ctx context.Context, nom, email, passwordHash, rol string) (*models.Usuari, error)
 	GetUsuariByEmail(ctx context.Context, email string) (*models.Usuari, error)
 	GetUsuariByID(ctx context.Context, id string) (*models.Usuari, error)
+	UpdateUsuariPassword(ctx context.Context, id, passwordHash string) error
 
 	// Entrenadors
 	ListEntrenadors(ctx context.Context) ([]models.Entrenador, error)

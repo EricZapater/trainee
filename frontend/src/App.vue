@@ -6,8 +6,15 @@ import { useCompeticionsStore } from '@/stores/useCompeticionsStore'
 import { useTestsStore } from '@/stores/useTestsStore'
 import Toast from 'primevue/toast'
 import ConfirmDialog from 'primevue/confirmdialog'
+import Menu from 'primevue/menu'
+import Dialog from 'primevue/dialog'
+import Password from 'primevue/password'
+import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
+import { changePassword } from '@/api/auth'
 
 const router = useRouter()
+const toast = useToast()
 const authStore = useAuthStore()
 const compStore = useCompeticionsStore()
 const testsStore = useTestsStore()
@@ -31,6 +38,50 @@ watch(() => authStore.isAuthenticated, (newVal) => {
 const handleLogout = () => {
   authStore.logout()
   router.push('/login')
+}
+
+const userMenu = ref()
+const userMenuItems = ref([
+  {
+    label: 'Canviar Contrasenya',
+    icon: 'ti ti-key',
+    command: () => {
+      changePassForm.value = { old_password: '', new_password: '' }
+      changePassVisible.value = true
+    }
+  },
+  {
+    label: 'Tancar Sessió',
+    icon: 'ti ti-logout',
+    command: () => handleLogout()
+  }
+])
+
+const toggleUserMenu = (event: Event) => {
+  userMenu.value.toggle(event)
+}
+
+const changePassVisible = ref(false)
+const changePassLoading = ref(false)
+const changePassForm = ref({ old_password: '', new_password: '' })
+
+const handleChangePassword = async () => {
+  if (!changePassForm.value.old_password || changePassForm.value.new_password.length < 6) {
+    toast.add({ severity: 'warn', summary: 'Avís', detail: 'Introdueix la contrasenya actual i una de nova (mínim 6 caràcters).', life: 3000 })
+    return
+  }
+  
+  changePassLoading.value = true
+  try {
+    const res = await changePassword(changePassForm.value)
+    toast.add({ severity: 'success', summary: 'Èxit', detail: res.message, life: 3000 })
+    changePassVisible.value = false
+  } catch (error: any) {
+    const msg = error.response?.data?.error || 'Error canviant la contrasenya'
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 3000 })
+  } finally {
+    changePassLoading.value = false
+  }
 }
 </script>
 
@@ -72,13 +123,31 @@ const handleLogout = () => {
         </nav>
         
         <div class="nav-user">
-          <span class="user-name">{{ authStore.usuari?.nom }}</span>
-          <button @click="handleLogout" class="logout-btn" title="Tancar sessió">
-            <i class="ti ti-logout"></i>
+          <button @click="toggleUserMenu" class="user-menu-btn" aria-haspopup="true" aria-controls="overlay_menu">
+            <span class="user-name">{{ authStore.usuari?.nom }}</span>
+            <i class="ti ti-chevron-down text-sm"></i>
           </button>
+          <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" />
         </div>
       </div>
     </header>
+
+    <Dialog v-model:visible="changePassVisible" header="Canviar Contrasenya" modal :style="{ width: '400px' }">
+      <div class="flex flex-col gap-4 mt-2">
+        <div class="field">
+          <label>Contrasenya Actual</label>
+          <Password v-model="changePassForm.old_password" :feedback="false" toggleMask class="w-full" inputClass="w-full" />
+        </div>
+        <div class="field">
+          <label>Nova Contrasenya</label>
+          <Password v-model="changePassForm.new_password" :feedback="true" toggleMask class="w-full" inputClass="w-full" promptLabel="Introdueix contrasenya" weakLabel="Feble" mediumLabel="Mitjana" strongLabel="Forta" />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel·lar" icon="ti ti-x" text @click="changePassVisible = false" />
+        <Button label="Guardar" icon="ti ti-check" @click="handleChangePassword" :loading="changePassLoading" />
+      </template>
+    </Dialog>
 
     <main class="app-content" :class="{ 'with-nav': authStore.isAuthenticated }">
       <router-view v-slot="{ Component }">
@@ -155,27 +224,33 @@ const handleLogout = () => {
   gap: 16px;
 }
 
-.user-name {
-  font-weight: 500;
+.user-menu-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text-primary);
 }
 
-.logout-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 8px;
-  border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.user-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.logout-btn:hover {
-  color: var(--accent-danger);
-  background: rgba(239, 68, 68, 0.1);
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.gap-4 { gap: 16px; }
+.mt-2 { margin-top: 8px; }
+.w-full { width: 100%; }
+.field label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .app-content {

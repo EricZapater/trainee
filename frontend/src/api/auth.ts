@@ -20,3 +20,8 @@ export async function getMe(): Promise<Usuari> {
   const { data } = await api.get<Usuari>('/atletes/me')
   return data
 }
+
+export async function changePassword(payload: { old_password: string; new_password: string }): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/auth/change-password', payload)
+  return data
+}
