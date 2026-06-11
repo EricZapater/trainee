@@ -12,11 +12,11 @@ import (
 func (s *PostgresStore) CreateCompeticio(ctx context.Context, atletaID, entrenadorID string, req models.CreateCompeticioRequest) (*models.Competicio, error) {
 	var c models.Competicio
 	err := s.pool.QueryRow(ctx,
-		`INSERT INTO competicions (atleta_id, entrenador_id, nom, data, kms, desnivell, enllac, track_gpx_path, comentaris)
-		 VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8, $9)
-		 RETURNING id, atleta_id, entrenador_id, nom, TO_CHAR(data, 'YYYY-MM-DD'), kms, desnivell, enllac, track_gpx_path, comentaris, registrat, created_at`,
-		atletaID, entrenadorID, req.Nom, req.Data, req.Kms, req.Desnivell, req.Enllac, req.TrackGpxPath, req.Comentaris,
-	).Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.CreatedAt)
+		`INSERT INTO competicions (atleta_id, entrenador_id, nom, data, tipus, kms, desnivell, enllac, track_gpx_path, comentaris, estat)
+		 VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8, $9, $10, 'activa')
+		 RETURNING id, atleta_id, entrenador_id, nom, TO_CHAR(data, 'YYYY-MM-DD'), tipus, kms, desnivell, enllac, track_gpx_path, comentaris, registrat, estat, created_at`,
+		atletaID, entrenadorID, req.Nom, req.Data, req.Tipus, req.Kms, req.Desnivell, req.Enllac, req.TrackGpxPath, req.Comentaris,
+	).Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func (s *PostgresStore) CreateCompeticio(ctx context.Context, atletaID, entrenad
 
 func (s *PostgresStore) ListCompeticionsByAtleta(ctx context.Context, atletaID string) ([]models.Competicio, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, atleta_id, entrenador_id, nom, TO_CHAR(data, 'YYYY-MM-DD'), kms, desnivell, enllac, track_gpx_path, comentaris, registrat, created_at
+		`SELECT id, atleta_id, entrenador_id, nom, TO_CHAR(data, 'YYYY-MM-DD'), tipus, kms, desnivell, enllac, track_gpx_path, comentaris, registrat, estat, created_at
 		 FROM competicions
 		 WHERE atleta_id = $1
 		 ORDER BY data ASC`,
@@ -39,7 +39,7 @@ func (s *PostgresStore) ListCompeticionsByAtleta(ctx context.Context, atletaID s
 	var result []models.Competicio
 	for rows.Next() {
 		var c models.Competicio
-		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		result = append(result, c)
@@ -50,13 +50,13 @@ func (s *PostgresStore) ListCompeticionsByAtleta(ctx context.Context, atletaID s
 func (s *PostgresStore) GetCompeticioByID(ctx context.Context, id string) (*models.Competicio, error) {
 	var c models.Competicio
 	err := s.pool.QueryRow(ctx,
-		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.created_at, a.nom as atleta_nom
+		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom
 		 FROM competicions c
 		 JOIN atletes at ON at.id = c.atleta_id
 		 JOIN usuaris a ON a.id = at.usuari_id
 		 WHERE c.id = $1`,
 		id,
-	).Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.CreatedAt, &c.AtletaNom)
+	).Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +65,11 @@ func (s *PostgresStore) GetCompeticioByID(ctx context.Context, id string) (*mode
 
 func (s *PostgresStore) ListPendingCompeticionsByEntrenador(ctx context.Context, entrenadorID string) ([]models.Competicio, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.created_at, a.nom as atleta_nom
+		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom
 		 FROM competicions c
 		 JOIN atletes at ON at.id = c.atleta_id
 		 JOIN usuaris a ON a.id = at.usuari_id
-		 WHERE c.entrenador_id = $1 AND c.registrat = false
+		 WHERE c.entrenador_id = $1 AND c.registrat = false AND c.estat = 'activa'
 		 ORDER BY c.data ASC`,
 		entrenadorID,
 	)
@@ -81,7 +81,33 @@ func (s *PostgresStore) ListPendingCompeticionsByEntrenador(ctx context.Context,
 	var result []models.Competicio
 	for rows.Next() {
 		var c models.Competicio
-		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.CreatedAt, &c.AtletaNom); err != nil {
+		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom); err != nil {
+			return nil, err
+		}
+		result = append(result, c)
+	}
+	return result, nil
+}
+
+func (s *PostgresStore) ListAllCompeticionsByAtletaAndEntrenador(ctx context.Context, atletaID, entrenadorID string) ([]models.Competicio, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom
+		 FROM competicions c
+		 JOIN atletes at ON at.id = c.atleta_id
+		 JOIN usuaris a ON a.id = at.usuari_id
+		 WHERE c.atleta_id = $1 AND c.entrenador_id = $2
+		 ORDER BY c.data ASC`,
+		atletaID, entrenadorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.Competicio
+	for rows.Next() {
+		var c models.Competicio
+		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom); err != nil {
 			return nil, err
 		}
 		result = append(result, c)
@@ -205,4 +231,40 @@ func (s *PostgresStore) TraspassarCompeticio(ctx context.Context, entrenadorID, 
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (s *PostgresStore) UpdateCompeticioTipus(ctx context.Context, id, tipus string) error {
+	_, err := s.pool.Exec(ctx, `UPDATE competicions SET tipus = $1 WHERE id = $2`, tipus, id)
+	return err
+}
+
+func (s *PostgresStore) UpdateCompeticio(ctx context.Context, competicioID string, req models.UpdateCompeticioRequest) (*models.Competicio, error) {
+	var c models.Competicio
+	
+	// If a new track_gpx_path is provided, update it. Otherwise keep the existing one.
+	if req.TrackGpxPath != nil {
+		err := s.pool.QueryRow(ctx,
+			`UPDATE competicions 
+			 SET nom = $1, data = $2::date, tipus = $3, kms = $4, desnivell = $5, enllac = $6, comentaris = $7, estat = $8, track_gpx_path = $9
+			 WHERE id = $10
+			 RETURNING id, atleta_id, entrenador_id, nom, TO_CHAR(data, 'YYYY-MM-DD'), tipus, kms, desnivell, enllac, track_gpx_path, comentaris, registrat, estat, created_at`,
+			req.Nom, req.Data, req.Tipus, req.Kms, req.Desnivell, req.Enllac, req.Comentaris, req.Estat, req.TrackGpxPath, competicioID,
+		).Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := s.pool.QueryRow(ctx,
+			`UPDATE competicions 
+			 SET nom = $1, data = $2::date, tipus = $3, kms = $4, desnivell = $5, enllac = $6, comentaris = $7, estat = $8
+			 WHERE id = $9
+			 RETURNING id, atleta_id, entrenador_id, nom, TO_CHAR(data, 'YYYY-MM-DD'), tipus, kms, desnivell, enllac, track_gpx_path, comentaris, registrat, estat, created_at`,
+			req.Nom, req.Data, req.Tipus, req.Kms, req.Desnivell, req.Enllac, req.Comentaris, req.Estat, competicioID,
+		).Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &c, nil
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useCompeticionsStore } from '@/stores/useCompeticionsStore'
 import { useTestsStore } from '@/stores/useTestsStore'
@@ -10,11 +11,13 @@ import Menu from 'primevue/menu'
 import Dialog from 'primevue/dialog'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
+import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { changePassword } from '@/api/auth'
 
 const router = useRouter()
 const toast = useToast()
+const { t } = useI18n()
 const authStore = useAuthStore()
 const compStore = useCompeticionsStore()
 const testsStore = useTestsStore()
@@ -41,9 +44,9 @@ const handleLogout = () => {
 }
 
 const userMenu = ref()
-const userMenuItems = ref([
+const userMenuItems = computed(() => [
   {
-    label: 'Canviar Contrasenya',
+    label: t('userMenu.changePassword'),
     icon: 'ti ti-key',
     command: () => {
       changePassForm.value = { old_password: '', new_password: '' }
@@ -51,7 +54,15 @@ const userMenuItems = ref([
     }
   },
   {
-    label: 'Tancar Sessió',
+    label: t('userMenu.changeLanguage'),
+    icon: 'ti ti-language',
+    command: () => {
+      selectedLang.value = authStore.usuari?.idioma || 'CAT'
+      changeLangVisible.value = true
+    }
+  },
+  {
+    label: t('userMenu.logout'),
     icon: 'ti ti-logout',
     command: () => handleLogout()
   }
@@ -83,6 +94,27 @@ const handleChangePassword = async () => {
     changePassLoading.value = false
   }
 }
+
+const changeLangVisible = ref(false)
+const changeLangLoading = ref(false)
+const selectedLang = ref('CAT')
+const langOptions = computed(() => [
+  { label: t('languages.CAT'), value: 'CAT' },
+  { label: t('languages.ESP'), value: 'ESP' },
+  { label: t('languages.ENG'), value: 'ENG' },
+])
+
+const handleChangeLanguage = async () => {
+  changeLangLoading.value = true
+  try {
+    await authStore.updateIdioma(selectedLang.value)
+    changeLangVisible.value = false
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Error canviant idioma', life: 3000 })
+  } finally {
+    changeLangLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -92,7 +124,7 @@ const handleChangePassword = async () => {
     
     <header v-if="authStore.isAuthenticated" class="navbar glass-card">
       <div class="nav-brand">
-        <span class="logo-text">TrainEE</span>
+        <span class="logo-text">{{ $t('app.title') }}</span>
       </div>
       
       <button v-if="authStore.isAuthenticated" class="hamburger-btn" @click="isMenuOpen = !isMenuOpen">
@@ -102,23 +134,26 @@ const handleChangePassword = async () => {
       <div class="nav-menu" :class="{ 'is-open': isMenuOpen }">
         <nav class="nav-links" @click="isMenuOpen = false">
           <template v-if="authStore.isAtleta">
-            <router-link to="/calendar" class="nav-link">Calendari</router-link>
-            <router-link to="/competicions/atleta" class="nav-link">Competicions</router-link>
-            <router-link to="/informe" class="nav-link">El meu Històric</router-link>
+            <router-link to="/calendar" class="nav-link">{{ $t('nav.calendar') }}</router-link>
+            <router-link to="/competicions/atleta" class="nav-link">{{ $t('nav.competitions') }}</router-link>
+            <router-link to="/informe" class="nav-link">{{ $t('nav.myHistory') }}</router-link>
           </template>
           <template v-if="authStore.isEntrenador">
-            <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
+            <router-link to="/dashboard" class="nav-link">{{ $t('nav.dashboard') }}</router-link>
             <router-link to="/tests" class="nav-link menu-with-badge">
-              Tests
+              {{ $t('nav.tests') }}
               <span v-if="testsStore.notificationCount > 0" class="badge">{{ testsStore.notificationCount }}</span>
             </router-link>
-            <router-link to="/weeks" class="nav-link">Setmanes</router-link>
-            <router-link to="/activitats" class="nav-link">Activitats</router-link>
+            <router-link to="/atletes" class="nav-link">{{ $t('nav.users') }}</router-link>
+            <router-link to="/entrenador/forms" class="nav-link">{{ $t('nav.forms') }}</router-link>
+            <router-link to="/weeks" class="nav-link">{{ $t('nav.weeks') }}</router-link>
+            <router-link to="/activitats" class="nav-link">{{ $t('nav.activities') }}</router-link>
+            <router-link to="/planning" class="nav-link">{{ $t('nav.planning') }}</router-link>
             <router-link to="/competicions/entrenador" class="nav-link menu-with-badge">
-              Competicions
+              {{ $t('nav.competitions') }}
               <span v-if="compStore.pendingCount > 0" class="badge">{{ compStore.pendingCount }}</span>
             </router-link>
-            <router-link to="/informe" class="nav-link">Informe Atletes</router-link>
+            <router-link to="/informe" class="nav-link">{{ $t('nav.athleteReports') }}</router-link>
           </template>
         </nav>
         
@@ -132,7 +167,7 @@ const handleChangePassword = async () => {
       </div>
     </header>
 
-    <Dialog v-model:visible="changePassVisible" header="Canviar Contrasenya" modal :style="{ width: '400px' }">
+    <Dialog v-model:visible="changePassVisible" :header="$t('userMenu.changePassword')" modal :style="{ width: '400px' }">
       <div class="flex flex-col gap-4 mt-2">
         <div class="field">
           <label>Contrasenya Actual</label>
@@ -146,6 +181,18 @@ const handleChangePassword = async () => {
       <template #footer>
         <Button label="Cancel·lar" icon="ti ti-x" text @click="changePassVisible = false" />
         <Button label="Guardar" icon="ti ti-check" @click="handleChangePassword" :loading="changePassLoading" />
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="changeLangVisible" :header="$t('userMenu.changeLanguage')" modal :style="{ width: '350px' }">
+      <div class="flex flex-col gap-4 mt-2">
+        <div class="field">
+          <Select v-model="selectedLang" :options="langOptions" optionLabel="label" optionValue="value" class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel·lar" icon="ti ti-x" text @click="changeLangVisible = false" />
+        <Button label="Guardar" icon="ti ti-check" @click="handleChangeLanguage" :loading="changeLangLoading" />
       </template>
     </Dialog>
 

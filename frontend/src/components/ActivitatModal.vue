@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import Dialog from 'primevue/dialog'
+import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import type { Activitat } from '@/types'
@@ -14,6 +15,8 @@ const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void
   (e: 'save', data: { nom: string, icona: string, color: string }): void
 }>()
+
+const { t } = useI18n()
 
 const isVisible = computed({
   get: () => props.visible,
@@ -55,17 +58,17 @@ const handleSave = () => {
 <template>
   <Dialog 
     v-model:visible="isVisible" 
-    :header="activitat ? 'Editar activitat' : 'Nova activitat'" 
+    :header="activitat ? $t('activitiesManager.modalEdit') : $t('activitiesManager.modalNew')" 
     modal 
     :style="{ width: '450px' }"
   >
     <div class="form-group">
-      <label>Nom de l'activitat</label>
-      <InputText v-model="formData.nom" class="w-full" placeholder="Ex: Córrer" />
+      <label>{{ $t('activitiesManager.nameLabel') }}</label>
+      <InputText v-model="formData.nom" class="w-full" :placeholder="$t('activitiesManager.namePlaceholder')" />
     </div>
     
     <div class="form-group">
-      <label>Icona</label>
+      <label>{{ $t('activitiesManager.iconLabel') }}</label>
       <div class="icons-grid">
         <button 
           v-for="icon in availableIcons" 
@@ -80,7 +83,7 @@ const handleSave = () => {
     </div>
     
     <div class="form-group">
-      <label>Color</label>
+      <label>{{ $t('activitiesManager.colorLabel') }}</label>
       <div class="color-picker-wrapper">
         <input type="color" v-model="formData.color" class="color-input" />
         <span class="color-hex">{{ formData.color.toUpperCase() }}</span>
@@ -88,8 +91,8 @@ const handleSave = () => {
     </div>
     
     <template #footer>
-      <Button label="Cancel·lar" icon="ti ti-x" text @click="isVisible = false" />
-      <Button label="Guardar" icon="ti ti-check" @click="handleSave" :disabled="!formData.nom" />
+      <Button :label="$t('activitiesManager.cancel')" icon="ti ti-x" text @click="isVisible = false" />
+      <Button :label="$t('activitiesManager.save')" icon="ti ti-check" @click="handleSave" :disabled="!formData.nom" />
     </template>
   </Dialog>
 </template>

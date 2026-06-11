@@ -64,6 +64,60 @@ func (h *Handler) CreateCompeticio(c *gin.Context) {
 	c.JSON(http.StatusCreated, comp)
 }
 
+func (h *Handler) UpdateCompeticio(c *gin.Context) {
+	atletaID := c.GetString("user_id")
+	competicioID := c.Param("id")
+
+	atletaInfo, err := h.Store.GetAtletaByUsuariID(c.Request.Context(), atletaID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha trobat l'atleta"})
+		return
+	}
+
+	comp, err := h.Store.GetCompeticioByID(c.Request.Context(), competicioID)
+	if err != nil || comp.AtletaID != atletaInfo.ID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "competició no trobada o no tens permís"})
+		return
+	}
+
+	var req models.UpdateCompeticioRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Handle file upload similarly
+	file, err := c.FormFile("track_gpx")
+	if err == nil {
+		ext := filepath.Ext(file.Filename)
+		if ext != ".gpx" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "només s'accepten fitxers .gpx"})
+			return
+		}
+		filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+		savePath := filepath.Join("uploads", "gpx", filename)
+
+		if err := c.SaveUploadedFile(file, savePath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha pogut desar el fitxer gpx"})
+			return
+		}
+
+		reqPath := "/api/uploads/gpx/" + filename
+		req.TrackGpxPath = &reqPath
+	} else if err != http.ErrMissingFile {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "error en el fitxer adjunt"})
+		return
+	}
+
+	updatedComp, err := h.Store.UpdateCompeticio(c.Request.Context(), competicioID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error actualitzant competició"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedComp)
+}
+
 func (h *Handler) ListAtletaCompeticions(c *gin.Context) {
 	usuariID := c.GetString("user_id")
 	
@@ -125,6 +179,59 @@ func (h *Handler) TraspassarCompeticio(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *Handler) UpdateCompeticioTipus(c *gin.Context) {
+	usuariID := c.GetString("user_id")
+	competicioID := c.Param("id")
+
+	entrenadorInfo, err := h.Store.GetEntrenadorByUsuariID(c.Request.Context(), usuariID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha trobat l'entrenador"})
+		return
+	}
+
+	comp, err := h.Store.GetCompeticioByID(c.Request.Context(), competicioID)
+	if err != nil || comp.EntrenadorID != entrenadorInfo.ID {
+		c.JSON(http.StatusNotFound, gin.H{"error": "competició no trobada o no tens permís"})
+		return
+	}
+
+	var req models.UpdateCompeticioTipusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.Store.UpdateCompeticioTipus(c.Request.Context(), competicioID, req.Tipus)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error actualitzant el tipus de competició"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *Handler) GetAtletaCompeticionsTimeline(c *gin.Context) {
+	usuariID := c.GetString("user_id")
+	atletaID := c.Param("id")
+
+	entrenadorInfo, err := h.Store.GetEntrenadorByUsuariID(c.Request.Context(), usuariID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha trobat l'entrenador"})
+		return
+	}
+
+	comps, err := h.Store.ListAllCompeticionsByAtletaAndEntrenador(c.Request.Context(), atletaID, entrenadorInfo.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error llistant competicions"})
+		return
+	}
+	
+	if comps == nil {
+		comps = []models.Competicio{}
+	}
+	c.JSON(http.StatusOK, comps)
 }
 
 // SHARED HANDLER

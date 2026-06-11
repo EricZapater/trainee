@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { getEntrenadorWeeks, getEntrenadorSubmissions } from '@/api/entrenador'
 import { useToast } from 'primevue/usetoast'
 import type { ManagedWeekWithCount, EntrenadorSubmissionsResponse, AtletaSubmissionSummary } from '@/types'
@@ -10,6 +11,7 @@ import Paginator from 'primevue/paginator'
 import AthleteDrawer from '@/components/AthleteDrawer.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 const toast = useToast()
 
 const weeks = ref<ManagedWeekWithCount[]>([])
@@ -97,7 +99,7 @@ const handleSpecialClick = (slot: any) => {
 <template>
   <div class="dashboard-layout max-w-7xl mx-auto">
     <div class="dashboard-header glass-card">
-      <h1 class="page-title">Dashboard</h1>
+      <h1 class="page-title">{{ $t('dashboard.title') }}</h1>
       
       <div class="header-actions">
         <Select 
@@ -105,19 +107,19 @@ const handleSpecialClick = (slot: any) => {
           :options="weeks" 
           optionLabel="week_start" 
           optionValue="week_start"
-          placeholder="Selecciona una setmana" 
+          :placeholder="$t('dashboard.selectWeek')" 
           class="week-select"
           @change="loadSubmissions"
         >
           <template #value="slotProps">
             <div v-if="slotProps.value" class="flex align-items-center">
-              Setmana del {{ slotProps.value }}
+              {{ $t('dashboard.weekOf', { date: slotProps.value }) }}
             </div>
             <span v-else>{{ slotProps.placeholder }}</span>
           </template>
           <template #option="slotProps">
             <div class="flex flex-column">
-              <span>Setmana del {{ slotProps.option.week_start }}</span>
+              <span>{{ $t('dashboard.weekOf', { date: slotProps.option.week_start }) }}</span>
               <small class="text-muted">{{ slotProps.option.estat }}</small>
             </div>
           </template>
@@ -128,7 +130,7 @@ const handleSpecialClick = (slot: any) => {
           :severity="showOnlyPending ? 'info' : 'secondary'"
           :text="!showOnlyPending"
           rounded 
-          v-tooltip="'Mostrar només atletes pendents'"
+          v-tooltip="$t('dashboard.filterPending')"
           @click="togglePendingFilter" 
         />
         <Button icon="ti ti-refresh" text rounded @click="loadSubmissions" :loading="loading" />
@@ -137,9 +139,9 @@ const handleSpecialClick = (slot: any) => {
 
     <div v-if="!selectedWeek && weeks.length === 0" class="empty-state glass-card mt-4">
       <i class="ti ti-calendar-off text-4xl mb-4 text-muted"></i>
-      <p>No tens cap setmana creada.</p>
+      <p>{{ $t('dashboard.emptyState') }}</p>
       <router-link to="/weeks">
-        <Button label="Gestionar setmanes" class="mt-4" />
+        <Button :label="$t('dashboard.manageWeeks')" class="mt-4" />
       </router-link>
     </div>
 
@@ -148,14 +150,14 @@ const handleSpecialClick = (slot: any) => {
         <table class="dashboard-table">
           <thead>
             <tr>
-              <th class="col-name">Atleta</th>
-              <th>Dl</th>
-              <th>Dt</th>
-              <th>Dc</th>
-              <th>Dj</th>
-              <th>Dv</th>
-              <th>Ds</th>
-              <th>Dg</th>
+              <th class="col-name">{{ $t('dashboard.athlete') }}</th>
+              <th>{{ $t('dashboard.days.1') }}</th>
+              <th>{{ $t('dashboard.days.2') }}</th>
+              <th>{{ $t('dashboard.days.3') }}</th>
+              <th>{{ $t('dashboard.days.4') }}</th>
+              <th>{{ $t('dashboard.days.5') }}</th>
+              <th>{{ $t('dashboard.days.6') }}</th>
+              <th>{{ $t('dashboard.days.7') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -169,8 +171,8 @@ const handleSpecialClick = (slot: any) => {
               <td class="col-name">
                 <div class="athlete-info">
                   <span class="athlete-name">{{ atleta.nom }}</span>
-                  <span v-if="!atleta.ha_respost" class="status-badge pending">Pendent</span>
-                  <span v-else class="status-badge done">Rebut</span>
+                  <span v-if="!atleta.ha_respost" class="status-badge pending">{{ $t('dashboard.statusPending') }}</span>
+                  <span v-else class="status-badge done">{{ $t('dashboard.statusReceived') }}</span>
                 </div>
               </td>
               
@@ -182,7 +184,7 @@ const handleSpecialClick = (slot: any) => {
                     class="mini-slot"
                     :class="{ 'cursor-pointer hover-highlight': slot.competicio_id || slot.test_id }"
                     :style="{ backgroundColor: slot.activitat_color }"
-                    v-tooltip.top="`${slot.activitat_nom}${slot.notes ? ' - Tinc notes' : ''}`"
+                    v-tooltip.top="`${slot.activitat_nom}${slot.notes ? $t('dashboard.hasNotes') : ''}`"
                     @click.stop="handleSpecialClick(slot)"
                   >
                     <i :class="['ti', slot.activitat_icona]"></i>
@@ -196,8 +198,8 @@ const handleSpecialClick = (slot: any) => {
             </tr>
             <tr v-if="filteredAtletes.length === 0">
               <td colspan="8" class="text-center py-4 text-muted">
-                <span v-if="submissionsData.atletes.length === 0">No tens atletes assignats encara.</span>
-                <span v-else>No hi ha atletes pendents. Tots han respost! 🎉</span>
+                <span v-if="submissionsData.atletes.length === 0">{{ $t('dashboard.noAthletes') }}</span>
+                <span v-else>{{ $t('dashboard.allResponded') }}</span>
               </td>
             </tr>
           </tbody>

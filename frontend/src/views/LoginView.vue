@@ -39,28 +39,28 @@ const handleLogin = async () => {
   <div class="auth-layout">
     <div class="auth-card glass-card">
       <div class="auth-header">
-        <h1 class="logo-text">TrainEE</h1>
-        <p class="subtitle">Benvingut de nou</p>
+        <h1 class="logo-text">{{ $t('app.title') }}</h1>
+        <p class="subtitle">{{ $t('login.subtitle') }}</p>
       </div>
       
       <form @submit.prevent="handleLogin" class="auth-form">
         <div class="field">
           <span class="p-input-icon-left w-full">
             <i class="ti ti-mail"></i>
-            <InputText v-model="email" type="email" placeholder="Correu electrònic" class="w-full" />
+            <InputText v-model="email" type="email" :placeholder="$t('login.emailPlaceholder')" class="w-full" />
           </span>
         </div>
         
         <div class="field">
           <span class="p-input-icon-left w-full">
             <i class="ti ti-lock"></i>
-            <Password v-model="password" :feedback="false" toggleMask placeholder="Contrasenya" class="w-full" />
+            <Password v-model="password" :feedback="false" toggleMask :placeholder="$t('login.passwordPlaceholder')" class="w-full" />
           </span>
         </div>
         
         <Button 
           type="submit" 
-          label="Entrar" 
+          :label="$t('login.loginBtn')" 
           class="w-full mt-4" 
           :loading="loading" 
           :disabled="!email || !password"
@@ -68,8 +68,8 @@ const handleLogin = async () => {
       </form>
       
       <div class="auth-footer">
-        <span class="text-muted">No tens compte?</span>
-        <router-link to="/register" class="link">Registra't aquí</router-link>
+        <span class="text-muted">{{ $t('login.noAccount') }}</span>
+        <router-link to="/register" class="link">{{ $t('login.registerLink') }}</router-link>
       </div>
     </div>
   </div>
@@ -123,10 +123,21 @@ const handleLogin = async () => {
   z-index: 1;
 }
 
-.p-input-icon-left > .p-inputtext,
-.p-input-icon-left > .p-password {
+.p-input-icon-left > .p-inputtext {
   padding-left: 2.5rem;
 }
+
+:deep(.p-password) {
+  width: 100%;
+}
+
+:deep(.p-password input) {
+  width: 100%;
+  padding-left: 2.5rem;
+}
+
+.w-full { width: 100%; }
+.mt-4 { margin-top: 16px; }
 
 .auth-footer {
   margin-top: 32px;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getAtletaCompeticions, createCompeticio } from '@/api/competicions'
+import { useI18n } from 'vue-i18n'
+import { getAtletaCompeticions, createCompeticio, updateCompeticio } from '@/api/competicions'
 import type { Competicio } from '@/types'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
@@ -10,23 +11,31 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
+import Select from 'primevue/select'
 
 const toast = useToast()
+const { t } = useI18n()
 const competicions = ref<Competicio[]>([])
 const loading = ref(false)
 
 const createModalVisible = ref(false)
 const creating = ref(false)
 
+const editingId = ref<string | null>(null)
+
 const form = ref({
   nom: '',
   data: null as Date | null,
+  tipus: 'A',
   kms: null as number | null,
   desnivell: null as number | null,
   enllac: '',
   track_gpx: null as File | null,
-  comentaris: ''
+  comentaris: '',
+  estat: 'activa' as 'activa' | 'descartada'
 })
+
+const tipusOptions = ['A', 'B', 'C']
 
 const loadCompeticions = async () => {
   loading.value = true
@@ -44,16 +53,73 @@ onMounted(() => {
 })
 
 const openCreateModal = () => {
+  editingId.value = null
   form.value = {
     nom: '',
     data: null,
+    tipus: 'A',
     kms: null,
     desnivell: null,
     enllac: '',
     track_gpx: null,
-    comentaris: ''
+    comentaris: '',
+    estat: 'activa'
   }
   createModalVisible.value = true
+}
+
+const openEditModal = (comp: Competicio) => {
+  editingId.value = comp.id
+  form.value = {
+    nom: comp.nom,
+    data: new Date(comp.data),
+    tipus: comp.tipus,
+    kms: comp.kms || null,
+    desnivell: comp.desnivell || null,
+    enllac: comp.enllac,
+    track_gpx: null,
+    comentaris: comp.comentaris || '',
+    estat: comp.estat
+  }
+  createModalVisible.value = true
+}
+
+const handleDescartar = async (comp: Competicio) => {
+  try {
+    await updateCompeticio(comp.id, {
+      nom: comp.nom,
+      data: comp.data,
+      tipus: comp.tipus,
+      kms: comp.kms,
+      desnivell: comp.desnivell,
+      enllac: comp.enllac,
+      comentaris: comp.comentaris,
+      estat: 'descartada'
+    })
+    toast.add({ severity: 'success', summary: 'Descartada', detail: 'S\'ha descartat la competició', life: 3000 })
+    loadCompeticions()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut descartar', life: 3000 })
+  }
+}
+
+const handleReactivar = async (comp: Competicio) => {
+  try {
+    await updateCompeticio(comp.id, {
+      nom: comp.nom,
+      data: comp.data,
+      tipus: comp.tipus,
+      kms: comp.kms,
+      desnivell: comp.desnivell,
+      enllac: comp.enllac,
+      comentaris: comp.comentaris,
+      estat: 'activa'
+    })
+    toast.add({ severity: 'success', summary: 'Activada', detail: 'S\'ha reactivat la competició', life: 3000 })
+    loadCompeticions()
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut reactivar', life: 3000 })
+  }
 }
 
 const handleFileUpload = (event: Event) => {
@@ -84,21 +150,29 @@ const handleCreate = async () => {
     const mm = String(form.value.data.getMonth() + 1).padStart(2, '0')
     const dd = String(form.value.data.getDate()).padStart(2, '0')
     
-    await createCompeticio({
+    const payload = {
       nom: form.value.nom,
       data: `${yyyy}-${mm}-${dd}`,
+      tipus: form.value.tipus,
       kms: form.value.kms || undefined,
       desnivell: form.value.desnivell || undefined,
       enllac: form.value.enllac,
       track_gpx: form.value.track_gpx || undefined,
-      comentaris: form.value.comentaris || undefined
-    })
-    
-    toast.add({ severity: 'success', summary: 'Guardat', detail: 'Competició registrada correctament', life: 3000 })
+      comentaris: form.value.comentaris || undefined,
+      estat: form.value.estat
+    }
+
+    if (editingId.value) {
+      await updateCompeticio(editingId.value, payload)
+      toast.add({ severity: 'success', summary: 'Actualitzat', detail: 'Competició actualitzada correctament', life: 3000 })
+    } else {
+      await createCompeticio(payload)
+      toast.add({ severity: 'success', summary: 'Guardat', detail: 'Competició registrada correctament', life: 3000 })
+    }
     createModalVisible.value = false
     loadCompeticions()
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut registrar la competició', life: 3000 })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut guardar la competició', life: 3000 })
   } finally {
     creating.value = false
   }
@@ -108,74 +182,89 @@ const handleCreate = async () => {
 <template>
   <div class="competicions-layout max-w-4xl mx-auto">
     <div class="page-header glass-card">
-      <h1 class="page-title">Les meves Competicions</h1>
-      <Button label="Nou Objectiu" icon="ti ti-plus" @click="openCreateModal" />
+      <h1 class="page-title">{{ $t('athleteCompetitions.title') }}</h1>
+      <Button :label="$t('athleteCompetitions.newGoal')" icon="ti ti-plus" @click="openCreateModal" />
     </div>
 
     <div class="list mt-4">
       <div v-if="loading && competicions.length === 0" class="text-center py-8 text-secondary">
         <i class="ti ti-loader ti-spin text-3xl mb-2"></i>
-        <p>Carregant...</p>
+        <p>{{ $t('calendar.loading') }}</p>
       </div>
 
       <div v-else-if="competicions.length === 0" class="empty-state glass-card">
         <i class="ti ti-trophy text-4xl mb-4 text-muted"></i>
-        <p>Encara no has afegit cap competició o objectiu.</p>
-        <p class="text-sm mt-2 text-muted">Afegeix els teus reptes per tal que el teu entrenador te'ls planifiqui a l'agenda.</p>
+        <p>{{ $t('athleteCompetitions.emptyStateTitle') }}</p>
+        <p class="text-sm mt-2 text-muted">{{ $t('athleteCompetitions.emptyStateDesc') }}</p>
       </div>
 
-      <div v-for="comp in competicions" :key="comp.id" class="comp-card glass-card" :class="{ 'is-registered': comp.registrat }">
+      <div v-for="comp in competicions" :key="comp.id" class="comp-card glass-card" :class="{ 'is-registered': comp.registrat, 'is-discarded': comp.estat === 'descartada' }">
         <div class="comp-info">
           <div class="comp-title">
-            <h3>{{ comp.nom }}</h3>
-            <Tag :severity="comp.registrat ? 'success' : 'warn'" :value="comp.registrat ? 'En Calendari' : 'Pendent'" />
+            <h3 :class="{ 'line-through text-muted': comp.estat === 'descartada' }">{{ comp.nom }}</h3>
+            <div class="flex gap-2">
+              <Tag v-if="comp.estat === 'descartada'" severity="secondary" :value="$t('athleteCompetitions.statusDiscarded')" />
+              <Tag v-else :severity="comp.registrat ? 'success' : 'warn'" :value="comp.registrat ? $t('athleteCompetitions.statusRegistered') : $t('athleteCompetitions.statusPending')" />
+            </div>
           </div>
-          <div class="comp-details text-secondary mt-2">
+          <div class="comp-details text-secondary mt-2" :class="{ 'opacity-50': comp.estat === 'descartada' }">
             <span><i class="ti ti-calendar"></i> {{ comp.data }}</span>
+            <span><i class="ti ti-tag"></i> {{ $t('athleteCompetitions.type') }}: {{ comp.tipus || 'A' }}</span>
             <span v-if="comp.kms"><i class="ti ti-route"></i> {{ comp.kms }} km</span>
             <span v-if="comp.desnivell"><i class="ti ti-mountain"></i> {{ comp.desnivell }} m+</span>
           </div>
         </div>
+        <div class="comp-actions" v-if="comp.estat === 'activa'">
+          <Button :label="$t('athleteCompetitions.edit')" icon="ti ti-edit" severity="secondary" variant="text" size="small" @click="openEditModal(comp)" />
+          <Button :label="$t('athleteCompetitions.discard')" icon="ti ti-trash" severity="danger" variant="text" size="small" @click="handleDescartar(comp)" />
+        </div>
+        <div class="comp-actions" v-else-if="comp.estat === 'descartada'">
+          <Button :label="$t('athleteCompetitions.reactivate')" icon="ti ti-refresh" severity="success" variant="text" size="small" @click="handleReactivar(comp)" />
+        </div>
       </div>
     </div>
 
-    <!-- modal create -->
-    <Dialog v-model:visible="createModalVisible" header="Nova Competició" modal :style="{ width: '500px' }">
+    <!-- modal create / edit -->
+    <Dialog v-model:visible="createModalVisible" :header="editingId ? $t('athleteCompetitions.modalEditTitle') : $t('athleteCompetitions.modalNewTitle')" modal :style="{ width: '500px' }">
       <div class="flex flex-col gap-4 mt-2">
         <div class="field">
-          <label>Nom de la prova *</label>
-          <InputText v-model="form.nom" class="w-full" placeholder="Ex: Marató de Barcelona" />
+          <label>{{ $t('athleteCompetitions.nameLabel') }}</label>
+          <InputText v-model="form.nom" class="w-full" :placeholder="$t('athleteCompetitions.namePlaceholder')" />
         </div>
         <div class="field">
-          <label>Data *</label>
+          <label>{{ $t('athleteCompetitions.dateLabel') }}</label>
           <DatePicker v-model="form.data" dateFormat="dd/mm/yy" class="w-full" />
+        </div>
+        <div class="field">
+          <label>{{ $t('athleteCompetitions.typeLabel') }}</label>
+          <Select v-model="form.tipus" :options="tipusOptions" :placeholder="$t('athleteCompetitions.typePlaceholder')" class="w-full" />
         </div>
         <div class="flex gap-4">
           <div class="field flex-1">
-            <label>Distància (km)</label>
+            <label>{{ $t('athleteCompetitions.distanceLabel') }}</label>
             <InputNumber v-model="form.kms" :minFractionDigits="0" :maxFractionDigits="2" class="w-full" />
           </div>
           <div class="field flex-1">
-            <label>Desnivell (m+)</label>
+            <label>{{ $t('athleteCompetitions.elevationLabel') }}</label>
             <InputNumber v-model="form.desnivell" class="w-full" />
           </div>
         </div>
         <div class="field">
-          <label>Enllaç web de la cursa <span class="text-danger">*</span></label>
-          <InputText v-model="form.enllac" class="w-full" placeholder="https://..." />
+          <label><span v-html="$t('athleteCompetitions.linkLabel')"></span> <span class="text-danger">*</span></label>
+          <InputText v-model="form.enllac" class="w-full" :placeholder="$t('athleteCompetitions.linkPlaceholder')" />
         </div>
         <div class="field">
-          <label>Track de la cursa (.gpx opcional)</label>
+          <label>{{ $t('athleteCompetitions.trackLabel') }}</label>
           <input type="file" accept=".gpx" class="w-full file-input" @change="handleFileUpload" />
         </div>
         <div class="field">
-          <label>Comentaris (opcional)</label>
+          <label>{{ $t('athleteCompetitions.commentsLabel') }}</label>
           <Textarea v-model="form.comentaris" rows="3" class="w-full" />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel·lar" icon="ti ti-x" text @click="createModalVisible = false" />
-        <Button label="Guardar Objectiu" icon="ti ti-check" @click="handleCreate" :loading="creating" />
+        <Button label="Cancel" icon="ti ti-x" text @click="createModalVisible = false" />
+        <Button :label="$t('athleteCompetitions.saveGoal')" icon="ti ti-check" @click="handleCreate" :loading="creating" />
       </template>
     </Dialog>
   </div>
@@ -226,6 +315,21 @@ const handleCreate = async () => {
 .comp-card.is-registered {
   border-left-color: var(--accent-success);
 }
+.comp-card.is-discarded {
+  border-left-color: #9ca3af;
+  background: rgba(0,0,0,0.02);
+}
+.comp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+.line-through { text-decoration: line-through; }
+.opacity-50 { opacity: 0.5; }
+.text-muted { color: #9ca3af; }
 .comp-title {
   display: flex;
   justify-content: space-between;

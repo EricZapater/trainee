@@ -7,8 +7,10 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import DatePicker from 'primevue/datepicker'
 import WeekStatusBadge from '@/components/WeekStatusBadge.vue'
+import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
+const { t } = useI18n()
 const weeks = ref<ManagedWeekWithCount[]>([])
 const loading = ref(false)
 
@@ -83,20 +85,20 @@ const updateStatus = async (week: ManagedWeekWithCount, newStatus: 'oberta'|'tan
 <template>
   <div class="weeks-layout max-w-4xl mx-auto">
     <div class="page-header glass-card">
-      <h1 class="page-title">Gestió de Setmanes</h1>
-      <Button label="Nova setmana" icon="ti ti-plus" @click="openCreateModal" />
+      <h1 class="page-title">{{ $t('weeksManager.title') }}</h1>
+      <Button :label="$t('weeksManager.newWeek')" icon="ti ti-plus" @click="openCreateModal" />
     </div>
 
     <div class="weeks-list mt-4">
       <div v-if="loading && weeks.length === 0" class="text-center py-8 text-secondary">
         <i class="ti ti-loader ti-spin text-3xl mb-2"></i>
-        <p>Carregant setmanes...</p>
+        <p>{{ $t('weeksManager.loading') }}</p>
       </div>
 
       <div v-else-if="weeks.length === 0" class="empty-state glass-card">
         <i class="ti ti-calendar text-4xl mb-4 text-muted"></i>
-        <p>No tens cap setmana creada.</p>
-        <p class="text-sm mt-2 text-muted">Crea una setmana per permetre als atletes enviar la seva disponibilitat.</p>
+        <p>{{ $t('weeksManager.emptyState') }}</p>
+        <p class="text-sm mt-2 text-muted">{{ $t('weeksManager.emptyStateSub') }}</p>
       </div>
 
       <div 
@@ -105,32 +107,32 @@ const updateStatus = async (week: ManagedWeekWithCount, newStatus: 'oberta'|'tan
         class="week-card glass-card"
       >
         <div class="week-info">
-          <div class="week-date">Setmana del {{ week.week_start }}</div>
+          <div class="week-date">{{ $t('weeksManager.weekOf', { date: week.week_start }) }}</div>
           <WeekStatusBadge :estat="week.estat" />
         </div>
         
         <div class="week-stats">
           <i class="ti ti-users text-xl text-secondary"></i>
-          <span>{{ week.num_atletes_respost }} atletes han respost</span>
+          <span>{{ $t('weeksManager.athletesResponded', { count: week.num_atletes_respost }) }}</span>
         </div>
         
         <div class="week-actions flex gap-2">
           <Button 
-            v-tooltip.top="'Obrir (atleta pot editar)'"
+            v-tooltip.top="$t('weeksManager.open')"
             icon="ti ti-lock-open" 
             :severity="week.estat === 'oberta' ? 'success' : 'secondary'"
             :outlined="week.estat !== 'oberta'"
             @click="updateStatus(week, 'oberta')"
           />
           <Button 
-            v-tooltip.top="'Tancar (entrenador preparant)'"
+            v-tooltip.top="$t('weeksManager.close')"
             icon="ti ti-lock" 
             :severity="week.estat === 'tancada' ? 'warn' : 'secondary'"
             :outlined="week.estat !== 'tancada'"
             @click="updateStatus(week, 'tancada')"
           />
           <Button 
-            v-tooltip.top="'Traspassar (llest per l\'atleta)'"
+            v-tooltip.top="$t('weeksManager.transfer')"
             icon="ti ti-send" 
             :severity="week.estat === 'traspassada' ? 'info' : 'secondary'"
             :outlined="week.estat !== 'traspassada'"
@@ -140,9 +142,9 @@ const updateStatus = async (week: ManagedWeekWithCount, newStatus: 'oberta'|'tan
       </div>
     </div>
 
-    <Dialog v-model:visible="createModalVisible" header="Nova setmana" modal :style="{ width: '400px' }">
+    <Dialog v-model:visible="createModalVisible" :header="$t('weeksManager.modalTitle')" modal :style="{ width: '400px' }">
       <div class="py-4">
-        <p class="text-secondary mb-4">Selecciona el dilluns d'inici de la setmana:</p>
+        <p class="text-secondary mb-4">{{ $t('weeksManager.modalDesc') }}</p>
         <DatePicker 
           v-model="newWeekDate" 
           dateFormat="dd/mm/yy" 
@@ -151,8 +153,8 @@ const updateStatus = async (week: ManagedWeekWithCount, newStatus: 'oberta'|'tan
         />
       </div>
       <template #footer>
-        <Button label="Cancel·lar" icon="ti ti-x" text @click="createModalVisible = false" />
-        <Button label="Crear setmana" icon="ti ti-check" @click="handleCreate" :loading="creating" />
+        <Button :label="$t('weeksManager.cancel')" icon="ti ti-x" text @click="createModalVisible = false" />
+        <Button :label="$t('weeksManager.create')" icon="ti ti-check" @click="handleCreate" :loading="creating" />
       </template>
     </Dialog>
   </div>

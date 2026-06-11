@@ -1,0 +1,1 @@
+ALTER TABLE competicions DROP COLUMN IF EXISTS estat;

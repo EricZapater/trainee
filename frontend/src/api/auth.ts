@@ -6,7 +6,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return data
 }
 
-export async function register(payload: { nom: string; email: string; password: string; rol: string; entrenador_id: string }): Promise<AuthResponse> {
+export async function register(payload: { nom: string; email: string; password: string; rol: string; idioma: string; entrenador_id: string }): Promise<AuthResponse> {
   const { data } = await api.post<AuthResponse>('/auth/register', payload)
   return data
 }
@@ -23,5 +23,10 @@ export async function getMe(): Promise<Usuari> {
 
 export async function changePassword(payload: { old_password: string; new_password: string }): Promise<{ message: string }> {
   const { data } = await api.post<{ message: string }>('/auth/change-password', payload)
+  return data
+}
+
+export async function updateIdioma(idioma: string): Promise<{ message: string }> {
+  const { data } = await api.patch<{ message: string }>('/usuaris/me/idioma', { idioma })
   return data
 }

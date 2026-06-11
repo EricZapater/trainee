@@ -5,10 +5,12 @@ import { getTest } from '@/api/tests'
 import type { Test } from '@/types'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { t } = useI18n()
 
 const testItem = ref<Test | null>(null)
 const loading = ref(true)
@@ -31,13 +33,13 @@ onMounted(async () => {
     <div class="page-header glass-card">
       <div class="flex align-center gap-4">
         <Button icon="ti ti-arrow-left" text rounded aria-label="Tornar" @click="router.back()" />
-        <h1 class="page-title">Registre del Test</h1>
+        <h1 class="page-title">{{ $t('testDetail.title') }}</h1>
       </div>
     </div>
 
     <div v-if="loading" class="text-center py-8 text-secondary">
       <i class="ti ti-loader ti-spin text-3xl mb-2"></i>
-      <p>Carregant...</p>
+      <p>{{ $t('testDetail.loading') }}</p>
     </div>
 
     <div v-else-if="testItem" class="glass-card mt-4 test-card">
@@ -48,7 +50,7 @@ onMounted(async () => {
             <div class="badges mt-2">
               <span class="badge status-badge" :class="testItem.registrat ? 'bg-success' : 'bg-warning'">
                 <i :class="testItem.registrat ? 'ti ti-check' : 'ti ti-clock'"></i>
-                {{ testItem.registrat ? 'Planificat al calendari' : 'Pendent de revisar per l\'entrenador' }}
+                {{ testItem.registrat ? $t('testDetail.planned') : $t('testDetail.pendingReview') }}
               </span>
               <span class="badge atleta-badge"><i class="ti ti-user"></i> {{ testItem.atleta_nom || 'Atleta' }}</span>
             </div>
@@ -61,7 +63,7 @@ onMounted(async () => {
       </div>
 
       <div class="test-comments mt-6" v-if="testItem.comentaris">
-        <h3><i class="ti ti-message-circle text-accent"></i> Instruccions i Comentaris</h3>
+        <h3><i class="ti ti-message-circle text-accent"></i> {{ $t('testDetail.instructions') }}</h3>
         <p>"{{ testItem.comentaris }}"</p>
       </div>
 
@@ -69,8 +71,8 @@ onMounted(async () => {
         <div class="flex gap-3 align-center">
           <i class="ti ti-bell-ringing text-2xl text-warning"></i>
           <div>
-            <h4>Data programada de re-avaluació: <strong>{{ new Date(testItem.data_recordatori).toLocaleDateString('ca-ES') }}</strong></h4>
-            <p class="text-sm">L'entrenador rebrà un avís abans d'aquesta data per tornar a planificar el test.</p>
+            <h4 v-html="$t('testDetail.scheduledDate', { date: `<strong>${new Date(testItem.data_recordatori).toLocaleDateString('ca-ES')}</strong>` })"></h4>
+            <p class="text-sm">{{ $t('testDetail.coachNotice') }}</p>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCalendarStore } from '@/stores/useCalendarStore'
 import { useActivitatsStore } from '@/stores/useActivitatsStore'
 import { useWeeksStore } from '@/stores/useWeeksStore'
@@ -10,6 +11,7 @@ import ActivityPalette from '@/components/ActivityPalette.vue'
 import ActivityItem from '@/components/ActivityItem.vue'
 import WeekStatusBadge from '@/components/WeekStatusBadge.vue'
 
+const { t } = useI18n()
 const calendarStore = useCalendarStore()
 const activitatsStore = useActivitatsStore()
 const weeksStore = useWeeksStore()
@@ -26,7 +28,7 @@ const toggleDay = (dia: number) => {
   }
 }
 
-const dies = ['Dilluns', 'Dimarts', 'Dimecres', 'Dijous', 'Divendres', 'Dissabte', 'Diumenge']
+const dies = computed(() => t('calendar.days', { returnObjects: true }) as unknown as string[])
 
 const formatDate = (dateStr: string, offsetDays: number = 0) => {
   const d = new Date(dateStr)
@@ -36,7 +38,7 @@ const formatDate = (dateStr: string, offsetDays: number = 0) => {
 
 const currentWeekLabel = computed(() => {
   const start = calendarStore.currentWeekStart
-  return `Setmana del ${formatDate(start)} al ${formatDate(start, 6)}`
+  return t('calendar.weekOf', { start: formatDate(start), end: formatDate(start, 6) })
 })
 
 const weekStatus = computed(() => {
@@ -155,14 +157,14 @@ const handleSave = async () => {
 
       <div v-if="calendarStore.loading" class="loading-state glass-card">
         <i class="ti ti-loader ti-spin text-4xl mb-4 text-primary"></i>
-        <p>Carregant setmana...</p>
+        <p>{{ $t('calendar.loading') }}</p>
       </div>
 
       <div v-else class="calendar-grid-container glass-card desktop-only">
         <div class="calendar-grid">
           <!-- Day headers -->
           <div v-for="(dia, i) in dies" :key="dia" class="grid-header-cell day-header">
-            <span class="day-name">{{ dia.substring(0, 2) }}</span>
+            <span class="day-name">{{ typeof dia === 'string' ? dia.substring(0, 3) : '' }}</span>
             <span class="day-date">{{ formatDate(calendarStore.currentWeekStart, i) }}</span>
           </div>
 
@@ -185,7 +187,7 @@ const handleSave = async () => {
             />
             
             <div class="column-drop-zone" :class="{'is-active': isWeekOpen}">
-               <i class="ti ti-plus"></i> Deixa anar aquí
+               <i class="ti ti-plus"></i> {{ $t('calendar.dropHere') }}
             </div>
           </div>
         </div>
@@ -196,7 +198,7 @@ const handleSave = async () => {
         <div v-for="dia in 7" :key="dia" class="mobile-day-card glass-card">
           <div class="mobile-day-header" @click="toggleDay(dia-1)">
             <div class="mobile-day-title">
-              <h3>{{ dies[dia-1] }}</h3>
+              <h3>{{ typeof dies[dia-1] === 'string' ? dies[dia-1] : '' }}</h3>
               <span class="mobile-date">{{ formatDate(calendarStore.currentWeekStart, dia-1) }}</span>
             </div>
             <i :class="expandedDays.includes(dia-1) ? 'ti ti-chevron-up' : 'ti ti-chevron-down'" class="text-secondary text-xl"></i>
@@ -219,7 +221,7 @@ const handleSave = async () => {
               @click="handleMobileAdd(dia-1)"
             >
               <i class="ti ti-plus"></i>
-              <span>{{ calendarStore.selectedMobileActivity ? 'Toca per col·locar' : 'Tria activitat a dalt' }}</span>
+              <span>{{ calendarStore.selectedMobileActivity ? $t('calendar.tapToPlace') : $t('calendar.chooseActivityTop') }}</span>
             </div>
           </div>
         </div>
@@ -227,10 +229,10 @@ const handleSave = async () => {
 
       <div v-if="isWeekOpen && !calendarStore.loading" class="calendar-footer glass-card">
         <div class="notes-section">
-          <h3>Notes de la setmana</h3>
+          <h3>{{ $t('calendar.weekNotesTitle') }}</h3>
           <Textarea 
             v-model="calendarStore.notesSetmana" 
-            placeholder="Afegeix algun comentari per al teu entrenador sobre aquesta setmana (ex: Tinc un viatge de feina el dimecres, podré entrenar menys...)"
+            :placeholder="$t('calendar.weekNotesPlaceholder')"
             rows="3" 
             style="width: 100%; resize: vertical;" 
           />
@@ -238,7 +240,7 @@ const handleSave = async () => {
         
         <div class="actions-section">
           <Button 
-            label="Guardar disponibilitat" 
+            :label="$t('calendar.saveAvailability')" 
             icon="ti ti-device-floppy" 
             @click="handleSave" 
             :loading="isSaving" 
@@ -249,13 +251,13 @@ const handleSave = async () => {
       
       <div v-else-if="isWeekTraspassada && !calendarStore.loading" class="closed-notice glass-card" style="border-color: #3b82f6; background: rgba(59, 130, 246, 0.05);">
         <i class="ti ti-confetti text-4xl mb-2" style="color: #3b82f6;"></i>
-        <h3 class="text-xl mb-2" style="color: #3b82f6; margin: 0;">Entrenament Disponible!</h3>
-        <p>El teu entrenador ja ha traspassat el teu entrenament. Obre la teva app habitual per veure'n els detalls.</p>
+        <h3 class="text-xl mb-2" style="color: #3b82f6; margin: 0;">{{ $t('calendar.trainingAvailableTitle') }}</h3>
+        <p>{{ $t('calendar.trainingAvailableDesc') }}</p>
       </div>
       
       <div v-else-if="!isWeekOpen && !calendarStore.loading" class="closed-notice glass-card">
         <i class="ti ti-lock text-3xl mb-2 text-muted"></i>
-        <p>Aquesta setmana està tancada. S'està preparant el teu entrenament.</p>
+        <p>{{ $t('calendar.weekClosedDesc') }}</p>
       </div>
     </div>
   </div>

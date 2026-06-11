@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { getAtletes, getInformeAtleta } from '@/api/entrenador'
 import { getInformeMe } from '@/api/submissions'
@@ -10,6 +11,7 @@ import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 
 const authStore = useAuthStore()
+const { t } = useI18n()
 const toast = useToast()
 
 const isEntrenador = computed(() => authStore.isEntrenador)
@@ -86,34 +88,34 @@ const generateReport = async () => {
 <template>
   <div class="informe-layout max-w-5xl mx-auto">
     <div class="page-header glass-card">
-      <h1 class="page-title">Històric i Informes</h1>
+      <h1 class="page-title">{{ $t('reports.title') }}</h1>
       
       <div class="filters-bar mt-4">
         <div v-if="isEntrenador" class="filter-group">
-          <label>Atleta</label>
+          <label>{{ $t('reports.athlete') }}</label>
           <Select 
             v-model="selectedAtletaID" 
             :options="atletes" 
             optionLabel="nom" 
             optionValue="id"
-            placeholder="Selecciona un atleta" 
+            :placeholder="$t('reports.athletePlaceholder')" 
             class="w-full md:w-15rem"
           />
         </div>
         
         <div class="filter-group">
-          <label>Data Inici</label>
+          <label>{{ $t('reports.startDate') }}</label>
           <DatePicker v-model="startDate" dateFormat="dd/mm/yy" showIcon />
         </div>
         
         <div class="filter-group">
-          <label>Data Fi</label>
+          <label>{{ $t('reports.endDate') }}</label>
           <DatePicker v-model="endDate" dateFormat="dd/mm/yy" showIcon />
         </div>
         
         <div class="filter-group generate-btn-wrapper">
           <Button 
-            label="Generar Informe" 
+            :label="$t('reports.generate')" 
             icon="ti ti-report-analytics" 
             @click="generateReport" 
             :loading="loading" 
@@ -123,11 +125,11 @@ const generateReport = async () => {
     </div>
 
     <div v-if="informe" class="informe-content mt-6">
-      <h2 class="section-title">Resum d'hores d'entrenament</h2>
+      <h2 class="section-title">{{ $t('reports.summaryTitle') }}</h2>
       
       <div v-if="informe.resum_activitats.length === 0" class="empty-state glass-card">
         <i class="ti ti-chart-bar text-4xl mb-4 text-muted"></i>
-        <p>No hi ha dades d'entrenament en aquest període.</p>
+        <p>{{ $t('reports.summaryEmpty') }}</p>
       </div>
       
       <div v-else class="resum-grid">
@@ -140,15 +142,15 @@ const generateReport = async () => {
           <i :class="['ti', act.activitat_icona]" :style="{ color: act.activitat_color }"></i>
           <div class="resum-info">
             <span class="act-nom">{{ act.activitat_nom }}</span>
-            <span class="act-hores">{{ act.total_hores }} hores</span>
+            <span class="act-hores">{{ act.total_hores }} {{ $t('reports.hours') }}</span>
           </div>
         </div>
       </div>
 
-      <h2 class="section-title mt-6">Detall dia a dia</h2>
+      <h2 class="section-title mt-6">{{ $t('reports.detailTitle') }}</h2>
       <div class="timeline glass-card p-4">
         <div v-if="informe.detall_per_dies.length === 0" class="text-muted text-center py-4">
-          Sense registres.
+          {{ $t('reports.detailEmpty') }}
         </div>
         
         <div v-for="dia in informe.detall_per_dies" :key="dia.data" class="timeline-day">
@@ -160,7 +162,7 @@ const generateReport = async () => {
               class="timeline-slot"
               :style="{ borderLeftColor: slot.activitat_color }"
             >
-              <div class="slot-time">Activitat {{ slot.ordre + 1 }}</div>
+              <div class="slot-time">{{ $t('reports.activity', { n: slot.ordre + 1 }) }}</div>
               <div class="slot-details">
                 <div class="slot-title">
                   <i :class="['ti', slot.activitat_icona]" :style="{ color: slot.activitat_color }"></i>

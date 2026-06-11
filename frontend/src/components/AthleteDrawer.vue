@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Drawer from 'primevue/drawer'
 import type { AtletaSubmissionSummary } from '@/types'
 
@@ -12,6 +13,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:visible', value: boolean): void
 }>()
+
+const { t } = useI18n()
 
 const isVisible = computed({
   get: () => props.visible,
@@ -51,13 +54,13 @@ const handleSpecialClick = (slot: any) => {
 
     <div v-if="atleta" class="drawer-content">
       <div v-if="!atleta.ha_respost" class="no-response">
-        L'atleta encara no ha enviat la seva disponibilitat.
+        {{ $t('athleteDrawer.noResponse') }}
       </div>
       
       <div v-else class="days-list">
         <template v-for="dia in 7" :key="dia">
           <div v-if="getSlotsForDay(dia-1).length > 0" class="day-section">
-            <h4 class="day-title">{{ dies[dia-1] }}</h4>
+            <h4 class="day-title">{{ $t(`athleteDrawer.fullDays.${dia}`) }}</h4>
             <div class="slots-list">
               <div 
                 v-for="slot in getSlotsForDay(dia-1)" 
@@ -71,7 +74,7 @@ const handleSpecialClick = (slot: any) => {
                     <i :class="slot.competicio_id ? 'ti-trophy text-warning' : 'ti-clipboard-data text-primary'" 
                        class="ti cursor-pointer ml-auto" 
                        style="float: right; font-size: 1.2rem;" 
-                       :title="slot.competicio_id ? 'Veure registre de la competició' : 'Veure registre del test'"
+                       :title="slot.competicio_id ? $t('activityItem.viewCompetition') : $t('activityItem.viewTest')"
                        @click="handleSpecialClick(slot)"></i>
                   </template>
                 </div>
@@ -90,7 +93,7 @@ const handleSpecialClick = (slot: any) => {
         </template>
         
         <div v-if="atleta.slots.length === 0" class="no-slots">
-          L'atleta ha respost que no té disponibilitat aquesta setmana.
+          {{ $t('athleteDrawer.noSlots') }}
         </div>
       </div>
     </div>

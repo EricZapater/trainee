@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"trainee-backend/internal/models"
 )
 
 func (h *Handler) GetEntrenadorSubmissions(c *gin.Context) {
@@ -96,3 +97,84 @@ func (h *Handler) ListAtletes(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, atletes)
 }
 
+func (h *Handler) ToggleAtletaStatus(ctx *gin.Context) {
+	usuariID := ctx.GetString("user_id")
+	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
+		return
+	}
+
+	atletaID := ctx.Param("id")
+	// Verify athlete belongs to this coach
+	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error validant permisos"})
+		return
+	}
+
+	var targetAtleta *models.Atleta
+	for _, a := range atletes {
+		if a.ID == atletaID {
+			targetAtleta = &a
+			break
+		}
+	}
+	if targetAtleta == nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "No tens permís per modificar aquest atleta"})
+		return
+	}
+
+	var req models.ToggleUserStatusRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.Store.ToggleUserStatus(ctx.Request.Context(), targetAtleta.UsuariID, req.Actiu, &usuariID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error canviant l'estat de l'atleta"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *Handler) GetAtletaStatusHistory(ctx *gin.Context) {
+	usuariID := ctx.GetString("user_id")
+	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
+		return
+	}
+
+	atletaID := ctx.Param("id")
+	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error validant permisos"})
+		return
+	}
+
+	var targetAtleta *models.Atleta
+	for _, a := range atletes {
+		if a.ID == atletaID {
+			targetAtleta = &a
+			break
+		}
+	}
+	if targetAtleta == nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "No tens permís per veure aquest atleta"})
+		return
+	}
+
+	history, err := h.Store.GetUserStatusHistory(ctx.Request.Context(), targetAtleta.UsuariID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error obtenint l'historial"})
+		return
+	}
+	if history == nil {
+		history = []models.UserStatusHistory{}
+	}
+
+	ctx.JSON(http.StatusOK, history)
+}

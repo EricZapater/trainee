@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useCalendarStore } from '@/stores/useCalendarStore'
 import type { Activitat } from '@/types'
 
@@ -8,6 +9,7 @@ const props = defineProps<{
 }>()
 
 const calendarStore = useCalendarStore()
+const { t } = useI18n()
 
 const handleDragStart = (event: DragEvent, activitat: Activitat) => {
   if (event.dataTransfer) {
@@ -28,7 +30,7 @@ const handleActivityTap = (activitat: Activitat) => {
 
 <template>
   <div class="palette-container glass-card">
-    <h3 class="palette-title">Activitats</h3>
+    <h3 class="palette-title">{{ $t('activityPalette.title') }}</h3>
     
     <div class="activities-list" :class="{ disabled }">
       <div 
@@ -46,7 +48,7 @@ const handleActivityTap = (activitat: Activitat) => {
       </div>
       
       <div v-if="activitats.length === 0" class="no-activities">
-        Cap activitat
+        {{ $t('activityPalette.empty') }}
       </div>
     </div>
   </div>

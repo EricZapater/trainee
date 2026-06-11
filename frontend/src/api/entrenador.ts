@@ -9,7 +9,8 @@ import type {
   CreateActivitatRequest,
   UpdateActivitatRequest,
   ReorderItem,
-  InformeResponse
+  InformeResponse,
+  UserStatusHistory
 } from '@/types'
 
 export async function getInformeAtleta(id: string, start: string, end: string): Promise<InformeResponse> {
@@ -17,8 +18,8 @@ export async function getInformeAtleta(id: string, start: string, end: string): 
   return data
 }
 
-export async function getAtletes(): Promise<{ id: string; nom: string; email: string }[]> {
-  const { data } = await api.get<{ id: string; nom: string; email: string }[]>('/entrenador/atletes')
+export async function getAtletes(): Promise<{ id: string; nom: string; email: string; actiu: boolean }[]> {
+  const { data } = await api.get<{ id: string; nom: string; email: string; actiu: boolean }[]>('/entrenador/atletes')
   return data
 }
 
@@ -63,4 +64,13 @@ export async function reorderActivitats(items: ReorderItem[]): Promise<void> {
 
 export async function deleteActivitat(id: string): Promise<void> {
   await api.delete(`/entrenador/activitats/${id}`)
+}
+
+export async function toggleAtletaStatus(id: string, actiu: boolean): Promise<void> {
+  await api.patch(`/entrenador/atletes/${id}/status`, { actiu })
+}
+
+export async function getAtletaStatusHistory(id: string): Promise<UserStatusHistory[]> {
+  const { data } = await api.get<UserStatusHistory[]>(`/entrenador/atletes/${id}/history`)
+  return data
 }

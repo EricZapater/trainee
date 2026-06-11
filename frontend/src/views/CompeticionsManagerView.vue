@@ -5,8 +5,13 @@ import type { Competicio } from '@/types'
 import { useCompeticionsStore } from '@/stores/useCompeticionsStore'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import Select from 'primevue/select'
+import { updateCompeticioTipus } from '@/api/competicions'
+import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
+const { t } = useI18n()
 const compStore = useCompeticionsStore()
 const competicions = ref<Competicio[]>([])
 const loading = ref(false)
@@ -26,6 +31,30 @@ onMounted(() => {
   loadCompeticions()
 })
 
+const editingComp = ref<Competicio | null>(null)
+const isEditingTipus = ref(false)
+const selectedTipus = ref<string>('A')
+const tipusOptions = ['A', 'B', 'C']
+
+const openEditTipus = (comp: Competicio) => {
+  editingComp.value = comp
+  selectedTipus.value = comp.tipus || 'A'
+  isEditingTipus.value = true
+}
+
+const saveTipus = async () => {
+  if (!editingComp.value) return
+  try {
+    await updateCompeticioTipus(editingComp.value.id, selectedTipus.value)
+    toast.add({ severity: 'success', summary: 'Actualitzat', detail: 'S\'ha actualitzat el tipus', life: 3000 })
+    isEditingTipus.value = false
+    editingComp.value = null
+    loadCompeticions()
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.error || 'No s\'ha pogut actualitzar', life: 3000 })
+  }
+}
+
 const handleTraspassar = async (comp: Competicio) => {
   try {
     await traspassarCompeticio(comp.id)
@@ -41,19 +70,19 @@ const handleTraspassar = async (comp: Competicio) => {
 <template>
   <div class="competicions-layout max-w-4xl mx-auto">
     <div class="page-header glass-card">
-      <h1 class="page-title">Safata de Competicions (Pendent)</h1>
+      <h1 class="page-title">{{ $t('competitionsManager.title') }}</h1>
     </div>
 
     <div class="list mt-4">
       <div v-if="loading && competicions.length === 0" class="text-center py-8 text-secondary">
         <i class="ti ti-loader ti-spin text-3xl mb-2"></i>
-        <p>Carregant...</p>
+        <p>{{ $t('competitionsManager.loading') }}</p>
       </div>
 
       <div v-else-if="competicions.length === 0" class="empty-state glass-card">
         <i class="ti ti-inbox text-4xl mb-4 text-muted"></i>
-        <p>No hi ha cap competició pendent per part dels teus atletes.</p>
-        <p class="text-sm mt-2 text-muted">Quan els teus atletes registrin curses noves, t'apareixeran aquí per enviar-les al calendari.</p>
+        <p>{{ $t('competitionsManager.emptyState') }}</p>
+        <p class="text-sm mt-2 text-muted">{{ $t('competitionsManager.emptyStateSub') }}</p>
       </div>
 
       <div v-for="comp in competicions" :key="comp.id" class="comp-card glass-card">
@@ -64,21 +93,34 @@ const handleTraspassar = async (comp: Competicio) => {
           </div>
           <div class="comp-details text-secondary mt-2">
             <span><i class="ti ti-calendar"></i> {{ comp.data }}</span>
+            <span><i class="ti ti-tag"></i> {{ $t('competitionsManager.type') }}: {{ comp.tipus || 'A' }}</span>
             <span v-if="comp.kms"><i class="ti ti-route"></i> {{ comp.kms }} km</span>
             <span v-if="comp.desnivell"><i class="ti ti-mountain"></i> {{ comp.desnivell }} m+</span>
           </div>
           <div class="comp-comments mt-2" v-if="comp.comentaris || comp.enllac">
             <p v-if="comp.comentaris" class="text-sm">"{{ comp.comentaris }}"</p>
             <a v-if="comp.enllac" :href="comp.enllac" target="_blank" class="text-accent text-sm flex align-center gap-1">
-              <i class="ti ti-link"></i> Web de la cursa
+              <i class="ti ti-link"></i> {{ $t('competitionsManager.link') }}
             </a>
           </div>
         </div>
         <div class="comp-actions">
-          <Button label="Traspassar al calendari" icon="ti ti-calendar-plus" severity="info" @click="handleTraspassar(comp)" />
+          <Button :label="$t('competitionsManager.editType')" icon="ti ti-edit" severity="secondary" variant="text" @click="openEditTipus(comp)" />
+          <Button :label="$t('competitionsManager.transferToCalendar')" icon="ti ti-calendar-plus" severity="info" @click="handleTraspassar(comp)" />
         </div>
       </div>
     </div>
+
+    <Dialog v-model:visible="isEditingTipus" modal :header="$t('competitionsManager.editTypeTitle')" :style="{ width: '25rem' }">
+      <div class="flex flex-col gap-4 py-4">
+        <label for="tipus" class="font-bold">{{ $t('competitionsManager.type') }} (A, B, C)</label>
+        <Select id="tipus" v-model="selectedTipus" :options="tipusOptions" :placeholder="$t('competitionsManager.selectType')" class="w-full" />
+      </div>
+      <template #footer>
+        <Button :label="$t('competitionsManager.cancel')" icon="ti ti-x" text severity="secondary" @click="isEditingTipus = false" />
+        <Button :label="$t('competitionsManager.save')" icon="ti ti-check" severity="primary" @click="saveTipus" />
+      </template>
+    </Dialog>
   </div>
 </template>
 

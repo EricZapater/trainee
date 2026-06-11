@@ -11,8 +11,10 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
+import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
+const { t } = useI18n()
 const testsStore = useTestsStore()
 const atletes = ref<{ id: string; nom: string; email: string }[]>([])
 
@@ -128,10 +130,10 @@ const sortedPendents = computed(() => {
   <div class="max-w-5xl mx-auto">
     <div class="page-header glass-card">
       <div>
-        <h1 class="page-title">Tests i Avaluacions</h1>
-        <p class="text-secondary mt-1">Programa proves de camp, testos FTP i gestiona els seus recordatoris periòdics.</p>
+        <h1 class="page-title">{{ $t('testsManager.title') }}</h1>
+        <p class="text-secondary mt-1">{{ $t('testsManager.subtitle') }}</p>
       </div>
-      <Button label="Nou Test" icon="ti ti-plus" @click="openCreateModal()" />
+      <Button :label="$t('testsManager.newTest')" icon="ti ti-plus" @click="openCreateModal()" />
     </div>
 
     <div class="tabs-container mt-6">
@@ -141,7 +143,7 @@ const sortedPendents = computed(() => {
           :class="{ active: activeTab === 'pendents' }" 
           @click="activeTab = 'pendents'"
         >
-          <i class="ti ti-calendar-plus"></i> Pendents de Programar
+          <i class="ti ti-calendar-plus"></i> {{ $t('testsManager.tabPending') }}
           <span class="badge" v-if="testsStore.pendingTests.length">{{ testsStore.pendingTests.length }}</span>
         </button>
         <button 
@@ -149,7 +151,7 @@ const sortedPendents = computed(() => {
           :class="{ active: activeTab === 'recordatoris' }" 
           @click="activeTab = 'recordatoris'"
         >
-          <i class="ti ti-bell-ringing"></i> Recordatoris Actius
+          <i class="ti ti-bell-ringing"></i> {{ $t('testsManager.tabReminders') }}
           <span class="badge" :class="{ urgent: testsStore.urgentRecordatorisCount > 0 }" v-if="testsStore.recordatoris.length">
             {{ testsStore.recordatoris.length }}
           </span>
@@ -165,8 +167,8 @@ const sortedPendents = computed(() => {
           </div>
           <div v-else-if="sortedPendents.length === 0" class="empty-state text-center py-8">
             <i class="ti ti-clipboard-check text-4xl mb-4 text-muted"></i>
-            <h3>No hi ha cap test pendent de programar</h3>
-            <p class="text-secondary">Pots crear un nou test fent clic al botó de dalt a la dreta.</p>
+            <h3>{{ $t('testsManager.noPending') }}</h3>
+            <p class="text-secondary">{{ $t('testsManager.noPendingSub') }}</p>
           </div>
           <div v-else class="grid-list">
             <div v-for="t in sortedPendents" :key="t.id" class="list-card">
@@ -182,7 +184,7 @@ const sortedPendents = computed(() => {
                 </div>
               </div>
               <div class="card-actions">
-                <Button label="Traspassar al calendari" icon="ti ti-arrow-right" severity="secondary" size="small" @click="handleTraspassar(t.id)" />
+                <Button :label="$t('testsManager.transferToCalendar')" icon="ti ti-arrow-right" severity="secondary" size="small" @click="handleTraspassar(t.id)" />
               </div>
             </div>
           </div>
@@ -195,8 +197,8 @@ const sortedPendents = computed(() => {
           </div>
           <div v-else-if="testsStore.recordatoris.length === 0" class="empty-state text-center py-8">
             <i class="ti ti-bell-off text-4xl mb-4 text-muted"></i>
-            <h3>No tens cap recordatori actiu</h3>
-            <p class="text-secondary">A l'hora de crear un test, pots posar una data de recordatori pel proper.</p>
+            <h3>{{ $t('testsManager.noReminders') }}</h3>
+            <p class="text-secondary">{{ $t('testsManager.noRemindersSub') }}</p>
           </div>
           <div v-else class="grid-list">
             <div v-for="t in testsStore.recordatoris" :key="t.id" class="list-card" :class="{ 'is-urgent': testsStore.isUrgent(t.data_recordatori) }">
@@ -206,22 +208,22 @@ const sortedPendents = computed(() => {
                 </div>
                 <div>
                   <div class="flex align-items-center gap-2">
-                    <h3 class="card-title">Re-avaluar: {{ t.titol }}</h3>
-                    <span v-if="testsStore.isUrgent(t.data_recordatori)" class="badge urgent-badge">Vençut o Proper!</span>
+                    <h3 class="card-title">{{ $t('testsManager.reevaluate') }}: {{ t.titol }}</h3>
+                    <span v-if="testsStore.isUrgent(t.data_recordatori)" class="badge urgent-badge">{{ $t('testsManager.urgent') }}</span>
                   </div>
                   <div class="card-meta mt-1">
                     <span class="meta-item"><i class="ti ti-user"></i> {{ t.atleta_nom }}</span>
                     <span class="meta-item">
                       <i class="ti ti-calendar-due"></i> 
-                      Data prevista: {{ new Date(t.data_recordatori!).toLocaleDateString('ca-ES') }}
+                      {{ $t('testsManager.dueDate') }}: {{ new Date(t.data_recordatori!).toLocaleDateString('ca-ES') }}
                     </span>
                   </div>
-                  <p class="text-sm text-secondary mt-2">Test anterior realitzat el {{ new Date(t.data_test).toLocaleDateString('ca-ES') }}</p>
+                  <p class="text-sm text-secondary mt-2">{{ $t('testsManager.lastTest', { date: new Date(t.data_test).toLocaleDateString('ca-ES') }) }}</p>
                 </div>
               </div>
               <div class="card-actions flex-column align-end">
-                <Button label="Nou Test" icon="ti ti-clipboard-plus" size="small" @click="openCreateModal(t.id, t.atleta_id, t.titol)" />
-                <Button label="Cancel·lar Avís" icon="ti ti-x" text severity="danger" size="small" @click="handleCancelRecordatori(t.id)" class="mt-2" />
+                <Button :label="$t('testsManager.newTest')" icon="ti ti-clipboard-plus" size="small" @click="openCreateModal(t.id, t.atleta_id, t.titol)" />
+                <Button :label="$t('testsManager.cancelReminder')" icon="ti ti-x" text severity="danger" size="small" @click="handleCancelRecordatori(t.id)" class="mt-2" />
               </div>
             </div>
           </div>
@@ -231,18 +233,18 @@ const sortedPendents = computed(() => {
     </div>
 
     <!-- Modal Crear Test -->
-    <Dialog v-model:visible="createDialogVisible" modal header="Crear Test / Avaluació" :style="{ width: '600px' }">
+    <Dialog v-model:visible="createDialogVisible" modal :header="$t('testsManager.createTitle')" :style="{ width: '600px' }">
       <div class="form-layout mt-2">
         
         <!-- Fila 1: Atleta -->
         <div class="field">
-          <label>Atleta <span class="text-danger">*</span></label>
+          <label>{{ $t('testsManager.athlete') }} <span class="text-danger">*</span></label>
           <Select 
             v-model="form.atleta_id" 
             :options="atletes" 
             optionLabel="nom" 
             optionValue="id"
-            placeholder="Selecciona l'atleta" 
+            :placeholder="$t('testsManager.selectAthlete')" 
             class="w-full"
             :disabled="!!resolentRecordatoriId"
           />
@@ -250,33 +252,33 @@ const sortedPendents = computed(() => {
         
         <!-- Fila 2: Títol -->
         <div class="field">
-          <label>Títol del test <span class="text-danger">*</span></label>
-          <InputText v-model="form.titol" class="w-full" placeholder="Ex: Test de Cooper" />
+          <label>{{ $t('testsManager.testTitle') }} <span class="text-danger">*</span></label>
+          <InputText v-model="form.titol" class="w-full" :placeholder="$t('testsManager.testTitlePlaceholder')" />
         </div>
 
         <!-- Fila 3: Dates -->
         <div class="dates-row">
           <div class="field w-half">
-            <label>Data de realització <span class="text-danger">*</span></label>
+            <label>{{ $t('testsManager.date') }} <span class="text-danger">*</span></label>
             <DatePicker v-model="dataTestObj" dateFormat="dd/mm/yy" class="w-full" showIcon />
           </div>
 
           <div class="field w-half">
-            <label>Proper recordatori (Opcional)</label>
-            <DatePicker v-model="dataRecordatoriObj" dateFormat="dd/mm/yy" class="w-full" showIcon placeholder="Per ex. d'aquí a 3 mesos" />
+            <label>{{ $t('testsManager.nextReminder') }}</label>
+            <DatePicker v-model="dataRecordatoriObj" dateFormat="dd/mm/yy" class="w-full" showIcon :placeholder="$t('testsManager.reminderPlaceholder')" />
           </div>
         </div>
 
         <!-- Fila 4: Comentaris -->
         <div class="field">
-          <label>Comentaris o Instruccions</label>
-          <Textarea v-model="form.comentaris" rows="3" class="w-full" placeholder="Què s'ha de fer en aquest test? Objectius?" />
+          <label>{{ $t('testsManager.comments') }}</label>
+          <Textarea v-model="form.comentaris" rows="3" class="w-full" :placeholder="$t('testsManager.commentsPlaceholder')" />
         </div>
       </div>
 
       <template #footer>
-        <Button label="Cancel·lar" icon="ti ti-x" text @click="createDialogVisible = false" />
-        <Button label="Guardar" icon="ti ti-check" @click="submitCreate" :loading="isSubmitting" />
+        <Button :label="$t('testsManager.cancel')" icon="ti ti-x" text @click="createDialogVisible = false" />
+        <Button :label="$t('testsManager.save')" icon="ti ti-check" @click="submitCreate" :loading="isSubmitting" />
       </template>
     </Dialog>
   </div>

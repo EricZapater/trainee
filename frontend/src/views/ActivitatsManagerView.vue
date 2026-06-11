@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getAllActivitats, createActivitat, updateActivitat, reorderActivitats, deleteActivitat } from '@/api/entrenador'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -10,6 +11,7 @@ import ActivitatModal from '@/components/ActivitatModal.vue'
 
 const toast = useToast()
 const confirm = useConfirm()
+const { t } = useI18n()
 
 const activitats = ref<Activitat[]>([])
 const loading = ref(false)
@@ -107,19 +109,19 @@ const handleDrop = async (event: DragEvent, index: number) => {
 <template>
   <div class="activitats-layout max-w-4xl mx-auto">
     <div class="page-header glass-card">
-      <h1 class="page-title">Gestió d'Activitats</h1>
-      <Button label="Nova activitat" icon="ti ti-plus" @click="openCreateModal" />
+      <h1 class="page-title">{{ $t('activitiesManager.title') }}</h1>
+      <Button :label="$t('activitiesManager.newActivity')" icon="ti ti-plus" @click="openCreateModal" />
     </div>
 
     <div class="activitats-list mt-4">
       <div v-if="loading && activitats.length === 0" class="text-center py-8 text-secondary">
         <i class="ti ti-loader ti-spin text-3xl mb-2"></i>
-        <p>Carregant activitats...</p>
+        <p>{{ $t('activitiesManager.loading') }}</p>
       </div>
 
       <div v-else-if="activitats.length === 0" class="empty-state glass-card">
         <i class="ti ti-activity text-4xl mb-4 text-muted"></i>
-        <p>No hi ha activitats configurades.</p>
+        <p>{{ $t('activitiesManager.emptyState') }}</p>
       </div>
 
       <template v-else>

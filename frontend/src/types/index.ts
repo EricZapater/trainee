@@ -3,6 +3,8 @@ export interface Usuari {
   nom: string
   email: string
   rol: 'atleta' | 'entrenador'
+  actiu: boolean
+  idioma: string
   created_at: string
 }
 
@@ -20,6 +22,7 @@ export interface Atleta {
   created_at: string
   nom?: string
   email?: string
+  actiu?: boolean
 }
 
 export interface Activitat {
@@ -164,12 +167,14 @@ export interface Competicio {
   entrenador_id: string
   nom: string
   data: string
+  tipus: string
   kms?: number
   desnivell?: number
   enllac: string
   track_gpx_path?: string
   comentaris?: string
   registrat: boolean
+  estat: 'activa' | 'descartada'
   created_at: string
   atleta_nom?: string
 }
@@ -177,11 +182,36 @@ export interface Competicio {
 export interface CreateCompeticioRequest {
   nom: string
   data: string
+  tipus: string
   kms?: number
   desnivell?: number
   enllac: string
   track_gpx?: File
   comentaris?: string
+}
+
+export interface UpdateCompeticioRequest {
+  nom: string
+  data: string
+  tipus: string
+  kms?: number
+  desnivell?: number
+  enllac: string
+  track_gpx?: File
+  comentaris?: string
+  estat: 'activa' | 'descartada'
+}
+
+export interface UserStatusHistory {
+  id: string
+  usuari_id: string
+  accio: 'activate' | 'deactivate'
+  changed_by: string | null
+  created_at: string
+}
+
+export interface ToggleUserStatusRequest {
+  actiu: boolean
 }
 
 export interface Test {

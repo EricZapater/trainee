@@ -19,6 +19,7 @@ const formData = ref({
   email: '',
   password: '',
   rol: 'atleta' as 'atleta' | 'entrenador',
+  idioma: 'CAT',
   entrenador_id: ''
 })
 
@@ -57,40 +58,32 @@ const handleRegister = async () => {
   <div class="auth-layout">
     <div class="auth-card glass-card">
       <div class="auth-header">
-        <h1 class="logo-text">TrainEE</h1>
-        <p class="subtitle">Crea el teu compte</p>
-      </div>
-      
-      <div class="role-selector mb-4">
-        <div 
-          class="role-card" 
-          :class="{ active: formData.rol === 'atleta' }"
-          @click="formData.rol = 'atleta'"
-        >
-          <i class="ti ti-run"></i>
-          <span>Sóc Atleta</span>
-        </div>
-        <div 
-          class="role-card" 
-          :class="{ active: formData.rol === 'entrenador' }"
-          @click="formData.rol = 'entrenador'"
-        >
-          <i class="ti ti-clipboard"></i>
-          <span>Sóc Entrenador</span>
-        </div>
+        <h1 class="logo-text">{{ $t('app.title') }}</h1>
+        <p class="subtitle">{{ $t('register.subtitle') }}</p>
       </div>
       
       <form @submit.prevent="handleRegister" class="auth-form">
         <div class="field">
-          <InputText v-model="formData.nom" placeholder="Nom complet" class="w-full" />
+          <InputText v-model="formData.nom" :placeholder="$t('register.namePlaceholder')" class="w-full" />
         </div>
         
         <div class="field">
-          <InputText v-model="formData.email" type="email" placeholder="Correu electrònic" class="w-full" />
+          <InputText v-model="formData.email" type="email" :placeholder="$t('register.emailPlaceholder')" class="w-full" />
         </div>
         
         <div class="field">
-          <Password v-model="formData.password" :feedback="true" promptLabel="Introdueix una contrasenya" weakLabel="Dèbil" mediumLabel="Normal" strongLabel="Forta" placeholder="Contrasenya" class="w-full" />
+          <Password v-model="formData.password" :feedback="true" :promptLabel="$t('register.passwordPrompt')" :weakLabel="$t('register.passwordWeak')" :mediumLabel="$t('register.passwordMedium')" :strongLabel="$t('register.passwordStrong')" :placeholder="$t('register.passwordPlaceholder')" class="w-full" />
+        </div>
+
+        <div class="field">
+          <Select 
+            v-model="formData.idioma" 
+            :options="[{label: $t('languages.CAT'), value: 'CAT'}, {label: $t('languages.ESP'), value: 'ESP'}, {label: $t('languages.ENG'), value: 'ENG'}]" 
+            optionLabel="label" 
+            optionValue="value"
+            :placeholder="$t('register.languagePlaceholder')" 
+            class="w-full" 
+          />
         </div>
         
         <div class="field">
@@ -99,17 +92,14 @@ const handleRegister = async () => {
             :options="entrenadors" 
             optionLabel="nom" 
             optionValue="id"
-            :placeholder="formData.rol === 'atleta' ? 'Selecciona el teu entrenador' : 'Selecciona el teu perfil d\'entrenador'" 
+            :placeholder="$t('register.coachIdPlaceholder')" 
             class="w-full" 
           />
-          <small v-if="formData.rol === 'entrenador'" class="text-muted block mt-1">
-            Has de seleccionar un perfil creat prèviament per l'administració.
-          </small>
         </div>
         
         <Button 
           type="submit" 
-          label="Registrar-se" 
+          :label="$t('register.registerBtn')" 
           class="w-full mt-2" 
           :loading="loading" 
           :disabled="!formData.nom || !formData.email || !formData.password || !formData.entrenador_id"
@@ -117,8 +107,8 @@ const handleRegister = async () => {
       </form>
       
       <div class="auth-footer">
-        <span class="text-muted">Ja tens compte?</span>
-        <router-link to="/login" class="link">Inicia sessió</router-link>
+        <span class="text-muted">{{ $t('register.hasAccount') }}</span>
+        <router-link to="/login" class="link">{{ $t('register.loginLink') }}</router-link>
       </div>
     </div>
   </div>
@@ -158,52 +148,6 @@ const handleRegister = async () => {
   margin-top: 8px;
 }
 
-.role-selector {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.role-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.role-card i {
-  font-size: 2rem;
-  color: var(--text-secondary);
-  transition: color var(--transition-fast);
-}
-
-.role-card span {
-  font-weight: 500;
-  color: var(--text-secondary);
-  transition: color var(--transition-fast);
-}
-
-.role-card:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-hover);
-}
-
-.role-card.active {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: var(--accent-primary);
-}
-
-.role-card.active i, .role-card.active span {
-  color: var(--accent-primary);
-}
-
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -218,6 +162,15 @@ const handleRegister = async () => {
 .mt-1 { margin-top: 0.25rem; }
 .mt-2 { margin-top: 0.5rem; }
 .block { display: block; }
+.w-full { width: 100%; }
+
+:deep(.p-password) {
+  width: 100%;
+}
+
+:deep(.p-password input) {
+  width: 100%;
+}
 
 .auth-footer {
   margin-top: 32px;

@@ -7,14 +7,14 @@ import (
 	"trainee-backend/internal/models"
 )
 
-func (s *PostgresStore) CreateUsuari(ctx context.Context, nom, email, passwordHash, rol string) (*models.Usuari, error) {
+func (s *PostgresStore) CreateUsuari(ctx context.Context, nom, email, passwordHash, rol, idioma string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`INSERT INTO usuaris (nom, email, password_hash, rol)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, nom, email, password_hash, rol, created_at`,
-		nom, email, passwordHash, rol,
-	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.CreatedAt)
+		`INSERT INTO usuaris (nom, email, password_hash, rol, idioma)
+		 VALUES ($1, $2, $3, $4, $5)
+		 RETURNING id, nom, email, password_hash, rol, actiu, idioma, created_at`,
+		nom, email, passwordHash, rol, idioma,
+	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -24,10 +24,10 @@ func (s *PostgresStore) CreateUsuari(ctx context.Context, nom, email, passwordHa
 func (s *PostgresStore) GetUsuariByEmail(ctx context.Context, email string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, nom, email, password_hash, rol, created_at
+		`SELECT id, nom, email, password_hash, rol, actiu, idioma, created_at
 		 FROM usuaris WHERE email = $1`,
 		email,
-	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.CreatedAt)
+	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -37,10 +37,10 @@ func (s *PostgresStore) GetUsuariByEmail(ctx context.Context, email string) (*mo
 func (s *PostgresStore) GetUsuariByID(ctx context.Context, id string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, nom, email, password_hash, rol, created_at
+		`SELECT id, nom, email, password_hash, rol, actiu, idioma, created_at
 		 FROM usuaris WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.CreatedAt)
+	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +51,14 @@ func (s *PostgresStore) UpdateUsuariPassword(ctx context.Context, id, passwordHa
 	_, err := s.pool.Exec(ctx,
 		`UPDATE usuaris SET password_hash = $1 WHERE id = $2`,
 		passwordHash, id,
+	)
+	return err
+}
+
+func (s *PostgresStore) UpdateUsuariIdioma(ctx context.Context, id, idioma string) error {
+	_, err := s.pool.Exec(ctx,
+		`UPDATE usuaris SET idioma = $1 WHERE id = $2`,
+		idioma, id,
 	)
 	return err
 }
@@ -120,12 +128,12 @@ func (s *PostgresStore) CreateAtleta(ctx context.Context, usuariID, entrenadorID
 func (s *PostgresStore) GetAtletaByUsuariID(ctx context.Context, usuariID string) (*models.Atleta, error) {
 	var a models.Atleta
 	err := s.pool.QueryRow(ctx,
-		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email
+		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email, u.actiu
 		 FROM atletes a
 		 JOIN usuaris u ON u.id = a.usuari_id
 		 WHERE a.usuari_id = $1`,
 		usuariID,
-	).Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email)
+	).Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email, &a.Actiu)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +142,7 @@ func (s *PostgresStore) GetAtletaByUsuariID(ctx context.Context, usuariID string
 
 func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenadorID string) ([]models.Atleta, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email
+		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email, u.actiu
 		 FROM atletes a
 		 JOIN usuaris u ON u.id = a.usuari_id
 		 WHERE a.entrenador_id = $1
@@ -149,10 +157,62 @@ func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenado
 	atletes := []models.Atleta{}
 	for rows.Next() {
 		var a models.Atleta
-		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email); err != nil {
+		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email, &a.Actiu); err != nil {
 			return nil, err
 		}
 		atletes = append(atletes, a)
 	}
 	return atletes, rows.Err()
+}
+
+func (s *PostgresStore) ToggleUserStatus(ctx context.Context, usuariID string, actiu bool, changedBy *string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `UPDATE usuaris SET actiu = $1 WHERE id = $2`, actiu, usuariID)
+	if err != nil {
+		return err
+	}
+
+	accio := "deactivate"
+	if actiu {
+		accio = "activate"
+	}
+
+	_, err = tx.Exec(ctx,
+		`INSERT INTO user_status_history (usuari_id, accio, changed_by) VALUES ($1, $2, $3)`,
+		usuariID, accio, changedBy,
+	)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (s *PostgresStore) GetUserStatusHistory(ctx context.Context, usuariID string) ([]models.UserStatusHistory, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, usuari_id, accio, changed_by, created_at
+		 FROM user_status_history
+		 WHERE usuari_id = $1
+		 ORDER BY created_at DESC`,
+		usuariID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []models.UserStatusHistory
+	for rows.Next() {
+		var h models.UserStatusHistory
+		if err := rows.Scan(&h.ID, &h.UsuariID, &h.Accio, &h.ChangedBy, &h.CreatedAt); err != nil {
+			return nil, err
+		}
+		history = append(history, h)
+	}
+	return history, nil
 }

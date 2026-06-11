@@ -81,6 +81,7 @@ func main() {
 	authenticated.Use(middleware.JWTAuth(cfg.JWTSecret))
 	{
 		authenticated.POST("/auth/change-password", h.ChangePassword)
+		authenticated.PATCH("/usuaris/me/idioma", h.UpdateIdioma)
 
 		atletesAuth := authenticated.Group("/atletes")
 		atletesAuth.Use(middleware.RequireRole("atleta"))
@@ -88,6 +89,7 @@ func main() {
 		atletesAuth.GET("/me/informe", h.GetInformeMe)
 		atletesAuth.GET("/competicions", h.ListAtletaCompeticions)
 		atletesAuth.POST("/competicions", h.CreateCompeticio)
+		atletesAuth.PATCH("/competicions/:id", h.UpdateCompeticio)
 		authenticated.GET("/activitats", h.ListActivitats)
 		authenticated.GET("/weeks", h.ListOpenWeeks)
 
@@ -105,7 +107,12 @@ func main() {
 		entrenadorRoutes.POST("/weeks", h.CreateWeek)
 		entrenadorRoutes.PATCH("/weeks/:id", h.UpdateWeek)
 		entrenadorRoutes.GET("/competicions", h.ListEntrenadorCompeticions)
+		entrenadorRoutes.PATCH("/competicions/:id/tipus", h.UpdateCompeticioTipus)
 		entrenadorRoutes.POST("/competicions/:id/traspassar", h.TraspassarCompeticio)
+		entrenadorRoutes.GET("/atletes/:id/competicions", h.GetAtletaCompeticionsTimeline)
+
+		entrenadorRoutes.PATCH("/atletes/:id/status", h.ToggleAtletaStatus)
+		entrenadorRoutes.GET("/atletes/:id/history", h.GetAtletaStatusHistory)
 		
 		entrenadorRoutes.POST("/tests", h.CreateTest)
 		entrenadorRoutes.GET("/tests/pendents", h.ListPendingTestsByEntrenador)
@@ -118,6 +125,27 @@ func main() {
 		entrenadorRoutes.PATCH("/activitats/reorder", h.ReorderActivitats)
 		entrenadorRoutes.PATCH("/activitats/:id", h.UpdateActivitat)
 		entrenadorRoutes.DELETE("/activitats/:id", h.DeleteActivitat)
+
+		entrenadorRoutes.GET("/forms", h.ListEntrenadorForms)
+		entrenadorRoutes.POST("/forms", h.CreateForm)
+		entrenadorRoutes.GET("/forms/:id", h.GetFormDetails)
+		entrenadorRoutes.PUT("/forms/:id", h.UpdateForm)
+		entrenadorRoutes.DELETE("/forms/:id", h.DeleteForm)
+		entrenadorRoutes.POST("/forms/:id/clone", h.CloneForm)
+		
+		entrenadorRoutes.POST("/forms/:id/questions", h.AddFormQuestion)
+		entrenadorRoutes.PUT("/forms/:id/questions/:questionId", h.UpdateFormQuestion)
+		entrenadorRoutes.DELETE("/forms/:id/questions/:questionId", h.DeleteFormQuestion)
+		entrenadorRoutes.PUT("/forms/:id/questions/reorder", h.ReorderFormQuestions)
+
+		entrenadorRoutes.GET("/forms/:id/responses", h.GetFormResponses)
+		entrenadorRoutes.PUT("/responses/:responseId/status", h.UpdateResponseStatus)
+	}
+
+	publicRoutes := api.Group("/public")
+	{
+		publicRoutes.GET("/forms/:id", h.PublicGetForm)
+		publicRoutes.POST("/forms/:id/submit", h.SubmitFormResponse)
 	}
 
 	authenticated.GET("/competicions/:id", h.GetCompeticio)

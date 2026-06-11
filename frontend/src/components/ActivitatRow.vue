@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ToggleSwitch from 'primevue/toggleswitch'
 import Button from 'primevue/button'
+import { useI18n } from 'vue-i18n'
 import type { Activitat } from '@/types'
 
 const props = defineProps<{
@@ -15,6 +16,8 @@ const emit = defineEmits<{
   (e: 'dragover', event: DragEvent, index: number): void
   (e: 'drop', event: DragEvent, index: number): void
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -26,7 +29,7 @@ const emit = defineEmits<{
     @dragover.prevent="emit('dragover', $event, index)"
     @drop.prevent="emit('drop', $event, index)"
   >
-    <div class="drag-handle" title="Arrossega per reordenar">
+    <div class="drag-handle" :title="$t('activitiesManager.dragReorder')">
       <i class="ti ti-grip-vertical"></i>
     </div>
     
@@ -38,7 +41,7 @@ const emit = defineEmits<{
       <span class="act-name">{{ activitat.nom }}</span>
     </div>
     
-    <div class="act-color" :style="{ backgroundColor: activitat.color }" title="Color de l'activitat"></div>
+    <div class="act-color" :style="{ backgroundColor: activitat.color }" :title="$t('activitiesManager.colorTitle')"></div>
     
     <div class="act-actions">
       <ToggleSwitch 

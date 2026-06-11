@@ -56,6 +56,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'entrenador' }
     },
     {
+      path: '/planning',
+      name: 'planning',
+      component: () => import('@/views/PlanningManagerView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/atletes',
+      name: 'atletes',
+      component: () => import('@/views/AtletesManagerView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
       path: '/tests',
       name: 'tests',
       component: () => import('@/views/TestsManagerView.vue'),
@@ -84,6 +96,30 @@ const router = createRouter({
       name: 'competicions_entrenador',
       component: () => import('@/views/CompeticionsManagerView.vue'),
       meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/entrenador/forms',
+      name: 'forms_manager',
+      component: () => import('@/views/FormsManagerView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/entrenador/forms/:id/edit',
+      name: 'form_builder',
+      component: () => import('@/views/FormBuilderView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/entrenador/forms/:id/responses',
+      name: 'form_responses',
+      component: () => import('@/views/FormResponsesView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/forms/:id',
+      name: 'public_form',
+      component: () => import('@/views/PublicFormView.vue'),
+      meta: { public: true } // Explicit flag for clarity
     }
   ]
 

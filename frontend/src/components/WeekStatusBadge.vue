@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import Tag from 'primevue/tag'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 defineProps<{
   estat: 'oberta' | 'tancada' | 'traspassada' | null | string
@@ -13,10 +16,10 @@ const getSeverity = (estat: string) => {
 }
 
 const getLabel = (estat: string) => {
-  if (estat === 'oberta') return 'Setmana oberta'
-  if (estat === 'tancada') return 'Setmana tancada'
-  if (estat === 'traspassada') return 'Entrenament traspassat'
-  return 'Desconegut'
+  if (estat === 'oberta') return t('weekStatus.open')
+  if (estat === 'tancada') return t('weekStatus.closed')
+  if (estat === 'traspassada') return t('weekStatus.transferred')
+  return t('weekStatus.unknown')
 }
 </script>
 

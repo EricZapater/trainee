@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { getCompeticio } from '@/api/competicions'
 import type { Competicio } from '@/types'
@@ -8,6 +9,7 @@ import { useToast } from 'primevue/usetoast'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const toast = useToast()
 
 const competicio = ref<Competicio | null>(null)
@@ -30,14 +32,14 @@ onMounted(async () => {
   <div class="competicio-detail max-w-4xl mx-auto">
     <div class="page-header glass-card">
       <div class="flex align-center gap-4">
-        <Button icon="ti ti-arrow-left" text rounded aria-label="Tornar" @click="router.back()" />
-        <h1 class="page-title">Registre de la Competició</h1>
+        <Button icon="ti ti-arrow-left" text rounded :aria-label="$t('competitionDetail.back')" @click="router.back()" />
+        <h1 class="page-title">{{ $t('competitionDetail.title') }}</h1>
       </div>
     </div>
 
     <div v-if="loading" class="text-center py-8 text-secondary">
       <i class="ti ti-loader ti-spin text-3xl mb-2"></i>
-      <p>Carregant...</p>
+      <p>{{ $t('calendar.loading') }}</p>
     </div>
 
     <div v-else-if="competicio" class="glass-card mt-4 comp-card">
@@ -48,7 +50,7 @@ onMounted(async () => {
             <div class="badges mt-2">
               <span class="badge status-badge" :class="competicio.registrat ? 'bg-success' : 'bg-warning'">
                 <i :class="competicio.registrat ? 'ti ti-check' : 'ti ti-clock'"></i>
-                {{ competicio.registrat ? 'Planificada al calendari' : 'Pendent de revisar per l\'entrenador' }}
+                {{ competicio.registrat ? $t('competitionDetail.planned') : $t('competitionDetail.pendingReview') }}
               </span>
               <span class="badge atleta-badge"><i class="ti ti-user"></i> {{ competicio.atleta_nom || 'Atleta' }}</span>
             </div>
@@ -64,26 +66,26 @@ onMounted(async () => {
         <div class="stat-box" v-if="competicio.kms">
           <i class="ti ti-route text-3xl text-accent"></i>
           <div class="stat-value">{{ competicio.kms }} km</div>
-          <div class="stat-label">Distància</div>
+          <div class="stat-label">{{ $t('competitionDetail.distance') }}</div>
         </div>
         <div class="stat-box" v-if="competicio.desnivell">
           <i class="ti ti-mountain text-3xl text-accent"></i>
           <div class="stat-value">{{ competicio.desnivell }} m+</div>
-          <div class="stat-label">Desnivell positiu</div>
+          <div class="stat-label">{{ $t('competitionDetail.elevation') }}</div>
         </div>
       </div>
 
       <div class="comp-comments mt-6" v-if="competicio.comentaris">
-        <h3><i class="ti ti-message-circle"></i> Comentaris addicionals</h3>
+        <h3><i class="ti ti-message-circle"></i> {{ $t('competitionDetail.comments') }}</h3>
         <p>"{{ competicio.comentaris }}"</p>
       </div>
 
       <div class="mt-6 text-center actions-group" v-if="competicio.enllac || competicio.track_gpx_path">
         <a v-if="competicio.enllac" :href="competicio.enllac" target="_blank" class="web-button">
-          <i class="ti ti-external-link"></i> Visitar la web oficial de la cursa
+          <i class="ti ti-external-link"></i> {{ $t('competitionDetail.visitWeb') }}
         </a>
         <a v-if="competicio.track_gpx_path" :href="competicio.track_gpx_path" download class="web-button gpx-button">
-          <i class="ti ti-download"></i> Descarregar Track GPX
+          <i class="ti ti-download"></i> {{ $t('competitionDetail.downloadGpx') }}
         </a>
       </div>
     </div>

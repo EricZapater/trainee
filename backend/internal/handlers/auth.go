@@ -41,7 +41,7 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.Store.CreateUsuari(c.Request.Context(), req.Nom, req.Email, string(hash), req.Rol)
+	user, err := h.Store.CreateUsuari(c.Request.Context(), req.Nom, req.Email, string(hash), req.Rol, req.Idioma)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "l'email ja està registrat"})
 		return
@@ -80,6 +80,11 @@ func (h *Handler) Login(c *gin.Context) {
 	user, err := h.Store.GetUsuariByEmail(c.Request.Context(), req.Email)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "credencials incorrectes"})
+		return
+	}
+
+	if !user.Actiu {
+		c.JSON(http.StatusForbidden, gin.H{"error": "el teu compte ha estat desactivat"})
 		return
 	}
 
@@ -129,4 +134,21 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "contrasenya actualitzada correctament"})
+}
+
+func (h *Handler) UpdateIdioma(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req models.UpdateIdiomaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.Store.UpdateUsuariIdioma(c.Request.Context(), userID, req.Idioma); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha pogut actualitzar l'idioma"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "idioma actualitzat correctament"})
 }

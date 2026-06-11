@@ -8,10 +8,13 @@ import (
 
 type Store interface {
 	// Usuaris
-	CreateUsuari(ctx context.Context, nom, email, passwordHash, rol string) (*models.Usuari, error)
+	CreateUsuari(ctx context.Context, nom, email, passwordHash, rol, idioma string) (*models.Usuari, error)
 	GetUsuariByEmail(ctx context.Context, email string) (*models.Usuari, error)
 	GetUsuariByID(ctx context.Context, id string) (*models.Usuari, error)
 	UpdateUsuariPassword(ctx context.Context, id, passwordHash string) error
+	UpdateUsuariIdioma(ctx context.Context, id, idioma string) error
+	ToggleUserStatus(ctx context.Context, usuariID string, actiu bool, changedBy *string) error
+	GetUserStatusHistory(ctx context.Context, usuariID string) ([]models.UserStatusHistory, error)
 
 	// Entrenadors
 	ListEntrenadors(ctx context.Context) ([]models.Entrenador, error)
@@ -48,7 +51,10 @@ type Store interface {
 	GetCompeticioByID(ctx context.Context, id string) (*models.Competicio, error)
 	ListCompeticionsByAtleta(ctx context.Context, atletaID string) ([]models.Competicio, error)
 	ListPendingCompeticionsByEntrenador(ctx context.Context, entrenadorID string) ([]models.Competicio, error)
+	ListAllCompeticionsByAtletaAndEntrenador(ctx context.Context, atletaID, entrenadorID string) ([]models.Competicio, error)
 	TraspassarCompeticio(ctx context.Context, entrenadorID, competicioID string) error
+	UpdateCompeticioTipus(ctx context.Context, id, tipus string) error
+	UpdateCompeticio(ctx context.Context, competicioID string, req models.UpdateCompeticioRequest) (*models.Competicio, error)
 
 	// Tests
 	CreateTest(ctx context.Context, entrenadorID string, req models.CreateTestRequest) (*models.Test, error)
@@ -59,4 +65,22 @@ type Store interface {
 	UpdateEstatRecordatori(ctx context.Context, entrenadorID, testID, estat string) error
 
 	// Setmanes
+
+	// Forms / Onboarding
+	ListEntrenadorForms(ctx context.Context, entrenadorID string) ([]models.FormWithQuestions, error)
+	CreateForm(ctx context.Context, entrenadorID string, req models.CreateFormRequest) (*models.Form, error)
+	GetFormDetails(ctx context.Context, id string) (*models.FormWithQuestions, error)
+	GetPublicForm(ctx context.Context, id string) (*models.FormWithQuestions, error)
+	UpdateForm(ctx context.Context, id, entrenadorID string, req models.UpdateFormRequest) error
+	DeleteForm(ctx context.Context, id, entrenadorID string) error
+	CloneForm(ctx context.Context, id, entrenadorID string) (string, error)
+
+	AddFormQuestion(ctx context.Context, formID, entrenadorID string, req models.CreateFormQuestionRequest) (*models.FormQuestion, error)
+	UpdateFormQuestion(ctx context.Context, formID, questionID, entrenadorID string, req models.CreateFormQuestionRequest) error
+	DeleteFormQuestion(ctx context.Context, formID, questionID, entrenadorID string) error
+	ReorderFormQuestions(ctx context.Context, formID, entrenadorID string, req []models.ReorderFormQuestionRequest) error
+
+	GetFormResponses(ctx context.Context, formID, entrenadorID string) ([]models.FormResponseWithAnswers, error)
+	UpdateResponseStatus(ctx context.Context, responseID, entrenadorID, estat string) error
+	SubmitFormResponse(ctx context.Context, formID string, req models.SubmitFormResponseRequest) error
 }

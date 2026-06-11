@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useCalendarStore } from '@/stores/useCalendarStore'
 
 const props = defineProps<{
@@ -11,6 +12,7 @@ const props = defineProps<{
 
 const store = useCalendarStore()
 const router = useRouter()
+const { t } = useI18n()
 const showNotesInput = ref(false)
 
 // Obtenim la dada directament pel dia i l'índex dins l'array
@@ -88,21 +90,21 @@ const handleSpecialClick = () => {
     @dragleave.prevent="handleDragLeave"
     @drop.prevent="handleDrop"
   >
-    <button v-if="!disabled" class="btn-remove" @click="remove" title="Eliminar">
+    <button v-if="!disabled" class="btn-remove" @click="remove" :title="$t('activityItem.remove')">
       <i class="ti ti-x"></i>
     </button>
 
     <div class="slot-header" 
          :class="{ 'cursor-pointer hover-highlight': slotData.competicio_id || slotData.test_id }" 
          @click="handleSpecialClick"
-         :title="slotData.competicio_id ? 'Veure registre de la competició' : (slotData.test_id ? 'Veure registre del test' : '')">
+         :title="slotData.competicio_id ? $t('activityItem.viewCompetition') : (slotData.test_id ? $t('activityItem.viewTest') : '')">
       <div class="drag-handle" v-if="!disabled">
         <i class="ti ti-grip-vertical"></i>
       </div>
       <i :class="['ti', slotData.activitat_icona]" :style="{ color: slotData.activitat_color }"></i>
       <span class="slot-name" :title="slotData.activitat_nom">{{ slotData.activitat_nom }}</span>
-      <i v-if="slotData.competicio_id" class="ti ti-trophy ml-auto" style="color: var(--accent-warning);" v-tooltip.top="'Competició programada'"></i>
-      <i v-if="slotData.test_id" class="ti ti-clipboard-data ml-auto" style="color: var(--accent-primary);" v-tooltip.top="'Test programat'"></i>
+      <i v-if="slotData.competicio_id" class="ti ti-trophy ml-auto" style="color: var(--accent-warning);" v-tooltip.top="$t('activityItem.competitionScheduled')"></i>
+      <i v-if="slotData.test_id" class="ti ti-clipboard-data ml-auto" style="color: var(--accent-primary);" v-tooltip.top="$t('activityItem.testScheduled')"></i>
     </div>
 
     <div class="slot-controls">
@@ -123,7 +125,7 @@ const handleSpecialClick = () => {
         class="btn-notes" 
         :class="{ 'has-notes': !!slotData.notes }"
         @click="toggleNotes" 
-        title="Notes d'aquest entrenament"
+        :title="$t('activityItem.trainingNotes')"
       >
         <i class="ti ti-message-circle"></i>
       </button>
@@ -133,7 +135,7 @@ const handleSpecialClick = () => {
       <textarea 
         v-model="slotData.notes" 
         class="notes-input" 
-        placeholder="Notes..."
+        :placeholder="$t('activityItem.notesPlaceholder')"
         :disabled="disabled"
         rows="2"
       ></textarea>

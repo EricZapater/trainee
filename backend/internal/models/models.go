@@ -12,6 +12,8 @@ type Usuari struct {
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"-"`
 	Rol          string    `json:"rol"`
+	Actiu        bool      `json:"actiu"`
+	Idioma       string    `json:"idioma"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -29,6 +31,7 @@ type Atleta struct {
 	CreatedAt    time.Time `json:"created_at"`
 	Nom          string    `json:"nom,omitempty"`
 	Email        string    `json:"email,omitempty"`
+	Actiu        bool      `json:"actiu"`
 }
 
 type Activitat struct {
@@ -83,12 +86,14 @@ type Competicio struct {
 	EntrenadorID string    `json:"entrenador_id"`
 	Nom          string    `json:"nom"`
 	Data         string    `json:"data"` // YYYY-MM-DD
+	Tipus        string    `json:"tipus"` // A, B, C
 	Kms          *float64  `json:"kms"`
 	Desnivell    *float64  `json:"desnivell"`
 	Enllac       string    `json:"enllac"`
 	TrackGpxPath *string   `json:"track_gpx_path"`
 	Comentaris   *string   `json:"comentaris"`
 	Registrat    bool      `json:"registrat"`
+	Estat        string    `json:"estat"` // activa, descartada
 	CreatedAt    time.Time `json:"created_at"`
 
 	AtletaNom *string `json:"atleta_nom,omitempty"`
@@ -97,11 +102,28 @@ type Competicio struct {
 type CreateCompeticioRequest struct {
 	Nom          string   `form:"nom" binding:"required"`
 	Data         string   `form:"data" binding:"required"`
+	Tipus        string   `form:"tipus" binding:"required,oneof=A B C"`
 	Kms          *float64 `form:"kms"`
 	Desnivell    *float64 `form:"desnivell"`
 	Enllac       string   `form:"enllac" binding:"required"`
 	Comentaris   *string  `form:"comentaris"`
 	TrackGpxPath *string  `form:"-"` // Not bound from form, set manually
+}
+
+type UpdateCompeticioRequest struct {
+	Nom          string   `form:"nom" binding:"required"`
+	Data         string   `form:"data" binding:"required"`
+	Tipus        string   `form:"tipus" binding:"required,oneof=A B C"`
+	Kms          *float64 `form:"kms"`
+	Desnivell    *float64 `form:"desnivell"`
+	Enllac       string   `form:"enllac" binding:"required"`
+	Comentaris   *string  `form:"comentaris"`
+	Estat        string   `form:"estat" binding:"required,oneof=activa descartada"`
+	TrackGpxPath *string  `form:"-"` // Optional to update file
+}
+
+type UpdateCompeticioTipusRequest struct {
+	Tipus string `json:"tipus" binding:"required,oneof=A B C"`
 }
 
 // ============================================================
@@ -144,7 +166,12 @@ type RegisterRequest struct {
 	Email        string `json:"email" binding:"required,email"`
 	Password     string `json:"password" binding:"required,min=6"`
 	Rol          string `json:"rol" binding:"required,oneof=atleta entrenador"`
+	Idioma       string `json:"idioma" binding:"required,oneof=CAT ESP ENG"`
 	EntrenadorID string `json:"entrenador_id"`
+}
+
+type UpdateIdiomaRequest struct {
+	Idioma string `json:"idioma" binding:"required,oneof=CAT ESP ENG"`
 }
 
 type LoginRequest struct {
@@ -161,6 +188,23 @@ type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
+
+// ============================================================
+// User Status History
+// ============================================================
+
+type UserStatusHistory struct {
+	ID        string    `json:"id"`
+	UsuariID  string    `json:"usuari_id"`
+	Accio     string    `json:"accio"`
+	ChangedBy *string   `json:"changed_by"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ToggleUserStatusRequest struct {
+	Actiu bool `json:"actiu"`
+}
+
 
 // ============================================================
 // Submission Request / Response
@@ -277,3 +321,102 @@ type JWTClaims struct {
 	Rol string `json:"rol"`
 	Nom string `json:"nom"`
 }
+
+// ============================================================
+// Forms / Onboarding Models
+// ============================================================
+
+type Form struct {
+	ID           string    `json:"id"`
+	EntrenadorID string    `json:"entrenador_id"`
+	Titol        string    `json:"titol"`
+	Descripcio   *string   `json:"descripcio"`
+	Actiu        bool      `json:"actiu"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type FormQuestion struct {
+	ID         string    `json:"id"`
+	FormID     string    `json:"form_id"`
+	Pregunta   string    `json:"pregunta"`
+	Tipus      string    `json:"tipus"` // text, textarea, number, select, boolean
+	Opcions    *string   `json:"opcions"` // JSON string for select options
+	Obligatori bool      `json:"obligatori"`
+	Ordre      int       `json:"ordre"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type FormResponse struct {
+	ID              string    `json:"id"`
+	FormID          string    `json:"form_id"`
+	NomCandidat     string    `json:"nom_candidat"`
+	EmailCandidat   string    `json:"email_candidat"`
+	TelefonCandidat *string   `json:"telefon_candidat"`
+	Estat           string    `json:"estat"` // pendent, contactat, descartat, acceptat
+	CreatedAt       time.Time `json:"created_at"`
+}
+
+type FormAnswer struct {
+	ID         string    `json:"id"`
+	ResponseID string    `json:"response_id"`
+	QuestionID string    `json:"question_id"`
+	Valor      *string   `json:"valor"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+// Request Models
+
+type CreateFormRequest struct {
+	Titol      string `json:"titol" binding:"required"`
+	Descripcio string `json:"descripcio"`
+	Actiu      bool   `json:"actiu"`
+}
+
+type UpdateFormRequest struct {
+	Titol      string `json:"titol" binding:"required"`
+	Descripcio string `json:"descripcio"`
+	Actiu      bool   `json:"actiu"`
+}
+
+type CreateFormQuestionRequest struct {
+	Pregunta   string  `json:"pregunta" binding:"required"`
+	Tipus      string  `json:"tipus" binding:"required"`
+	Opcions    *string `json:"opcions"`
+	Obligatori bool    `json:"obligatori"`
+	Ordre      int     `json:"ordre" binding:"required"`
+}
+
+type ReorderFormQuestionRequest struct {
+	ID    string `json:"id" binding:"required"`
+	Ordre int    `json:"ordre" binding:"required"`
+}
+
+type SubmitFormResponseRequest struct {
+	NomCandidat     string                   `json:"nom_candidat" binding:"required"`
+	EmailCandidat   string                   `json:"email_candidat" binding:"required,email"`
+	TelefonCandidat string                   `json:"telefon_candidat"`
+	Answers         []SubmitFormAnswerRequest `json:"answers"`
+}
+
+type SubmitFormAnswerRequest struct {
+	QuestionID string  `json:"question_id" binding:"required"`
+	Valor      *string `json:"valor"`
+}
+
+type UpdateFormResponseStatusRequest struct {
+	Estat string `json:"estat" binding:"required,oneof=pendent contactat descartat acceptat"`
+}
+
+// Extended response structures
+
+type FormWithQuestions struct {
+	Form
+	Questions []FormQuestion `json:"questions"`
+	ResponsesCount int       `json:"responses_count"`
+}
+
+type FormResponseWithAnswers struct {
+	FormResponse
+	Answers []FormAnswer `json:"answers"`
+}
+
