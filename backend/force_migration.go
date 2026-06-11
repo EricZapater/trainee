@@ -29,8 +29,8 @@ func main() {
 		log.Fatal(err)
 	}
 	
-	if err := m.Force(5); err != nil {
+	if err := m.Force(13); err != nil {
 		log.Fatalf("Error forçant la versió: %v", err)
 	}
-	log.Println("S'ha forçat la base de dades a la versió 5 neta. Ara pots tornar a executar main.go.")
+	log.Println("S'ha forçat la base de dades a la versió 13 neta. Ara pots tornar a executar main.go.")
 }
