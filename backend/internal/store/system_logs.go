@@ -30,7 +30,7 @@ func (s *PostgresStore) GetSystemLogs(ctx context.Context, limit, offset int) ([
 	}
 	defer rows.Close()
 
-	var logs []models.SystemLog
+	logs := make([]models.SystemLog, 0)
 	for rows.Next() {
 		var log models.SystemLog
 		if err := rows.Scan(

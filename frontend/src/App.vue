@@ -23,7 +23,10 @@ const compStore = useCompeticionsStore()
 const testsStore = useTestsStore()
 const isMenuOpen = ref(false)
 
+const isAdminImpersonating = ref(false)
+
 onMounted(async () => {
+  isAdminImpersonating.value = !!localStorage.getItem('admin_token')
   await authStore.loadFromStorage()
   if (authStore.isAuthenticated && authStore.isEntrenador) {
     compStore.loadPendingCount()
@@ -39,8 +42,24 @@ watch(() => authStore.isAuthenticated, (newVal) => {
 })
 
 const handleLogout = () => {
+  localStorage.removeItem('admin_token')
+  isAdminImpersonating.value = false
   authStore.logout()
   router.push('/login')
+}
+
+const restoreAdminSession = async () => {
+  const adminToken = localStorage.getItem('admin_token')
+  if (adminToken) {
+    localStorage.setItem('trainee_token', adminToken)
+    localStorage.removeItem('admin_token')
+    isAdminImpersonating.value = false
+    await authStore.loadFromStorage()
+    router.push('/admin')
+    setTimeout(() => {
+      window.location.reload()
+    }, 100)
+  }
 }
 
 const userMenu = ref()
@@ -119,6 +138,12 @@ const handleChangeLanguage = async () => {
 
 <template>
   <div class="app-container">
+    <div v-if="isAdminImpersonating" class="impersonation-banner">
+      <i class="ti ti-alert-triangle mr-2"></i>
+      Estàs veient el sistema com a <strong>{{ authStore.usuari?.nom }} ({{ authStore.usuari?.rol }})</strong>.
+      <button @click="restoreAdminSession" class="restore-admin-btn">Tornar a l'Admin</button>
+    </div>
+    
     <Toast />
     <ConfirmDialog />
     
@@ -155,6 +180,10 @@ const handleChangeLanguage = async () => {
             </router-link>
             <router-link to="/informe" class="nav-link">{{ $t('nav.athleteReports') }}</router-link>
             <router-link to="/entrenador/logs" class="nav-link">Registre d'Accions</router-link>
+            <router-link to="/entrenador/configuracio" class="nav-link">Configuració</router-link>
+          </template>
+          <template v-if="authStore.usuari?.rol === 'admin' && !isAdminImpersonating">
+            <router-link to="/admin" class="nav-link"><i class="ti ti-shield-check"></i> Panell d'Admin</router-link>
           </template>
         </nav>
         
@@ -212,6 +241,37 @@ const handleChangeLanguage = async () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.impersonation-banner {
+  background-color: var(--accent-danger);
+  color: white;
+  text-align: center;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.restore-admin-btn {
+  background: white;
+  color: var(--accent-danger);
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 12px;
+  font-size: 0.8rem;
+  transition: opacity 0.2s;
+}
+
+.restore-admin-btn:hover {
+  opacity: 0.9;
 }
 
 .navbar {
@@ -310,6 +370,14 @@ const handleChangeLanguage = async () => {
 
 .app-content.with-nav {
   padding-top: 88px; /* 64px nav + 24px padding */
+}
+
+/* Adjust navbar top if banner is present */
+.impersonation-banner ~ .navbar {
+  top: 36px;
+}
+.impersonation-banner ~ .app-content.with-nav {
+  padding-top: 124px;
 }
 
 .menu-with-badge {

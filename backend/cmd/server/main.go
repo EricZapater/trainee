@@ -61,25 +61,19 @@ func main() {
 	}
 	defer s.Close()
 
-	// Inicialitzar cron jobs
-	cronJob, err := jobs.StartWeekGenerator(s)
-	if err != nil {
-		log.Printf("Avís: No s'ha pogut iniciar el cron job de setmanes: %v", err)
-	} else {
-		defer cronJob.Stop()
-	}
-
-	// Inicialitzar Mailer i cron de recordatoris
+	// Inicialitzar JobManager (substitueix cron antic)
 	mailService := mailer.NewMailer(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass)
-	reminderCron, err := jobs.StartReminderCron(s, mailService, cfg.JWTSecret)
-	if err != nil {
-		log.Printf("Avís: No s'ha pogut iniciar el cron job de recordatoris: %v", err)
+	jm := jobs.NewJobManager(s, mailService, cfg.JWTSecret)
+	if err := jm.Start(); err != nil {
+		log.Printf("Avís: No s'ha pogut iniciar el JobManager: %v", err)
 	} else {
-		defer reminderCron.Stop()
+		defer jm.Stop()
 	}
 
 	h := handlers.NewHandler(s, cfg.JWTSecret)
 	systemLogsHandler := handlers.NewSystemLogsHandler(s)
+	settingsHandler := handlers.NewSettingsHandler(s, jm)
+	adminHandler := handlers.NewAdminHandler(s, cfg.JWTSecret)
 
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -163,8 +157,17 @@ func main() {
 		entrenadorRoutes.GET("/forms/:id/responses", h.GetFormResponses)
 		entrenadorRoutes.PUT("/responses/:responseId/status", h.UpdateResponseStatus)
 
-		// System Logs
+		// System Logs i Settings
 		entrenadorRoutes.GET("/system-logs", systemLogsHandler.GetSystemLogs)
+		entrenadorRoutes.GET("/settings/cron", settingsHandler.GetCronSettings)
+		entrenadorRoutes.PUT("/settings/cron", settingsHandler.UpdateCronSettings)
+	}
+
+	adminRoutes := api.Group("/admin")
+	adminRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireRole("admin"))
+	{
+		adminRoutes.GET("/usuaris", adminHandler.GetUsuaris)
+		adminRoutes.POST("/impersonate/:id", adminHandler.Impersonate)
 	}
 
 	publicRoutes := api.Group("/public")

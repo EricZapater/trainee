@@ -63,6 +63,27 @@ func (s *PostgresStore) UpdateUsuariIdioma(ctx context.Context, id, idioma strin
 	return err
 }
 
+func (s *PostgresStore) ListAllUsuaris(ctx context.Context) ([]models.Usuari, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, nom, email, rol, actiu, idioma, created_at
+		 FROM usuaris ORDER BY nom`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var usuaris []models.Usuari
+	for rows.Next() {
+		var u models.Usuari
+		if err := rows.Scan(&u.ID, &u.Nom, &u.Email, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt); err != nil {
+			return nil, err
+		}
+		usuaris = append(usuaris, u)
+	}
+	return usuaris, rows.Err()
+}
+
 func (s *PostgresStore) ListEntrenadors(ctx context.Context) ([]models.Entrenador, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, usuari_id, nom, created_at

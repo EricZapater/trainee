@@ -2,7 +2,7 @@ export interface Usuari {
   id: string
   nom: string
   email: string
-  rol: 'atleta' | 'entrenador'
+  rol: 'atleta' | 'entrenador' | 'admin'
   actiu: boolean
   idioma: string
   created_at: string

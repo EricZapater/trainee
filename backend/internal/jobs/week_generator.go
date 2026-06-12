@@ -5,33 +5,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/robfig/cron/v3"
 	"trainee-backend/internal/store"
 )
 
-// StartWeekGenerator initializes and starts the cron job for generating weeks
-func StartWeekGenerator(s store.Store) (*cron.Cron, error) {
-	c := cron.New()
 
-	// Cada diumenge a les 03:00 AM
-	_, err := c.AddFunc("0 3 * * 0", func() {
-		log.Println("[CRON] Executant generador de setmanes...")
-		err := GenerateUpcomingWeeks(s)
-		if err != nil {
-			log.Printf("[CRON] Error generant setmanes: %v", err)
-		} else {
-			log.Println("[CRON] Generació de setmanes completada correctament.")
-		}
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	c.Start()
-	log.Println("Cron scheduler iniciat per a la generació automàtica de setmanes.")
-	return c, nil
-}
 
 // GenerateUpcomingWeeks calculates the Monday 8 days from now and creates the week
 func GenerateUpcomingWeeks(s store.Store) error {

@@ -128,6 +128,18 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'entrenador' }
     },
     {
+      path: '/entrenador/configuracio',
+      name: 'system_settings',
+      component: () => import('@/views/SettingsView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/admin',
+      name: 'admin_dashboard',
+      component: () => import('@/views/AdminDashboardView.vue'),
+      meta: { requiresAuth: true, role: 'admin' }
+    },
+    {
       path: '/forms/:id',
       name: 'public_form',
       component: () => import('@/views/PublicFormView.vue'),

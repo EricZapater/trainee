@@ -11,6 +11,7 @@ type Store interface {
 	CreateUsuari(ctx context.Context, nom, email, passwordHash, rol, idioma string) (*models.Usuari, error)
 	GetUsuariByEmail(ctx context.Context, email string) (*models.Usuari, error)
 	GetUsuariByID(ctx context.Context, id string) (*models.Usuari, error)
+	ListAllUsuaris(ctx context.Context) ([]models.Usuari, error)
 	UpdateUsuariPassword(ctx context.Context, id, passwordHash string) error
 	UpdateUsuariIdioma(ctx context.Context, id, idioma string) error
 	ToggleUserStatus(ctx context.Context, usuariID string, actiu bool, changedBy *string) error
@@ -90,4 +91,8 @@ type Store interface {
 	// System Logs
 	AddSystemLog(ctx context.Context, accio, nivell, missatge string, detalls *string) error
 	GetSystemLogs(ctx context.Context, limit, offset int) ([]models.SystemLog, error)
+
+	// System Settings
+	GetSystemSetting(ctx context.Context, key string) ([]byte, error)
+	UpdateSystemSetting(ctx context.Context, key string, value []byte) error
 }

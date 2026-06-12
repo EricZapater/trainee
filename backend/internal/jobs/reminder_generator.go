@@ -5,40 +5,10 @@ import (
 	"fmt"
 	"log"
 	"time"
-
-	"github.com/robfig/cron/v3"
 	"trainee-backend/internal/auth"
 	"trainee-backend/internal/mailer"
 	"trainee-backend/internal/store"
 )
-
-// StartReminderCron initializes and starts the cron job for sending weekly reminders.
-func StartReminderCron(s store.Store, m mailer.Mailer, jwtSecret string) (*cron.Cron, error) {
-	c := cron.New()
-
-	// Cada dimecres, dijous i divendres a les 06:00 AM
-	_, err := c.AddFunc("0 6 * * 3,4,5", func() {
-		log.Println("[CRON] Executant enviament de recordatoris de planificació setmanal...")
-		s.AddSystemLog(context.Background(), "cron_reminder", "INFO", "Iniciant enviament de recordatoris de planificació setmanal", nil)
-		err := GenerateReminders(s, m, jwtSecret)
-		if err != nil {
-			errStr := err.Error()
-			s.AddSystemLog(context.Background(), "cron_reminder", "ERROR", "Error enviant recordatoris", &errStr)
-			log.Printf("[CRON] Error enviant recordatoris: %v", err)
-		} else {
-			log.Println("[CRON] Enviament de recordatoris completat.")
-		}
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	c.Start()
-	log.Println("Cron scheduler iniciat per a l'enviament de recordatoris setmanals.")
-	return c, nil
-}
-
 // GenerateReminders checks for active athletes who haven't completed their next week's submission
 // and sends them a reminder email.
 func GenerateReminders(s store.Store, m mailer.Mailer, jwtSecret string) error {

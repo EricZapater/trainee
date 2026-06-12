@@ -224,6 +224,21 @@ type SystemLog struct {
 }
 
 // ============================================================
+// System Settings (Cron configs)
+// ============================================================
+
+type CronConfig struct {
+	Time    string `json:"time"`    // "HH:mm"
+	Days    []int  `json:"days"`    // 0-6 (Sunday-Saturday)
+	Enabled bool   `json:"enabled"`
+}
+
+type SystemSettings struct {
+	WeekGenerator CronConfig `json:"week_generator"`
+	ReminderCron  CronConfig `json:"reminder_cron"`
+}
+
+// ============================================================
 // Submission Request / Response
 // ============================================================
 
