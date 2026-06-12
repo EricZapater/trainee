@@ -43,6 +43,7 @@ watch(() => authStore.isAuthenticated, (newVal) => {
 
 const handleLogout = () => {
   localStorage.removeItem('admin_token')
+  localStorage.removeItem('admin_user')
   isAdminImpersonating.value = false
   authStore.logout()
   router.push('/login')
@@ -50,9 +51,12 @@ const handleLogout = () => {
 
 const restoreAdminSession = async () => {
   const adminToken = localStorage.getItem('admin_token')
-  if (adminToken) {
+  const adminUser = localStorage.getItem('admin_user')
+  if (adminToken && adminUser) {
     localStorage.setItem('trainee_token', adminToken)
+    localStorage.setItem('trainee_usuari', adminUser)
     localStorage.removeItem('admin_token')
+    localStorage.removeItem('admin_user')
     isAdminImpersonating.value = false
     await authStore.loadFromStorage()
     router.push('/admin')

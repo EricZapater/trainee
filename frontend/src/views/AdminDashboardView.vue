@@ -35,8 +35,12 @@ async function handleImpersonate(user: AdminUser) {
     
     // Guardar token d'admin
     const currentToken = localStorage.getItem('trainee_token')
+    const currentUser = localStorage.getItem('trainee_usuari')
     if (currentToken) {
       localStorage.setItem('admin_token', currentToken)
+    }
+    if (currentUser) {
+      localStorage.setItem('admin_user', currentUser)
     }
 
     // Assignar el nou token impersonat

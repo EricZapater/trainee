@@ -164,7 +164,7 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.role && to.meta.role !== auth.usuari?.rol) {
-    if (auth.usuari?.rol === 'admin') return next('/admin')
+    if (auth.usuari?.rol === 'admin') return next() // Admin té accés a tot
     return next(auth.isAtleta ? '/calendar' : '/dashboard')
   }
 
