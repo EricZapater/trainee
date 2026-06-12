@@ -10,6 +10,7 @@ const router = createRouter({
       redirect: () => {
         const auth = useAuthStore()
         if (!auth.isAuthenticated) return '/login'
+        if (auth.usuari?.rol === 'admin') return '/admin'
         return auth.isAtleta ? '/calendar' : '/dashboard'
       }
     },
@@ -158,10 +159,12 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated) {
+    if (auth.usuari?.rol === 'admin') return next('/admin')
     return next(auth.isAtleta ? '/calendar' : '/dashboard')
   }
 
   if (to.meta.role && to.meta.role !== auth.usuari?.rol) {
+    if (auth.usuari?.rol === 'admin') return next('/admin')
     return next(auth.isAtleta ? '/calendar' : '/dashboard')
   }
 
