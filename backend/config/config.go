@@ -11,6 +11,10 @@ type Config struct {
 	JWTSecret string
 	Port      string
 	Env       string
+	SMTPHost  string
+	SMTPPort  string
+	SMTPUser  string
+	SMTPPass  string
 }
 
 func Load() *Config {
@@ -27,6 +31,10 @@ func Load() *Config {
 		JWTSecret: getEnv("JWT_SECRET", "canvia_aquest_secret_en_produccio"),
 		Port:      getEnv("PORT", "8080"),
 		Env:       getEnv("ENV", "development"),
+		SMTPHost:  getEnv("SMTP_HOST", ""),
+		SMTPPort:  getEnv("SMTP_PORT", "587"),
+		SMTPUser:  getEnv("SMTP_USER", ""),
+		SMTPPass:  getEnv("SMTP_PASS", ""),
 	}
 }
 

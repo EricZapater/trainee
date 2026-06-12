@@ -24,13 +24,18 @@ func (s *PostgresStore) UpsertSubmission(ctx context.Context, atletaID string, r
 		notesPtr = &req.NotesSetmana
 	}
 
+	var estat = req.Estat
+	if estat == "" {
+		estat = "esborrany"
+	}
+
 	err = tx.QueryRow(ctx,
-		`INSERT INTO weekly_submissions (atleta_id, week_start, notes_setmana, updated_at)
-		 VALUES ($1, $2::date, $3, now())
+		`INSERT INTO weekly_submissions (atleta_id, week_start, notes_setmana, estat, updated_at)
+		 VALUES ($1, $2::date, $3, $4, now())
 		 ON CONFLICT (atleta_id, week_start)
-		 DO UPDATE SET notes_setmana = EXCLUDED.notes_setmana, updated_at = now()
+		 DO UPDATE SET notes_setmana = EXCLUDED.notes_setmana, estat = EXCLUDED.estat, updated_at = now()
 		 RETURNING id, updated_at`,
-		atletaID, req.WeekStart, notesPtr,
+		atletaID, req.WeekStart, notesPtr, estat,
 	).Scan(&submissionID, &updatedAt)
 	if err != nil {
 		return nil, err
@@ -78,11 +83,11 @@ func (s *PostgresStore) GetSubmissionByAtletaAndWeek(ctx context.Context, atleta
 	var submissionID string
 
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, TO_CHAR(week_start, 'YYYY-MM-DD'), notes_setmana
+		`SELECT id, TO_CHAR(week_start, 'YYYY-MM-DD'), notes_setmana, estat
 		 FROM weekly_submissions
 		 WHERE atleta_id = $1 AND week_start = $2::date`,
 		atletaID, weekStart,
-	).Scan(&submissionID, &resp.WeekStart, &resp.NotesSetmana)
+	).Scan(&submissionID, &resp.WeekStart, &resp.NotesSetmana, &resp.Estat)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return &models.MySubmissionResponse{
@@ -145,14 +150,16 @@ func (s *PostgresStore) GetSubmissionsByEntrenadorAndWeek(ctx context.Context, e
 		}
 
 		var submissionID string
+		var estat string
 		err := s.pool.QueryRow(ctx,
-			`SELECT id FROM weekly_submissions
+			`SELECT id, estat FROM weekly_submissions
 			 WHERE atleta_id = $1 AND week_start = $2::date`,
 			atleta.ID, weekStart,
-		).Scan(&submissionID)
+		).Scan(&submissionID, &estat)
 
 		if err == nil {
 			summary.HaRespost = true
+			summary.Estat = estat
 
 			rows, err := s.pool.Query(ctx,
 				`SELECT se.id, se.submission_id, se.dia, se.ordre, se.activitat_id,

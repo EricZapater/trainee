@@ -34,6 +34,10 @@ type Atleta struct {
 	Actiu        bool      `json:"actiu"`
 }
 
+type ReassignAtletaRequest struct {
+	NewEntrenadorID string `json:"new_entrenador_id" binding:"required"`
+}
+
 type Activitat struct {
 	ID        string    `json:"id"`
 	Nom       string    `json:"nom"`
@@ -57,6 +61,7 @@ type WeeklySubmission struct {
 	AtletaID     string    `json:"atleta_id"`
 	WeekStart    string    `json:"week_start"`
 	NotesSetmana *string   `json:"notes_setmana"`
+	Estat        string    `json:"estat"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -213,6 +218,7 @@ type ToggleUserStatusRequest struct {
 type SubmissionRequest struct {
 	WeekStart    string             `json:"week_start" binding:"required"`
 	NotesSetmana string             `json:"notes_setmana"`
+	Estat        string             `json:"estat"`
 	Slots        []SlotEntryRequest `json:"slots"`
 }
 
@@ -234,6 +240,7 @@ type SubmissionResponse struct {
 type MySubmissionResponse struct {
 	WeekStart    string      `json:"week_start"`
 	NotesSetmana *string     `json:"notes_setmana"`
+	Estat        string      `json:"estat"`
 	Slots        []SlotEntry `json:"slots"`
 }
 
@@ -246,6 +253,7 @@ type AtletaSubmissionSummary struct {
 	Nom       string      `json:"nom"`
 	Email     string      `json:"email"`
 	HaRespost bool        `json:"ha_respost"`
+	Estat     string      `json:"estat"`
 	Slots     []SlotEntry `json:"slots"`
 }
 

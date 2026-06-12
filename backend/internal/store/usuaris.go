@@ -140,6 +140,20 @@ func (s *PostgresStore) GetAtletaByUsuariID(ctx context.Context, usuariID string
 	return &a, nil
 }
 
+func (s *PostgresStore) ReassignAtleta(ctx context.Context, atletaID, nouEntrenadorID string) error {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE atletes SET entrenador_id = $1 WHERE id = $2`,
+		nouEntrenadorID, atletaID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("atleta no trobat o no actualitzat")
+	}
+	return nil
+}
+
 func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenadorID string) ([]models.Atleta, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email, u.actiu
@@ -148,6 +162,30 @@ func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenado
 		 WHERE a.entrenador_id = $1
 		 ORDER BY u.nom`,
 		entrenadorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	atletes := []models.Atleta{}
+	for rows.Next() {
+		var a models.Atleta
+		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email, &a.Actiu); err != nil {
+			return nil, err
+		}
+		atletes = append(atletes, a)
+	}
+	return atletes, rows.Err()
+}
+
+func (s *PostgresStore) ListAllActiveAtletes(ctx context.Context) ([]models.Atleta, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email, u.actiu
+		 FROM atletes a
+		 JOIN usuaris u ON u.id = a.usuari_id
+		 WHERE u.actiu = true
+		 ORDER BY u.nom`,
 	)
 	if err != nil {
 		return nil, err

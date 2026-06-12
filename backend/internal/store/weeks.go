@@ -100,3 +100,13 @@ func (s *PostgresStore) GetManagedWeekByEntrenadorAndDate(ctx context.Context, e
 	}
 	return &w, nil
 }
+
+func (s *PostgresStore) EnsureManagedWeekExists(ctx context.Context, entrenadorID, weekStart, estat string) error {
+	_, err := s.pool.Exec(ctx,
+		`INSERT INTO managed_weeks (entrenador_id, week_start, estat)
+		 VALUES ($1, $2::date, $3)
+		 ON CONFLICT (entrenador_id, week_start) DO NOTHING`,
+		entrenadorID, weekStart, estat,
+	)
+	return err
+}

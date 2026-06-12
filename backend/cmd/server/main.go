@@ -13,6 +13,8 @@ import (
 
 	"trainee-backend/config"
 	"trainee-backend/internal/handlers"
+	"trainee-backend/internal/jobs"
+	"trainee-backend/internal/mailer"
 	"trainee-backend/internal/middleware"
 	"trainee-backend/internal/store"
 	"trainee-backend/migrations"
@@ -58,6 +60,23 @@ func main() {
 		log.Fatalf("Error connectant a la base de dades: %v", err)
 	}
 	defer s.Close()
+
+	// Inicialitzar cron jobs
+	cronJob, err := jobs.StartWeekGenerator(s)
+	if err != nil {
+		log.Printf("Avís: No s'ha pogut iniciar el cron job de setmanes: %v", err)
+	} else {
+		defer cronJob.Stop()
+	}
+
+	// Inicialitzar Mailer i cron de recordatoris
+	mailService := mailer.NewMailer(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass)
+	reminderCron, err := jobs.StartReminderCron(s, mailService)
+	if err != nil {
+		log.Printf("Avís: No s'ha pogut iniciar el cron job de recordatoris: %v", err)
+	} else {
+		defer reminderCron.Stop()
+	}
 
 	h := handlers.NewHandler(s, cfg.JWTSecret)
 
@@ -113,6 +132,7 @@ func main() {
 
 		entrenadorRoutes.PATCH("/atletes/:id/status", h.ToggleAtletaStatus)
 		entrenadorRoutes.GET("/atletes/:id/history", h.GetAtletaStatusHistory)
+		entrenadorRoutes.PATCH("/atletes/:id/reasignar", h.ReasignarAtleta)
 		
 		entrenadorRoutes.POST("/tests", h.CreateTest)
 		entrenadorRoutes.GET("/tests/pendents", h.ListPendingTestsByEntrenador)

@@ -81,6 +81,7 @@ export interface AuthResponse {
 export interface SubmissionRequest {
   week_start: string
   notes_setmana: string
+  estat: string
   slots: {
     dia: number
     ordre: number
@@ -108,6 +109,7 @@ export interface AtletaSubmissionSummary {
   nom: string
   email: string
   ha_respost: boolean
+  estat: string
   slots: SlotEntry[]
 }
 

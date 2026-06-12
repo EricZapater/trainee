@@ -17,6 +17,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []
   })
   const notesSetmana = ref<string>('')
+  const estat = ref<string>('esborrany')
   const loading = ref<boolean>(false)
   const selectedMobileActivity = ref<Activitat | null>(null)
 
@@ -49,6 +50,7 @@ export const useCalendarStore = defineStore('calendar', () => {
       const data = await getMySubmission(currentWeekStart.value)
       clearSlots()
       notesSetmana.value = data.notes_setmana || ''
+      estat.value = (data as any).estat || 'esborrany'
       for (const s of data.slots) {
         addSlotToDay(s.dia, {
           activitat_id: s.activitat_id,
@@ -86,8 +88,9 @@ export const useCalendarStore = defineStore('calendar', () => {
     await createSubmission({
       week_start: currentWeekStart.value,
       notes_setmana: notesSetmana.value,
+      estat: estat.value,
       slots: payloadSlots
-    })
+    } as any)
   }
 
   async function navigateWeek(direction: 1 | -1) {
@@ -101,6 +104,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     currentWeekStart,
     slotsByDay,
     notesSetmana,
+    estat,
     loading,
     selectedMobileActivity,
     addSlotToDay,

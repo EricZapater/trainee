@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getAtletes, toggleAtletaStatus, getAtletaStatusHistory } from '@/api/entrenador'
+import { getAtletes, toggleAtletaStatus, getAtletaStatusHistory, getEntrenadorsList, reassignAtleta } from '@/api/entrenador'
 import type { UserStatusHistory } from '@/types'
 import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
@@ -10,6 +10,7 @@ import Button from 'primevue/button'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
+import Dropdown from 'primevue/dropdown'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -20,6 +21,12 @@ const historyDialogVisible = ref(false)
 const selectedAtletaNom = ref('')
 const selectedAtletaHistory = ref<UserStatusHistory[]>([])
 const historyLoading = ref(false)
+
+const reassignDialogVisible = ref(false)
+const selectedAtletaToReassign = ref<any>(null)
+const allEntrenadors = ref<{ id: string; nom: string }[]>([])
+const selectedNewEntrenador = ref<string | null>(null)
+const reassignLoading = ref(false)
 
 const loadAtletes = async () => {
   loading.value = true
@@ -64,6 +71,35 @@ const showHistory = async (atleta: any) => {
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString('ca-ES')
 }
+
+const openReassignDialog = async (atleta: any) => {
+  selectedAtletaToReassign.value = atleta
+  selectedNewEntrenador.value = null
+  reassignDialogVisible.value = true
+  if (allEntrenadors.value.length === 0) {
+    try {
+      allEntrenadors.value = await getEntrenadorsList()
+    } catch (e) {
+      toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut carregar els entrenadors', life: 3000 })
+    }
+  }
+}
+
+const confirmReassign = async () => {
+  if (!selectedNewEntrenador.value || !selectedAtletaToReassign.value) return
+  
+  reassignLoading.value = true
+  try {
+    await reassignAtleta(selectedAtletaToReassign.value.id, selectedNewEntrenador.value)
+    toast.add({ severity: 'success', summary: 'Reassignat', detail: 'Atleta traspassat correctament', life: 3000 })
+    reassignDialogVisible.value = false
+    loadAtletes()
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.error || 'Error reassignant l\'atleta', life: 3000 })
+  } finally {
+    reassignLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -86,7 +122,10 @@ const formatDate = (dateStr: string) => {
         </Column>
         <Column :header="$t('athletesManager.actions')">
           <template #body="{ data }">
-            <Button icon="ti ti-history" severity="secondary" variant="text" rounded :aria-label="$t('athletesManager.history')" @click="showHistory(data)" :title="$t('athletesManager.viewHistory')" />
+            <div class="flex gap-2">
+              <Button icon="ti ti-history" severity="secondary" variant="text" rounded :aria-label="$t('athletesManager.history')" @click="showHistory(data)" :title="$t('athletesManager.viewHistory')" />
+              <Button icon="ti ti-arrows-right-left" severity="secondary" variant="text" rounded aria-label="Reassignar" @click="openReassignDialog(data)" title="Reassignar atleta a un altre entrenador" />
+            </div>
           </template>
         </Column>
       </DataTable>
@@ -112,6 +151,28 @@ const formatDate = (dateStr: string) => {
       </ul>
       <template #footer>
         <Button :label="$t('athletesManager.close')" icon="ti ti-x" text severity="secondary" @click="historyDialogVisible = false" />
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="reassignDialogVisible" modal header="Reassignar Atleta" :style="{ width: '400px' }">
+      <p class="mb-4 text-secondary">Selecciona el nou entrenador per a l'atleta <strong>{{ selectedAtletaToReassign?.nom }}</strong>. Tu perdràs l'accés a aquest atleta i als seus entrenaments.</p>
+      
+      <div class="field">
+        <label for="nouEntrenador" class="block mb-2 font-medium">Nou Entrenador</label>
+        <Dropdown 
+          id="nouEntrenador" 
+          v-model="selectedNewEntrenador" 
+          :options="allEntrenadors" 
+          optionLabel="nom" 
+          optionValue="id" 
+          placeholder="Selecciona un entrenador" 
+          class="w-full" 
+        />
+      </div>
+
+      <template #footer>
+        <Button label="Cancel·lar" icon="ti ti-x" text severity="secondary" @click="reassignDialogVisible = false" />
+        <Button label="Reassignar" icon="ti ti-check" @click="confirmReassign" :loading="reassignLoading" :disabled="!selectedNewEntrenador" severity="danger" />
       </template>
     </Dialog>
   </div>

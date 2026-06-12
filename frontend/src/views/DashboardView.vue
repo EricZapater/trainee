@@ -171,8 +171,9 @@ const handleSpecialClick = (slot: any) => {
               <td class="col-name">
                 <div class="athlete-info">
                   <span class="athlete-name">{{ atleta.nom }}</span>
-                  <span v-if="!atleta.ha_respost" class="status-badge pending">{{ $t('dashboard.statusPending') }}</span>
-                  <span v-else class="status-badge done">{{ $t('dashboard.statusReceived') }}</span>
+                  <span v-if="atleta.estat === 'completada'" class="status-badge done">Completada</span>
+                  <span v-else-if="atleta.estat === 'esborrany' || atleta.ha_respost" class="status-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">Esborrany</span>
+                  <span v-else class="status-badge pending">Pendent</span>
                 </div>
               </td>
               

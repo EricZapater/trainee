@@ -11,7 +11,7 @@ import ActivityPalette from '@/components/ActivityPalette.vue'
 import ActivityItem from '@/components/ActivityItem.vue'
 import WeekStatusBadge from '@/components/WeekStatusBadge.vue'
 
-const { t } = useI18n()
+const { t, tm } = useI18n()
 const calendarStore = useCalendarStore()
 const activitatsStore = useActivitatsStore()
 const weeksStore = useWeeksStore()
@@ -28,7 +28,7 @@ const toggleDay = (dia: number) => {
   }
 }
 
-const dies = computed(() => t('calendar.days', { returnObjects: true }) as unknown as string[])
+const dies = computed(() => tm('calendar.days') as string[])
 
 const formatDate = (dateStr: string, offsetDays: number = 0) => {
   const d = new Date(dateStr)
@@ -122,11 +122,20 @@ const handleNavigate = async (direction: 1 | -1) => {
   await calendarStore.navigateWeek(direction)
 }
 
-const handleSave = async () => {
+const handleSave = async (isCompleted: boolean = false) => {
   isSaving.value = true
+  if (isCompleted) {
+    calendarStore.estat = 'completada'
+  } else {
+    calendarStore.estat = 'esborrany'
+  }
   try {
     await calendarStore.saveSubmission()
-    toast.add({ severity: 'success', summary: 'Guardat', detail: 'La disponibilitat s\'ha guardat correctament', life: 3000 })
+    if (isCompleted) {
+      toast.add({ severity: 'success', summary: 'Completada', detail: 'La setmana s\'ha marcat com a completada', life: 3000 })
+    } else {
+      toast.add({ severity: 'success', summary: 'Guardat', detail: 'L\'esborrany s\'ha guardat correctament', life: 3000 })
+    }
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error en guardar la disponibilitat', life: 3000 })
   } finally {
@@ -238,13 +247,33 @@ const handleSave = async () => {
           />
         </div>
         
-        <div class="actions-section">
+        <div class="actions-section flex gap-4">
           <Button 
-            :label="$t('calendar.saveAvailability')" 
+            v-if="calendarStore.estat === 'completada'"
+            label="Marcar com a Esborrany" 
+            icon="ti ti-edit" 
+            @click="handleSave(false)" 
+            :loading="isSaving" 
+            severity="secondary"
+            size="large"
+          />
+          <Button 
+            v-else
+            label="Desar Esborrany" 
             icon="ti ti-device-floppy" 
-            @click="handleSave" 
+            @click="handleSave(false)" 
+            :loading="isSaving" 
+            severity="secondary"
+            size="large"
+          />
+          <Button 
+            v-if="calendarStore.estat !== 'completada'"
+            label="Completar Setmana" 
+            icon="ti ti-check" 
+            @click="handleSave(true)" 
             :loading="isSaving" 
             size="large"
+            severity="success"
           />
         </div>
       </div>

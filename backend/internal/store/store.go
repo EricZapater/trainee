@@ -25,6 +25,8 @@ type Store interface {
 	CreateAtleta(ctx context.Context, usuariID, entrenadorID string) (*models.Atleta, error)
 	GetAtletaByUsuariID(ctx context.Context, usuariID string) (*models.Atleta, error)
 	ListAtletesByEntrenadorID(ctx context.Context, entrenadorID string) ([]models.Atleta, error)
+	ListAllActiveAtletes(ctx context.Context) ([]models.Atleta, error)
+	ReassignAtleta(ctx context.Context, atletaID, nouEntrenadorID string) error
 
 	// Activitats
 	ListActivitats(ctx context.Context, onlyActive bool) ([]models.Activitat, error)
@@ -39,6 +41,7 @@ type Store interface {
 	CreateManagedWeek(ctx context.Context, entrenadorID, weekStart, estat string) (*models.ManagedWeek, error)
 	UpdateManagedWeekEstat(ctx context.Context, id, estat string) (*models.ManagedWeek, error)
 	GetManagedWeekByEntrenadorAndDate(ctx context.Context, entrenadorID, weekStart string) (*models.ManagedWeek, error)
+	EnsureManagedWeekExists(ctx context.Context, entrenadorID, weekStart, estat string) error
 
 	// Submissions
 	UpsertSubmission(ctx context.Context, atletaID string, req models.SubmissionRequest) (*models.SubmissionResponse, error)

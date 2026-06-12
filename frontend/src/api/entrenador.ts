@@ -74,3 +74,12 @@ export async function getAtletaStatusHistory(id: string): Promise<UserStatusHist
   const { data } = await api.get<UserStatusHistory[]>(`/entrenador/atletes/${id}/history`)
   return data
 }
+
+export async function getEntrenadorsList(): Promise<{ id: string; nom: string }[]> {
+  const { data } = await api.get<{ id: string; nom: string }[]>('/entrenadors')
+  return data
+}
+
+export async function reassignAtleta(id: string, newEntrenadorId: string): Promise<void> {
+  await api.patch(`/entrenador/atletes/${id}/reasignar`, { new_entrenador_id: newEntrenadorId })
+}
