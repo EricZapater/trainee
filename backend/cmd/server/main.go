@@ -71,7 +71,7 @@ func main() {
 
 	// Inicialitzar Mailer i cron de recordatoris
 	mailService := mailer.NewMailer(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass)
-	reminderCron, err := jobs.StartReminderCron(s, mailService)
+	reminderCron, err := jobs.StartReminderCron(s, mailService, cfg.JWTSecret)
 	if err != nil {
 		log.Printf("Avís: No s'ha pogut iniciar el cron job de recordatoris: %v", err)
 	} else {
@@ -79,6 +79,7 @@ func main() {
 	}
 
 	h := handlers.NewHandler(s, cfg.JWTSecret)
+	systemLogsHandler := handlers.NewSystemLogsHandler(s)
 
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -94,6 +95,7 @@ func main() {
 
 	api.POST("/auth/register", h.Register)
 	api.POST("/auth/login", h.Login)
+	api.POST("/auth/magic-login", h.MagicLogin)
 	api.GET("/entrenadors", h.ListEntrenadors)
 
 	authenticated := api.Group("")
@@ -160,6 +162,9 @@ func main() {
 
 		entrenadorRoutes.GET("/forms/:id/responses", h.GetFormResponses)
 		entrenadorRoutes.PUT("/responses/:responseId/status", h.UpdateResponseStatus)
+
+		// System Logs
+		entrenadorRoutes.GET("/system-logs", systemLogsHandler.GetSystemLogs)
 	}
 
 	publicRoutes := api.Group("/public")

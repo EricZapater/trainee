@@ -1,20 +1,28 @@
 package mailer
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
+	"html/template"
 	"log"
 	"net/smtp"
+	"os"
+
+	_ "embed"
 )
 
+//go:embed reminder.html
+var reminderHTML string
+
 type Mailer interface {
-	SendReminder(toEmail, toName string) error
+	SendReminder(toEmail, toName, magicToken, weekStart string) error
 }
 
 type LogMailer struct{}
 
-func (m *LogMailer) SendReminder(toEmail, toName string) error {
-	log.Printf("[MAILER LOG] Enviant recordatori a: %s (%s). Assumpte: Recordatori de planificació setmanal\n", toName, toEmail)
+func (m *LogMailer) SendReminder(toEmail, toName, magicToken, weekStart string) error {
+	log.Printf("[MAILER LOG] Enviant recordatori a: %s (%s) per setmana %s. Token: %s\n", toName, toEmail, weekStart, magicToken)
 	return nil
 }
 
@@ -25,17 +33,55 @@ type SMTPMailer struct {
 	Password string
 }
 
-func (m *SMTPMailer) SendReminder(toEmail, toName string) error {
-	// Com que el client passarà la plantilla més endavant, enviarem un text pla bàsic
-	subject := "Recordatori: Planifica la teva propera setmana"
-	body := fmt.Sprintf("Hola %s,\n\nEt recordem que encara no has completat la planificació per a la propera setmana. Si us plau, entra a l'aplicació i omple els teus entrenaments.\n\nSalutacions,\nL'equip.", toName)
+type templateData struct {
+	Nom     string
+	AppURL  string
+	LogoURL string
+}
 
-	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s", m.Username, toEmail, subject, body)
+func (m *SMTPMailer) SendReminder(toEmail, toName, magicToken, weekStart string) error {
+	subject := "Recordatori: Planifica la teva propera setmana"
+	
+	tmpl, err := template.New("reminder").Parse(reminderHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://app.entrenadortrail.es" // Fallback
+	}
+	
+	// Create the magic link
+	magicLink := fmt.Sprintf("%s/magic-login?token=%s&week=%s", appURL, magicToken, weekStart)
+	
+	logoURL := os.Getenv("MAILER_LOGO_URL")
+	// If empty, the template handles it via {{if .LogoURL}}
+
+	data := templateData{
+		Nom:     toName,
+		AppURL:  magicLink,
+		LogoURL: logoURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	// Construir l'email MIME
+	var message bytes.Buffer
+	message.WriteString(fmt.Sprintf("From: %s\r\n", m.Username))
+	message.WriteString(fmt.Sprintf("To: %s\r\n", toEmail))
+	message.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	message.WriteString("MIME-Version: 1.0\r\n")
+	message.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
+	message.WriteString("\r\n")
+	message.Write(body.Bytes())
 
 	auth := smtp.PlainAuth("", m.Username, m.Password, m.Host)
 	addr := fmt.Sprintf("%s:%s", m.Host, m.Port)
 
-	// Depenent de la configuració de SMTP, a vegades cal InsecureSkipVerify per desenvolupament
 	tlsconfig := &tls.Config{
 		InsecureSkipVerify: true,
 		ServerName:         m.Host,
@@ -44,7 +90,7 @@ func (m *SMTPMailer) SendReminder(toEmail, toName string) error {
 	conn, err := tls.Dial("tcp", addr, tlsconfig)
 	if err != nil {
 		// Fallback to non-TLS / STARTTLS
-		err = smtp.SendMail(addr, auth, m.Username, []string{toEmail}, []byte(message))
+		err = smtp.SendMail(addr, auth, m.Username, []string{toEmail}, message.Bytes())
 		if err != nil {
 			log.Printf("[SMTP ERROR] Error enviant correu a %s: %v", toEmail, err)
 			return err
@@ -76,7 +122,7 @@ func (m *SMTPMailer) SendReminder(toEmail, toName string) error {
 		return err
 	}
 
-	_, err = w.Write([]byte(message))
+	_, err = w.Write(message.Bytes())
 	if err != nil {
 		return err
 	}

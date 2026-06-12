@@ -86,4 +86,8 @@ type Store interface {
 	GetFormResponses(ctx context.Context, formID, entrenadorID string) ([]models.FormResponseWithAnswers, error)
 	UpdateResponseStatus(ctx context.Context, responseID, entrenadorID, estat string) error
 	SubmitFormResponse(ctx context.Context, formID string, req models.SubmitFormResponseRequest) error
+
+	// System Logs
+	AddSystemLog(ctx context.Context, accio, nivell, missatge string, detalls *string) error
+	GetSystemLogs(ctx context.Context, limit, offset int) ([]models.SystemLog, error)
 }

@@ -26,6 +26,12 @@ const router = createRouter({
       meta: { guestOnly: true }
     },
     {
+      path: '/magic-login',
+      name: 'magic-login',
+      component: () => import('@/views/MagicLoginView.vue'),
+      meta: { guestOnly: true }
+    },
+    {
       path: '/calendar',
       name: 'calendar',
       component: () => import('@/views/CalendarView.vue'),
@@ -113,6 +119,12 @@ const router = createRouter({
       path: '/entrenador/forms/:id/responses',
       name: 'form_responses',
       component: () => import('@/views/FormResponsesView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/entrenador/logs',
+      name: 'system_logs',
+      component: () => import('@/views/SystemLogsView.vue'),
       meta: { requiresAuth: true, role: 'entrenador' }
     },
     {

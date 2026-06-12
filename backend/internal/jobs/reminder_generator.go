@@ -2,23 +2,28 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/robfig/cron/v3"
+	"trainee-backend/internal/auth"
 	"trainee-backend/internal/mailer"
 	"trainee-backend/internal/store"
 )
 
 // StartReminderCron initializes and starts the cron job for sending weekly reminders.
-func StartReminderCron(s store.Store, m mailer.Mailer) (*cron.Cron, error) {
+func StartReminderCron(s store.Store, m mailer.Mailer, jwtSecret string) (*cron.Cron, error) {
 	c := cron.New()
 
 	// Cada dimecres, dijous i divendres a les 06:00 AM
 	_, err := c.AddFunc("0 6 * * 3,4,5", func() {
 		log.Println("[CRON] Executant enviament de recordatoris de planificació setmanal...")
-		err := GenerateReminders(s, m)
+		s.AddSystemLog(context.Background(), "cron_reminder", "INFO", "Iniciant enviament de recordatoris de planificació setmanal", nil)
+		err := GenerateReminders(s, m, jwtSecret)
 		if err != nil {
+			errStr := err.Error()
+			s.AddSystemLog(context.Background(), "cron_reminder", "ERROR", "Error enviant recordatoris", &errStr)
 			log.Printf("[CRON] Error enviant recordatoris: %v", err)
 		} else {
 			log.Println("[CRON] Enviament de recordatoris completat.")
@@ -36,7 +41,7 @@ func StartReminderCron(s store.Store, m mailer.Mailer) (*cron.Cron, error) {
 
 // GenerateReminders checks for active athletes who haven't completed their next week's submission
 // and sends them a reminder email.
-func GenerateReminders(s store.Store, m mailer.Mailer) error {
+func GenerateReminders(s store.Store, m mailer.Mailer, jwtSecret string) error {
 	ctx := context.Background()
 	now := time.Now()
 
@@ -75,7 +80,14 @@ func GenerateReminders(s store.Store, m mailer.Mailer) error {
 
 		// Si l'estat no és "completada", s'envia el recordatori.
 		if submission.Estat != "completada" {
-			err = m.SendReminder(a.Email, a.Nom)
+			// Generar el magic token
+			magicToken, tErr := auth.GenerateMagicLinkToken(a.ID, jwtSecret)
+			if tErr != nil {
+				log.Printf("[CRON-REMINDER] Error generant token per a %s: %v", a.Email, tErr)
+				continue
+			}
+
+			err = m.SendReminder(a.Email, a.Nom, magicToken, weekStart)
 			if err != nil {
 				log.Printf("[CRON-REMINDER] Error enviant recordatori a %s: %v", a.Email, err)
 			} else {
@@ -84,6 +96,8 @@ func GenerateReminders(s store.Store, m mailer.Mailer) error {
 		}
 	}
 
-	log.Printf("[CRON-REMINDER] S'han enviat %d recordatoris amb èxit.", count)
+	resum := fmt.Sprintf("S'han enviat %d recordatoris amb èxit per la setmana %s.", count, weekStart)
+	log.Printf("[CRON-REMINDER] %s", resum)
+	s.AddSystemLog(ctx, "cron_reminder_summary", "INFO", resum, nil)
 	return nil
 }

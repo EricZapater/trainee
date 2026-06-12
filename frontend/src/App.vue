@@ -154,6 +154,7 @@ const handleChangeLanguage = async () => {
               <span v-if="compStore.pendingCount > 0" class="badge">{{ compStore.pendingCount }}</span>
             </router-link>
             <router-link to="/informe" class="nav-link">{{ $t('nav.athleteReports') }}</router-link>
+            <router-link to="/entrenador/logs" class="nav-link">Registre d'Accions</router-link>
           </template>
         </nav>
         

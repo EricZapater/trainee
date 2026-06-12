@@ -210,6 +210,18 @@ type ToggleUserStatusRequest struct {
 	Actiu bool `json:"actiu"`
 }
 
+// ============================================================
+// System Logs
+// ============================================================
+
+type SystemLog struct {
+	ID        string    `json:"id"`
+	Accio     string    `json:"accio"`
+	Nivell    string    `json:"nivell"` // INFO, WARN, ERROR
+	Missatge  string    `json:"missatge"`
+	Detalls   *string   `json:"detalls"`
+	CreatedAt time.Time `json:"created_at"`
+}
 
 // ============================================================
 // Submission Request / Response

@@ -102,6 +102,48 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, models.AuthResponse{Token: token, Usuari: *user})
 }
 
+func (h *Handler) MagicLogin(c *gin.Context) {
+	var req struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "token requerit"})
+		return
+	}
+
+	claims, err := auth.ValidateToken(req.Token, h.JWTSecret)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "enllaç caducat o invàlid"})
+		return
+	}
+
+	if claims.Rol != "magic_link" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "token invàlid per a l'inici de sessió directe"})
+		return
+	}
+
+	user, err := h.Store.GetUsuariByID(c.Request.Context(), claims.Subject)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "usuari no trobat"})
+		return
+	}
+
+	if !user.Actiu {
+		c.JSON(http.StatusForbidden, gin.H{"error": "el teu compte ha estat desactivat"})
+		return
+	}
+
+	// Generate standard full-access token
+	standardToken, err := auth.GenerateToken(*user, h.JWTSecret)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error generant el token definitiu"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.AuthResponse{Token: standardToken, Usuari: *user})
+}
+
+
 func (h *Handler) ChangePassword(c *gin.Context) {
 	userID := c.GetString("user_id")
 

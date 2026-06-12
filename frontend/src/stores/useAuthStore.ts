@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as apiLogin, register as apiRegister, updateIdioma as apiUpdateIdioma } from '@/api/auth'
+import { login as apiLogin, register as apiRegister, magicLogin as apiMagicLogin, updateIdioma as apiUpdateIdioma } from '@/api/auth'
 import type { Usuari } from '@/types'
 import router from '@/router'
 import i18n, { idiomToLocale } from '@/i18n'
@@ -35,6 +35,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
     localStorage.setItem('trainee_token', data.token)
     localStorage.setItem('trainee_usuari', JSON.stringify(data.usuari))
+  }
+
+  async function magicLogin(magicToken: string): Promise<boolean> {
+    try {
+      const data = await apiMagicLogin(magicToken)
+      token.value = data.token
+      usuari.value = data.usuari
+      if (data.usuari.idioma) {
+        ;(i18n.global.locale as any).value = idiomToLocale[data.usuari.idioma] || 'ca'
+      }
+      localStorage.setItem('trainee_token', data.token)
+      localStorage.setItem('trainee_usuari', JSON.stringify(data.usuari))
+      return true
+    } catch (e) {
+      return false
+    }
   }
 
   async function register(payload: any) {
@@ -80,6 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAtleta,
     isEntrenador,
     login,
+    magicLogin,
     register,
     logout,
     updateIdioma,
