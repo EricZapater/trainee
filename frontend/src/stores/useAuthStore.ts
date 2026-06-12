@@ -24,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
   const isAtleta = computed(() => usuari.value?.rol === 'atleta' || usuari.value?.rol === 'admin')
-  const isEntrenador = computed(() => usuari.value?.rol === 'entrenador' || usuari.value?.rol === 'admin')
+  const isEntrenador = computed(() => usuari.value?.rol === 'entrenador')
 
   async function login(email: string, pass: string) {
     const data = await apiLogin(email, pass)
