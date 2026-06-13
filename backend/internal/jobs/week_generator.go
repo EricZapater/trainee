@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -35,13 +36,19 @@ func GenerateUpcomingWeeks(s store.Store) error {
 		return err
 	}
 
+	count := 0
 	for _, e := range entrenadors {
 		err := s.EnsureManagedWeekExists(ctx, e.ID, weekStart, "oberta")
 		if err != nil {
 			log.Printf("[CRON] Error assegurant setmana per a l'entrenador %s: %v", e.ID, err)
 			continue
 		}
+		count++
 	}
+
+	resum := fmt.Sprintf("S'han generat les setmanes obertes per a %d entrenadors (data: %s).", count, weekStart)
+	log.Printf("[CRON] %s", resum)
+	s.AddSystemLog(ctx, "cron_week_generator", "INFO", resum, nil)
 
 	return nil
 }
