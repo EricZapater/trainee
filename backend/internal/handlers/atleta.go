@@ -40,7 +40,7 @@ func (h *Handler) ListOpenWeeks(c *gin.Context) {
 
 	var entrenadorID string
 
-	if rol == "atleta" {
+	if rol == "atleta" || rol == "admin" {
 		atleta, err := h.Store.GetAtletaByUsuariID(c.Request.Context(), userID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "perfil d'atleta no trobat"})

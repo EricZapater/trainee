@@ -128,7 +128,9 @@ func (h *Handler) GetTest(c *gin.Context) {
 		return
 	}
 
-	if rol == "atleta" {
+	if rol == "admin" {
+		// Admin veu tot, no cal comprovar propietat
+	} else if rol == "atleta" {
 		atletaInfo, _ := h.Store.GetAtletaByUsuariID(c.Request.Context(), usuariID)
 		if atletaInfo == nil || test.AtletaID != atletaInfo.ID {
 			c.JSON(http.StatusForbidden, gin.H{"error": "no tens permís"})

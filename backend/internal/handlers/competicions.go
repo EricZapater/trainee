@@ -246,7 +246,9 @@ func (h *Handler) GetCompeticio(c *gin.Context) {
 		return
 	}
 
-	if rol == "atleta" {
+	if rol == "admin" {
+		// Admin veu tot, no cal comprovar propietat
+	} else if rol == "atleta" {
 		atletaInfo, _ := h.Store.GetAtletaByUsuariID(c.Request.Context(), usuariID)
 		if atletaInfo == nil || comp.AtletaID != atletaInfo.ID {
 			c.JSON(http.StatusForbidden, gin.H{"error": "no tens permís per veure aquesta competició"})
