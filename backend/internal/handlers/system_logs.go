@@ -17,13 +17,6 @@ func NewSystemLogsHandler(s store.Store) *SystemLogsHandler {
 }
 
 func (h *SystemLogsHandler) GetSystemLogs(c *gin.Context) {
-	// Comprovar si l'usuari és entrenador
-	userRole := c.GetString("user_rol")
-	if userRole != "entrenador" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "accés denegat: només entrenadors"})
-		return
-	}
-
 	limitStr := c.DefaultQuery("limit", "100")
 	offsetStr := c.DefaultQuery("offset", "0")
 
