@@ -20,6 +20,7 @@ type Store interface {
 	// Entrenadors
 	ListEntrenadors(ctx context.Context) ([]models.Entrenador, error)
 	GetEntrenadorByUsuariID(ctx context.Context, usuariID string) (*models.Entrenador, error)
+	GetUsuariByEntrenadorID(ctx context.Context, entrenadorID string) (*models.Usuari, error)
 	ClaimEntrenador(ctx context.Context, entrenadorID, usuariID string) error
 
 	// Atletes

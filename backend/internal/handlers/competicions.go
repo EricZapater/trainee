@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -61,6 +62,21 @@ func (h *Handler) CreateCompeticio(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error creant competició"})
 		return
 	}
+
+	// Enviar notificació a l'entrenador de manera asíncrona
+	go func(entrenadorID, atletaID, competicioNom string) {
+		ctx := context.Background()
+		entrenadorUsuari, err := h.Store.GetUsuariByEntrenadorID(ctx, entrenadorID)
+		if err == nil && entrenadorUsuari != nil {
+			atletaUsuari, _ := h.Store.GetUsuariByID(ctx, atletaID)
+			atletaNom := "Un atleta"
+			if atletaUsuari != nil {
+				atletaNom = atletaUsuari.Nom
+			}
+			_ = h.Mailer.SendNewCompetitionNotification(entrenadorUsuari.Email, entrenadorUsuari.Nom, atletaNom, competicioNom, entrenadorUsuari.Idioma)
+		}
+	}(atletaInfo.EntrenadorID, atletaInfo.UsuariID, req.Nom)
+
 	c.JSON(http.StatusCreated, comp)
 }
 

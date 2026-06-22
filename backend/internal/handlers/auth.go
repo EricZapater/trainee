@@ -1,22 +1,25 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"trainee-backend/internal/auth"
+	"trainee-backend/internal/mailer"
 	"trainee-backend/internal/models"
 	"trainee-backend/internal/store"
 )
 
 type Handler struct {
 	Store     store.Store
+	Mailer    mailer.Mailer
 	JWTSecret string
 }
 
-func NewHandler(s store.Store, jwtSecret string) *Handler {
-	return &Handler{Store: s, JWTSecret: jwtSecret}
+func NewHandler(s store.Store, m mailer.Mailer, jwtSecret string) *Handler {
+	return &Handler{Store: s, Mailer: m, JWTSecret: jwtSecret}
 }
 
 func (h *Handler) Register(c *gin.Context) {
@@ -53,6 +56,14 @@ func (h *Handler) Register(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "error creant el perfil d'atleta: " + err.Error()})
 			return
 		}
+
+		// Enviar notificació a l'entrenador de manera asíncrona
+		go func(entrenadorID, atletaNom string) {
+			entrenadorUsuari, err := h.Store.GetUsuariByEntrenadorID(context.Background(), entrenadorID)
+			if err == nil && entrenadorUsuari != nil {
+				_ = h.Mailer.SendNewAthleteNotification(entrenadorUsuari.Email, entrenadorUsuari.Nom, atletaNom, entrenadorUsuari.Idioma)
+			}
+		}(req.EntrenadorID, user.Nom)
 	} else {
 		err = h.Store.ClaimEntrenador(c.Request.Context(), req.EntrenadorID, user.ID)
 		if err != nil {

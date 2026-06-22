@@ -32,6 +32,7 @@ type Atleta struct {
 	Nom          string    `json:"nom,omitempty"`
 	Email        string    `json:"email,omitempty"`
 	Actiu        bool      `json:"actiu"`
+	Idioma       string    `json:"idioma,omitempty"`
 }
 
 type ReassignAtletaRequest struct {

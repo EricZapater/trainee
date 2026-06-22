@@ -117,6 +117,21 @@ func (s *PostgresStore) GetEntrenadorByUsuariID(ctx context.Context, usuariID st
 	return &e, nil
 }
 
+func (s *PostgresStore) GetUsuariByEntrenadorID(ctx context.Context, entrenadorID string) (*models.Usuari, error) {
+	var u models.Usuari
+	err := s.pool.QueryRow(ctx,
+		`SELECT u.id, u.nom, u.email, u.password_hash, u.rol, u.actiu, u.idioma, u.created_at
+		 FROM usuaris u
+		 JOIN entrenadors e ON u.id = e.usuari_id
+		 WHERE e.id = $1`,
+		entrenadorID,
+	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 func (s *PostgresStore) ClaimEntrenador(ctx context.Context, entrenadorID, usuariID string) error {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE entrenadors SET usuari_id = $1
@@ -202,7 +217,7 @@ func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenado
 
 func (s *PostgresStore) ListAllActiveAtletes(ctx context.Context) ([]models.Atleta, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email, u.actiu
+		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email, u.actiu, u.idioma
 		 FROM atletes a
 		 JOIN usuaris u ON u.id = a.usuari_id
 		 WHERE u.actiu = true
@@ -216,7 +231,7 @@ func (s *PostgresStore) ListAllActiveAtletes(ctx context.Context) ([]models.Atle
 	atletes := []models.Atleta{}
 	for rows.Next() {
 		var a models.Atleta
-		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email, &a.Actiu); err != nil {
+		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email, &a.Actiu, &a.Idioma); err != nil {
 			return nil, err
 		}
 		atletes = append(atletes, a)

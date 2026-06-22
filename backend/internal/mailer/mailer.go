@@ -12,17 +12,53 @@ import (
 	_ "embed"
 )
 
-//go:embed reminder.html
-var reminderHTML string
+//go:embed reminder_CAT.html
+var reminderCATHTML string
+
+//go:embed reminder_ESP.html
+var reminderESPHTML string
+
+//go:embed reminder_ENG.html
+var reminderENGHTML string
+
+//go:embed new_athlete_CAT.html
+var newAthleteCATHTML string
+
+//go:embed new_athlete_ESP.html
+var newAthleteESPHTML string
+
+//go:embed new_athlete_ENG.html
+var newAthleteENGHTML string
+
+//go:embed new_competition_CAT.html
+var newCompetitionCATHTML string
+
+//go:embed new_competition_ESP.html
+var newCompetitionESPHTML string
+
+//go:embed new_competition_ENG.html
+var newCompetitionENGHTML string
 
 type Mailer interface {
-	SendReminder(toEmail, toName, magicToken, weekStart string) error
+	SendReminder(toEmail, toName, magicToken, weekStart, idioma string) error
+	SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error
+	SendNewCompetitionNotification(entrenadorEmail, entrenadorNom, atletaNom, competicioNom, idioma string) error
 }
 
 type LogMailer struct{}
 
-func (m *LogMailer) SendReminder(toEmail, toName, magicToken, weekStart string) error {
-	log.Printf("[MAILER LOG] Enviant recordatori a: %s (%s) per setmana %s. Token: %s\n", toName, toEmail, weekStart, magicToken)
+func (m *LogMailer) SendReminder(toEmail, toName, magicToken, weekStart, idioma string) error {
+	log.Printf("[MAILER LOG] Enviant recordatori a: %s (%s) per setmana %s. Token: %s. Idioma: %s\n", toName, toEmail, weekStart, magicToken, idioma)
+	return nil
+}
+
+func (m *LogMailer) SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error {
+	log.Printf("[MAILER LOG] Enviant notificació de nou atleta (%s) a: %s (%s). Idioma: %s\n", atletaNom, entrenadorNom, entrenadorEmail, idioma)
+	return nil
+}
+
+func (m *LogMailer) SendNewCompetitionNotification(entrenadorEmail, entrenadorNom, atletaNom, competicioNom, idioma string) error {
+	log.Printf("[MAILER LOG] Enviant notificació de nova competició (%s de %s) a: %s (%s). Idioma: %s\n", competicioNom, atletaNom, entrenadorNom, entrenadorEmail, idioma)
 	return nil
 }
 
@@ -39,37 +75,20 @@ type templateData struct {
 	LogoURL string
 }
 
-func (m *SMTPMailer) SendReminder(toEmail, toName, magicToken, weekStart string) error {
-	subject := "Recordatori: Planifica la teva propera setmana"
-	
-	tmpl, err := template.New("reminder").Parse(reminderHTML)
-	if err != nil {
-		return fmt.Errorf("error parsejant la plantilla: %v", err)
-	}
+type newAthleteData struct {
+	EntrenadorNom string
+	AtletaNom     string
+	AppURL        string
+}
 
-	appURL := os.Getenv("FRONTEND_URL")
-	if appURL == "" {
-		appURL = "https://app.entrenadortrail.es" // Fallback
-	}
-	
-	// Create the magic link
-	magicLink := fmt.Sprintf("%s/magic-login?token=%s&week=%s", appURL, magicToken, weekStart)
-	
-	logoURL := os.Getenv("MAILER_LOGO_URL")
-	// If empty, the template handles it via {{if .LogoURL}}
+type newCompetitionData struct {
+	EntrenadorNom string
+	AtletaNom     string
+	CompeticioNom string
+	AppURL        string
+}
 
-	data := templateData{
-		Nom:     toName,
-		AppURL:  magicLink,
-		LogoURL: logoURL,
-	}
-
-	var body bytes.Buffer
-	if err := tmpl.Execute(&body, data); err != nil {
-		return fmt.Errorf("error executant la plantilla: %v", err)
-	}
-
-	// Construir l'email MIME
+func (m *SMTPMailer) sendRawEmail(toEmail, subject, bodyHTML string) error {
 	var message bytes.Buffer
 	message.WriteString(fmt.Sprintf("From: %s\r\n", m.Username))
 	message.WriteString(fmt.Sprintf("To: %s\r\n", toEmail))
@@ -77,7 +96,7 @@ func (m *SMTPMailer) SendReminder(toEmail, toName, magicToken, weekStart string)
 	message.WriteString("MIME-Version: 1.0\r\n")
 	message.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n")
 	message.WriteString("\r\n")
-	message.Write(body.Bytes())
+	message.WriteString(bodyHTML)
 
 	auth := smtp.PlainAuth("", m.Username, m.Password, m.Host)
 	addr := fmt.Sprintf("%s:%s", m.Host, m.Port)
@@ -136,6 +155,133 @@ func (m *SMTPMailer) SendReminder(toEmail, toName, magicToken, weekStart string)
 
 	log.Printf("[MAILER SMTP] Correu enviat a %s", toEmail)
 	return nil
+}
+
+func (m *SMTPMailer) SendReminder(toEmail, toName, magicToken, weekStart, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ENG":
+		subject = "Reminder: Plan your next week"
+		tmplHTML = reminderENGHTML
+	case "CAT":
+		subject = "Recordatori: Planifica la teva propera setmana"
+		tmplHTML = reminderCATHTML
+	default: // ESP is default
+		subject = "Recordatorio: Planifica tu próxima semana"
+		tmplHTML = reminderESPHTML
+	}
+	
+	tmpl, err := template.New("reminder").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.ericzapater.cat" // Fallback
+	}
+	
+	// Create the magic link
+	magicLink := fmt.Sprintf("%s/magic-login?token=%s&week=%s", appURL, magicToken, weekStart)
+	
+	logoURL := os.Getenv("MAILER_LOGO_URL")
+	// If empty, the template handles it via {{if .LogoURL}}
+
+	data := templateData{
+		Nom:     toName,
+		AppURL:  magicLink,
+		LogoURL: logoURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ENG":
+		subject = fmt.Sprintf("New athlete registered: %s", atletaNom)
+		tmplHTML = newAthleteENGHTML
+	case "CAT":
+		subject = fmt.Sprintf("Nou atleta registrat: %s", atletaNom)
+		tmplHTML = newAthleteCATHTML
+	default:
+		subject = fmt.Sprintf("Nuevo atleta registrado: %s", atletaNom)
+		tmplHTML = newAthleteESPHTML
+	}
+
+	tmpl, err := template.New("new_athlete").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.ericzapater.cat"
+	}
+
+	data := newAthleteData{
+		EntrenadorNom: entrenadorNom,
+		AtletaNom:     atletaNom,
+		AppURL:        appURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(entrenadorEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendNewCompetitionNotification(entrenadorEmail, entrenadorNom, atletaNom, competicioNom, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ENG":
+		subject = fmt.Sprintf("New competition added by %s: %s", atletaNom, competicioNom)
+		tmplHTML = newCompetitionENGHTML
+	case "CAT":
+		subject = fmt.Sprintf("Nova competició afegida per %s: %s", atletaNom, competicioNom)
+		tmplHTML = newCompetitionCATHTML
+	default:
+		subject = fmt.Sprintf("Nueva competición añadida por %s: %s", atletaNom, competicioNom)
+		tmplHTML = newCompetitionESPHTML
+	}
+
+	tmpl, err := template.New("new_competition").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.ericzapater.cat"
+	}
+
+	data := newCompetitionData{
+		EntrenadorNom: entrenadorNom,
+		AtletaNom:     atletaNom,
+		CompeticioNom: competicioNom,
+		AppURL:        appURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(entrenadorEmail, subject, body.String())
 }
 
 // NewMailer creates a new Mailer. If host is empty, it returns a LogMailer.

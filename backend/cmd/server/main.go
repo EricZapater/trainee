@@ -70,7 +70,7 @@ func main() {
 		defer jm.Stop()
 	}
 
-	h := handlers.NewHandler(s, cfg.JWTSecret)
+	h := handlers.NewHandler(s, mailService, cfg.JWTSecret)
 	systemLogsHandler := handlers.NewSystemLogsHandler(s)
 	settingsHandler := handlers.NewSettingsHandler(s, jm)
 	adminHandler := handlers.NewAdminHandler(s, cfg.JWTSecret)

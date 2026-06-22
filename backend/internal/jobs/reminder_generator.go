@@ -57,7 +57,7 @@ func GenerateReminders(s store.Store, m mailer.Mailer, jwtSecret string) error {
 				continue
 			}
 
-			err = m.SendReminder(a.Email, a.Nom, magicToken, weekStart)
+			err = m.SendReminder(a.Email, a.Nom, magicToken, weekStart, a.Idioma)
 			if err != nil {
 				log.Printf("[CRON-REMINDER] Error enviant recordatori a %s: %v", a.Email, err)
 			} else {

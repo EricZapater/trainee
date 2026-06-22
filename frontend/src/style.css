@@ -1,31 +1,43 @@
 :root {
-  --bg-base: #0a0b0f;
-  --bg-surface: #13141b;
-  --bg-card: #1a1b24;
-  --bg-hover: #222330;
+  --bg-base: #f8f9fa;
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
   
-  --border: rgba(255, 255, 255, 0.07);
-  --border-hover: rgba(255, 255, 255, 0.14);
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
   
-  --text-primary: #ececf1;
-  --text-secondary: #8e8ea0;
-  --text-muted: #565669;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
   
-  --accent-primary: #6366f1;
+  --accent-primary: #e3001b; /* Red from Entrenador Trail */
   --accent-success: #22c55e;
   --accent-warning: #eab308;
-  --accent-danger: #ef4444;
+  --accent-danger: #b91c1c;
   
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
   
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
   
   --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* PrimeVue Aura Light Primary Overrides (Red Palette) */
+  --p-primary-50: #fff1f2;
+  --p-primary-100: #ffe4e6;
+  --p-primary-200: #fecdd3;
+  --p-primary-300: #fda4af;
+  --p-primary-400: #fb7185;
+  --p-primary-500: var(--accent-primary);
+  --p-primary-600: #be123c;
+  --p-primary-700: #9f1239;
+  --p-primary-800: #881337;
+  --p-primary-900: #4c0519;
 }
 
 * {
@@ -53,7 +65,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-hover);
+  background: var(--border-hover);
   border-radius: var(--radius-sm);
 }
 
@@ -63,7 +75,7 @@ body {
 
 /* Utilities */
 .glass-card {
-  background: rgba(26, 27, 36, 0.7);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
@@ -83,34 +95,11 @@ body {
 }
 
 /* PrimeVue Overrides */
-.p-dark {
-  --p-surface-0: var(--bg-base);
-  --p-surface-50: var(--bg-surface);
-  --p-surface-100: var(--bg-card);
-  --p-surface-200: var(--bg-hover);
-  --p-surface-300: var(--text-muted);
-  --p-surface-400: var(--text-secondary);
-  --p-surface-500: var(--text-secondary);
-  --p-surface-600: var(--text-secondary);
-  --p-surface-700: var(--text-primary);
-  --p-surface-800: var(--text-primary);
-  --p-surface-900: #ffffff;
-  
-  --p-primary-50: #eef2ff;
-  --p-primary-100: #e0e7ff;
-  --p-primary-200: #c7d2fe;
-  --p-primary-300: #a5b4fc;
-  --p-primary-400: #818cf8;
-  --p-primary-500: var(--accent-primary);
-  --p-primary-600: #4f46e5;
-  --p-primary-700: #4338ca;
-  --p-primary-800: #3730a3;
-  --p-primary-900: #312e81;
-}
-
 .p-button {
-  font-weight: 500;
+  font-weight: 600;
   border-radius: var(--radius-md);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .p-inputtext, .p-password-input, .p-select, .p-textarea {

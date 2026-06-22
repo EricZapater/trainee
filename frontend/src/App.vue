@@ -152,7 +152,8 @@ const handleChangeLanguage = async () => {
     <ConfirmDialog />
     
     <header v-if="authStore.isAuthenticated" class="navbar glass-card">
-      <div class="nav-brand">
+      <div class="nav-brand" style="display: flex; align-items: center; gap: 12px;">
+        <img src="/logo.png" alt="Logo" style="height: 40px; width: auto;" />
         <span class="logo-text">{{ $t('app.title') }}</span>
       </div>
       
