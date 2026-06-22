@@ -167,7 +167,7 @@ const generateReport = async () => {
                 <div class="slot-title">
                   <i :class="['ti', slot.activitat_icona]" :style="{ color: slot.activitat_color }"></i>
                   <span class="font-medium">{{ slot.activitat_nom }}</span>
-                  <span class="badge">{{ slot.durada_hores }}h</span>
+                  <span class="badge">{{ slot.durada_hores >= 4.0 ? '>3' : slot.durada_hores }}h</span>
                 </div>
                 <div v-if="slot.notes" class="slot-notes">
                   <i class="ti ti-message-circle"></i>

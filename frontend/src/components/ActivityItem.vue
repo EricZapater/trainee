@@ -113,12 +113,12 @@ const handleSpecialClick = () => {
         class="duration-select" 
         :disabled="disabled"
       >
-        <option :value="0.5">0.5 h</option>
-        <option :value="1.0">1.0 h</option>
-        <option :value="1.5">1.5 h</option>
-        <option :value="2.0">2.0 h</option>
-        <option :value="2.5">2.5 h</option>
-        <option :value="3.0">3.0 h</option>
+        <option :value="1.0">1h</option>
+        <option :value="1.5">1.5h</option>
+        <option :value="2.0">2h</option>
+        <option :value="2.5">2.5h</option>
+        <option :value="3.0">3h</option>
+        <option :value="4.0">>3h</option>
       </select>
       
       <button 

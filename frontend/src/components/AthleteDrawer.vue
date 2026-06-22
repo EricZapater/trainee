@@ -81,7 +81,7 @@ const handleSpecialClick = (slot: any) => {
                 <div class="slot-info">
                   <i :class="['ti', slot.activitat_icona]" :style="{ color: slot.activitat_color }"></i>
                   <span class="act-name">{{ slot.activitat_nom }}</span>
-                  <span class="duration">{{ slot.durada_hores }}h</span>
+                  <span class="duration">{{ slot.durada_hores >= 4.0 ? '>3' : slot.durada_hores }}h</span>
                 </div>
                 <div v-if="slot.notes" class="slot-notes">
                   <i class="ti ti-message-circle"></i>

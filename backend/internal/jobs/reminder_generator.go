@@ -51,7 +51,7 @@ func GenerateReminders(s store.Store, m mailer.Mailer, jwtSecret string) error {
 		// Si l'estat no és "completada", s'envia el recordatori.
 		if submission.Estat != "completada" {
 			// Generar el magic token
-			magicToken, tErr := auth.GenerateMagicLinkToken(a.ID, jwtSecret)
+			magicToken, tErr := auth.GenerateMagicLinkToken(a.UsuariID, jwtSecret)
 			if tErr != nil {
 				log.Printf("[CRON-REMINDER] Error generant token per a %s: %v", a.Email, tErr)
 				continue
