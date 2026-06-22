@@ -26,9 +26,9 @@ onMounted(async () => {
     if (success) {
       if (week) {
         // Redirigeix a la vista del calendari amb la setmana específica
-        router.push({ path: '/atleta/calendari', query: { week } })
+        router.push({ path: '/calendar', query: { week } })
       } else {
-        router.push('/atleta/calendari')
+        router.push('/calendar')
       }
     } else {
       toast.add({ severity: 'error', summary: 'Error', detail: 'L\'enllaç ha caducat o és invàlid.', life: 3000 })

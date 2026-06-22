@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { useCalendarStore } from '@/stores/useCalendarStore'
 import { useActivitatsStore } from '@/stores/useActivitatsStore'
 import { useWeeksStore } from '@/stores/useWeeksStore'
@@ -115,6 +116,10 @@ const handleMobileAdd = (dia: number) => {
 }
 
 onMounted(() => {
+  const route = useRoute()
+  if (route.query.week) {
+    calendarStore.currentWeekStart = route.query.week as string
+  }
   loadData()
 })
 
