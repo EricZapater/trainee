@@ -90,7 +90,7 @@ type newCompetitionData struct {
 
 func (m *SMTPMailer) sendRawEmail(toEmail, subject, bodyHTML string) error {
 	var message bytes.Buffer
-	message.WriteString(fmt.Sprintf("From: %s\r\n", m.Username))
+	message.WriteString(fmt.Sprintf("From: \"Entrenador Trail\" <%s>\r\n", m.Username))
 	message.WriteString(fmt.Sprintf("To: %s\r\n", toEmail))
 	message.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
 	message.WriteString("MIME-Version: 1.0\r\n")
@@ -187,7 +187,9 @@ func (m *SMTPMailer) SendReminder(toEmail, toName, magicToken, weekStart, idioma
 	magicLink := fmt.Sprintf("%s/magic-login?token=%s&week=%s", appURL, magicToken, weekStart)
 	
 	logoURL := os.Getenv("MAILER_LOGO_URL")
-	// If empty, the template handles it via {{if .LogoURL}}
+	if logoURL == "" {
+		logoURL = "https://trainee.ericzapater.cat/logo.png"
+	}
 
 	data := templateData{
 		Nom:     toName,
