@@ -224,8 +224,7 @@ const handleCreate = async () => {
       </div>
     </div>
 
-    <!-- modal create / edit -->
-    <Dialog v-model:visible="createModalVisible" :header="editingId ? $t('athleteCompetitions.modalEditTitle') : $t('athleteCompetitions.modalNewTitle')" modal :style="{ width: '500px' }">
+    <Dialog v-model:visible="createModalVisible" :header="editingId ? $t('athleteCompetitions.modalEditTitle') : $t('athleteCompetitions.modalNewTitle')" modal :style="{ width: '90vw', maxWidth: '500px' }">
       <div class="flex flex-col gap-4 mt-2">
         <div class="field">
           <label>{{ $t('athleteCompetitions.nameLabel') }}</label>

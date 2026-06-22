@@ -111,7 +111,7 @@ const handleTraspassar = async (comp: Competicio) => {
       </div>
     </div>
 
-    <Dialog v-model:visible="isEditingTipus" modal :header="$t('competitionsManager.editTypeTitle')" :style="{ width: '25rem' }">
+    <Dialog v-model:visible="isEditingTipus" modal :header="$t('competitionsManager.editTypeTitle')" :style="{ width: '90vw', maxWidth: '25rem' }">
       <div class="flex flex-col gap-4 py-4">
         <label for="tipus" class="font-bold">{{ $t('competitionsManager.type') }} (A, B, C)</label>
         <Select id="tipus" v-model="selectedTipus" :options="tipusOptions" :placeholder="$t('competitionsManager.selectType')" class="w-full" />

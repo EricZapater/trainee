@@ -7,6 +7,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env.backend
+    environment:
+      - TZ=Europe/Madrid
     volumes:
       - backend_uploads:/app/uploads
     networks:
