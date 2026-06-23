@@ -77,6 +77,11 @@ export const cloneForm = async (id: string): Promise<{ id: string; message: stri
   return data
 }
 
+export const traspassarForm = async (id: string, targetEntrenadorId: string): Promise<{ id: string; message: string }> => {
+  const { data } = await apiClient.post(`/entrenador/forms/${id}/traspassar`, { target_entrenador_id: targetEntrenadorId })
+  return data
+}
+
 export const addFormQuestion = async (
   formId: string, 
   payload: { pregunta: string; tipus: string; opcions: string | null; obligatori: boolean; ordre: number }

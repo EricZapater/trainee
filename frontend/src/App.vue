@@ -184,11 +184,11 @@ const handleChangeLanguage = async () => {
               <span v-if="compStore.pendingCount > 0" class="badge">{{ compStore.pendingCount }}</span>
             </router-link>
             <router-link to="/informe" class="nav-link">{{ $t('nav.athleteReports') }}</router-link>
-            <router-link to="/entrenador/logs" class="nav-link">Registre d'Accions</router-link>
             <router-link to="/entrenador/configuracio" class="nav-link">Configuració</router-link>
           </template>
           <template v-if="authStore.usuari?.rol === 'admin' && !isAdminImpersonating">
             <router-link to="/admin" class="nav-link"><i class="ti ti-shield-check"></i> Panell d'Admin</router-link>
+            <router-link to="/admin/logs" class="nav-link"><i class="ti ti-list"></i> Registre d'Accions</router-link>
           </template>
         </nav>
         

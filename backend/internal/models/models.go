@@ -63,6 +63,7 @@ type WeeklySubmission struct {
 	WeekStart    string    `json:"week_start"`
 	NotesSetmana *string   `json:"notes_setmana"`
 	Estat        string    `json:"estat"`
+	Gestionat    bool      `json:"gestionat"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -277,12 +278,19 @@ type MySubmissionResponse struct {
 // ============================================================
 
 type AtletaSubmissionSummary struct {
-	AtletaID  string      `json:"atleta_id"`
-	Nom       string      `json:"nom"`
-	Email     string      `json:"email"`
-	HaRespost bool        `json:"ha_respost"`
-	Estat     string      `json:"estat"`
-	Slots     []SlotEntry `json:"slots"`
+	AtletaID     string      `json:"atleta_id"`
+	SubmissionID *string     `json:"submission_id,omitempty"`
+	Nom          string      `json:"nom"`
+	Email        string      `json:"email"`
+	HaRespost    bool        `json:"ha_respost"`
+	Estat        string      `json:"estat"`
+	NotesSetmana *string     `json:"notes_setmana"`
+	Gestionat    bool        `json:"gestionat"`
+	Slots        []SlotEntry `json:"slots"`
+}
+
+type ToggleSubmissionGestionatRequest struct {
+	Gestionat bool `json:"gestionat"`
 }
 
 type EntrenadorSubmissionsResponse struct {

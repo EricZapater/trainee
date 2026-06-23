@@ -123,10 +123,10 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'entrenador' }
     },
     {
-      path: '/entrenador/logs',
+      path: '/admin/logs',
       name: 'system_logs',
       component: () => import('@/views/SystemLogsView.vue'),
-      meta: { requiresAuth: true, role: 'entrenador' }
+      meta: { requiresAuth: true, role: 'admin' }
     },
     {
       path: '/entrenador/configuracio',

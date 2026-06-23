@@ -10,7 +10,7 @@ export interface SystemLog {
 }
 
 export async function getSystemLogs(limit: number = 100, offset: number = 0): Promise<SystemLog[]> {
-  const { data } = await api.get<SystemLog[]>('/entrenador/system-logs', {
+  const { data } = await api.get<SystemLog[]>('/admin/system-logs', {
     params: { limit, offset }
   })
   return data

@@ -2,12 +2,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getEntrenadorWeeks, getEntrenadorSubmissions } from '@/api/entrenador'
+import { getEntrenadorWeeks, getEntrenadorSubmissions, toggleSubmissionGestionat } from '@/api/entrenador'
 import { useToast } from 'primevue/usetoast'
 import type { ManagedWeekWithCount, EntrenadorSubmissionsResponse, AtletaSubmissionSummary } from '@/types'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Paginator from 'primevue/paginator'
+import Checkbox from 'primevue/checkbox'
 import AthleteDrawer from '@/components/AthleteDrawer.vue'
 
 const router = useRouter()
@@ -94,6 +95,17 @@ const handleSpecialClick = (slot: any) => {
     router.push(`/tests/${slot.test_id}`)
   }
 }
+
+const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
+  if (!atleta.submission_id) return
+  try {
+    await toggleSubmissionGestionat(atleta.submission_id, atleta.gestionat)
+    toast.add({ severity: 'success', summary: 'Estat actualitzat', detail: 'S\'ha guardat l\'estat de gestió', life: 3000 })
+  } catch (e) {
+    atleta.gestionat = !atleta.gestionat // revert on failure
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut actualitzar l\'estat', life: 3000 })
+  }
+}
 </script>
 
 <template>
@@ -158,6 +170,8 @@ const handleSpecialClick = (slot: any) => {
               <th>{{ $t('dashboard.days.5') }}</th>
               <th>{{ $t('dashboard.days.6') }}</th>
               <th>{{ $t('dashboard.days.7') }}</th>
+              <th class="col-notes" style="width: 150px;">Notes</th>
+              <th class="col-gestionat" style="width: 80px;">Gestionat</th>
             </tr>
           </thead>
           <tbody>
@@ -196,9 +210,23 @@ const handleSpecialClick = (slot: any) => {
                   </div>
                 </div>
               </td>
+              <td class="col-notes text-center" style="max-width: 150px;">
+                <div class="notes-preview" :title="atleta.notes_setmana" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem; color: var(--text-secondary);">
+                  {{ atleta.notes_setmana || '-' }}
+                </div>
+              </td>
+              <td class="col-gestionat text-center" @click.stop>
+                <Checkbox 
+                  v-if="atleta.submission_id"
+                  v-model="atleta.gestionat" 
+                  binary 
+                  @change="handleGestionatChange(atleta)" 
+                />
+                <span v-else class="text-muted">-</span>
+              </td>
             </tr>
             <tr v-if="filteredAtletes.length === 0">
-              <td colspan="8" class="text-center py-4 text-muted">
+              <td colspan="10" class="text-center py-4 text-muted">
                 <span v-if="submissionsData.atletes.length === 0">{{ $t('dashboard.noAthletes') }}</span>
                 <span v-else>{{ $t('dashboard.allResponded') }}</span>
               </td>

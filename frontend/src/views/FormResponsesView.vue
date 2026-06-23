@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
@@ -7,6 +7,7 @@ import { getFormResponses, updateResponseStatus, getFormDetails, type FormRespon
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
+import DatePicker from 'primevue/datepicker'
 
 const route = useRoute()
 const router = useRouter()
@@ -78,14 +79,53 @@ const getQuestionText = (qId: string) => {
   const q = formDetails.value.questions.find(x => x.id === qId)
   return q ? q.pregunta : qId
 }
+
+const dateRange = ref<Date[]>([])
+
+const filteredResponses = computed(() => {
+  if (!dateRange.value || dateRange.value.length === 0) return responses.value
+  const start = dateRange.value[0]
+  const end = dateRange.value[1]
+  
+  return responses.value.filter(res => {
+    const d = new Date(res.created_at)
+    
+    if (start && end) {
+      const s = new Date(start)
+      s.setHours(0, 0, 0, 0)
+      const e = new Date(end)
+      e.setHours(23, 59, 59, 999)
+      return d >= s && d <= e
+    } else if (start) {
+      const s = new Date(start)
+      s.setHours(0, 0, 0, 0)
+      return d >= s
+    }
+    return true
+  })
+})
 </script>
 
 <template>
   <div class="form-responses max-w-5xl mx-auto">
     <div class="page-header glass-card mb-6">
-      <div class="flex align-center gap-4">
-        <Button icon="ti ti-arrow-left" text rounded aria-label="Tornar" @click="router.back()" />
-        <h1 class="page-title">{{ $t('forms.responsesTitle') }}</h1>
+      <div class="flex align-center justify-between">
+        <div class="flex align-center gap-4">
+          <Button icon="ti ti-arrow-left" text rounded aria-label="Tornar" @click="router.back()" />
+          <h1 class="page-title">{{ $t('forms.responsesTitle') }}</h1>
+        </div>
+        
+        <div v-if="responses.length > 0">
+          <DatePicker 
+            v-model="dateRange" 
+            selectionMode="range" 
+            :manualInput="false" 
+            placeholder="Filtra per dates..."
+            showIcon 
+            iconDisplay="input"
+            class="w-full md:w-auto"
+          />
+        </div>
       </div>
     </div>
 
@@ -100,8 +140,13 @@ const getQuestionText = (qId: string) => {
         <p>Aquest formulari encara no té respostes.</p>
       </div>
 
+      <div v-else-if="filteredResponses.length === 0" class="glass-card text-center py-8 text-secondary">
+        <i class="ti ti-filter text-4xl mb-3 opacity-50"></i>
+        <p>No hi ha respostes en aquestes dates.</p>
+      </div>
+
       <div v-else class="responses-grid">
-        <div v-for="res in responses" :key="res.id" class="glass-card flex flex-col gap-3">
+        <div v-for="res in filteredResponses" :key="res.id" class="glass-card flex flex-col gap-3">
           <div class="flex justify-between align-start">
             <div>
               <h3 class="font-bold text-lg mb-1">{{ res.nom_candidat }}</h3>

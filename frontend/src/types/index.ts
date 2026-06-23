@@ -106,10 +106,13 @@ export interface MySubmissionResponse {
 
 export interface AtletaSubmissionSummary {
   atleta_id: string
+  submission_id?: string
   nom: string
   email: string
   ha_respost: boolean
   estat: string
+  notes_setmana?: string
+  gestionat: boolean
   slots: SlotEntry[]
 }
 

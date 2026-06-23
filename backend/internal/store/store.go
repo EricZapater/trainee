@@ -49,6 +49,7 @@ type Store interface {
 	UpsertSubmission(ctx context.Context, atletaID string, req models.SubmissionRequest) (*models.SubmissionResponse, error)
 	GetSubmissionByAtletaAndWeek(ctx context.Context, atletaID, weekStart string) (*models.MySubmissionResponse, error)
 	GetSubmissionsByEntrenadorAndWeek(ctx context.Context, entrenadorID, weekStart string) (*models.EntrenadorSubmissionsResponse, error)
+	ToggleSubmissionGestionat(ctx context.Context, submissionID string, entrenadorID string, gestionat bool) error
 	GetInformeAtleta(ctx context.Context, atletaID string, start, end string) (*models.InformeResponse, error)
 
 	// Competicions

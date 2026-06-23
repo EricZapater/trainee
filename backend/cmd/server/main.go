@@ -116,6 +116,7 @@ func main() {
 	entrenadorRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireRole("entrenador"))
 	{
 		entrenadorRoutes.GET("/submissions", h.GetEntrenadorSubmissions)
+		entrenadorRoutes.PATCH("/submissions/:id/gestionat", h.ToggleSubmissionGestionat)
 		entrenadorRoutes.GET("/atletes", h.ListAtletes)
 		entrenadorRoutes.GET("/atletes/:id/informe", h.GetInformeAtleta)
 		entrenadorRoutes.GET("/weeks", h.ListEntrenadorWeeks)
@@ -148,6 +149,7 @@ func main() {
 		entrenadorRoutes.PUT("/forms/:id", h.UpdateForm)
 		entrenadorRoutes.DELETE("/forms/:id", h.DeleteForm)
 		entrenadorRoutes.POST("/forms/:id/clone", h.CloneForm)
+		entrenadorRoutes.POST("/forms/:id/traspassar", h.TraspassarForm)
 		
 		entrenadorRoutes.POST("/forms/:id/questions", h.AddFormQuestion)
 		entrenadorRoutes.PUT("/forms/:id/questions/:questionId", h.UpdateFormQuestion)
@@ -157,8 +159,7 @@ func main() {
 		entrenadorRoutes.GET("/forms/:id/responses", h.GetFormResponses)
 		entrenadorRoutes.PUT("/responses/:responseId/status", h.UpdateResponseStatus)
 
-		// System Logs i Settings
-		entrenadorRoutes.GET("/system-logs", systemLogsHandler.GetSystemLogs)
+		// Settings
 		entrenadorRoutes.GET("/settings/cron", settingsHandler.GetCronSettings)
 		entrenadorRoutes.PUT("/settings/cron", settingsHandler.UpdateCronSettings)
 	}
@@ -166,6 +167,7 @@ func main() {
 	adminRoutes := api.Group("/admin")
 	adminRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireRole("admin"))
 	{
+		adminRoutes.GET("/system-logs", systemLogsHandler.GetSystemLogs)
 		adminRoutes.GET("/usuaris", adminHandler.GetUsuaris)
 		adminRoutes.POST("/impersonate/:id", adminHandler.Impersonate)
 	}

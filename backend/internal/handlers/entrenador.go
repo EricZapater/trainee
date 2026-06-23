@@ -221,3 +221,32 @@ func (h *Handler) ReasignarAtleta(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+func (h *Handler) ToggleSubmissionGestionat(ctx *gin.Context) {
+	submissionID := ctx.Param("id")
+	if submissionID == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "ID de submission no especificat"})
+		return
+	}
+
+	var req models.ToggleSubmissionGestionatRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	usuariID := ctx.GetString("user_id")
+	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
+		return
+	}
+
+	err = h.Store.ToggleSubmissionGestionat(ctx.Request.Context(), submissionID, entrenador.ID, req.Gestionat)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error canviant l'estat gestionat"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
+}

@@ -3,12 +3,14 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { listEntrenadorForms, createForm, deleteForm, cloneForm, type FormWithQuestions } from '@/api/forms'
+import { listEntrenadorForms, createForm, deleteForm, cloneForm, traspassarForm, type FormWithQuestions } from '@/api/forms'
+import { getEntrenadorsList } from '@/api/entrenador'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import InputSwitch from 'primevue/inputswitch'
+import Select from 'primevue/select'
 
 const router = useRouter()
 const toast = useToast()
@@ -16,6 +18,8 @@ const { t } = useI18n()
 
 const forms = ref<FormWithQuestions[]>([])
 const loading = ref(true)
+
+const entrenadors = ref<{id: string, nom: string}[]>([])
 
 const loadForms = async () => {
   loading.value = true
@@ -28,8 +32,17 @@ const loadForms = async () => {
   }
 }
 
+const loadEntrenadors = async () => {
+  try {
+    entrenadors.value = await getEntrenadorsList()
+  } catch (e) {
+    console.error("No s'han pogut carregar els entrenadors")
+  }
+}
+
 onMounted(() => {
   loadForms()
+  loadEntrenadors()
 })
 
 const createVisible = ref(false)
@@ -84,18 +97,29 @@ const copyLink = (id: string) => {
   toast.add({ severity: 'info', summary: 'Copiada', detail: 'Enllaç copiat al porta-retalls', life: 3000 })
 }
 
-// Import form
-const importVisible = ref(false)
-const importId = ref('')
-const handleImport = async () => {
-  if (!importId.value) return
+// Traspassar form
+const traspassarVisible = ref(false)
+const traspassarFormId = ref('')
+const targetEntrenadorId = ref('')
+const traspassarLoading = ref(false)
+
+const openTraspassar = (id: string) => {
+  traspassarFormId.value = id
+  targetEntrenadorId.value = ''
+  traspassarVisible.value = true
+}
+
+const handleTraspassar = async () => {
+  if (!traspassarFormId.value || !targetEntrenadorId.value) return
+  traspassarLoading.value = true
   try {
-    const res = await cloneForm(importId.value)
-    toast.add({ severity: 'success', summary: 'Importat', detail: res.message, life: 3000 })
-    importVisible.value = false
-    loadForms()
+    await traspassarForm(traspassarFormId.value, targetEntrenadorId.value)
+    toast.add({ severity: 'success', summary: 'Copiada', detail: 'S\'ha copiat el formulari a l\'entrenador destí', life: 3000 })
+    traspassarVisible.value = false
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut importar o l\'ID és invàlid', life: 3000 })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut copiar el formulari', life: 3000 })
+  } finally {
+    traspassarLoading.value = false
   }
 }
 
@@ -107,7 +131,6 @@ const handleImport = async () => {
       <div class="flex justify-between align-center">
         <h1 class="page-title"><i class="ti ti-clipboard-list text-accent mr-2"></i>{{ $t('forms.title') }}</h1>
         <div class="flex gap-2">
-          <Button label="Importar ID" icon="ti ti-download" severity="secondary" outlined @click="importVisible = true" />
           <Button :label="$t('forms.newForm')" icon="ti ti-plus" @click="createVisible = true; formPayload = { titol: '', descripcio: '', actiu: false }" />
         </div>
       </div>
@@ -146,6 +169,7 @@ const handleImport = async () => {
           <Button v-tooltip.top="$t('forms.edit')" icon="ti ti-edit" outlined @click="router.push(`/entrenador/forms/${form.id}/edit`)" />
           <Button v-tooltip.top="$t('forms.viewResponses')" icon="ti ti-eye" severity="secondary" outlined @click="router.push(`/entrenador/forms/${form.id}/responses`)" />
           <Button v-tooltip.top="$t('forms.clone')" icon="ti ti-copy" severity="info" outlined @click="handleClone(form.id)" />
+          <Button v-tooltip.top="'Copiar cap a'" icon="ti ti-arrow-forward" severity="warning" outlined @click="openTraspassar(form.id)" />
           <Button v-if="form.actiu" v-tooltip.top="$t('forms.share')" icon="ti ti-link" severity="success" outlined @click="copyLink(form.id)" />
           <Button v-tooltip.top="'Esborrar'" icon="ti ti-trash" severity="danger" text @click="confirmDelete(form.id)" />
         </div>
@@ -174,18 +198,25 @@ const handleImport = async () => {
       </template>
     </Dialog>
 
-    <!-- Import Modal -->
-    <Dialog v-model:visible="importVisible" header="Importar Formulari" modal :style="{ width: '400px' }">
+    <!-- Traspassar Modal -->
+    <Dialog v-model:visible="traspassarVisible" header="Copiar Formulari" modal :style="{ width: '400px' }">
       <div class="flex flex-col gap-4 mt-2">
-        <p class="text-sm text-secondary">Introdueix l'ID d'un formulari d'un altre entrenador per clonar-lo al teu compte.</p>
+        <p class="text-sm text-secondary">Tria l'entrenador a qui vols copiar aquest formulari.</p>
         <div class="field">
-          <label>ID del Formulari (UUID)</label>
-          <InputText v-model="importId" class="w-full" autofocus />
+          <label>Entrenador destí</label>
+          <Select 
+            v-model="targetEntrenadorId" 
+            :options="entrenadors" 
+            optionLabel="nom" 
+            optionValue="id" 
+            placeholder="Selecciona un entrenador" 
+            class="w-full"
+          />
         </div>
       </div>
       <template #footer>
-        <Button label="Cancel·lar" icon="ti ti-x" text @click="importVisible = false" />
-        <Button label="Importar" icon="ti ti-download" @click="handleImport" />
+        <Button label="Cancel·lar" icon="ti ti-x" text @click="traspassarVisible = false" />
+        <Button label="Copiar" icon="ti ti-check" @click="handleTraspassar" :loading="traspassarLoading" />
       </template>
     </Dialog>
   </div>

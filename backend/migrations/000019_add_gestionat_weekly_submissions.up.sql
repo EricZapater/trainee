@@ -1,0 +1,1 @@
+ALTER TABLE weekly_submissions ADD COLUMN gestionat BOOLEAN NOT NULL DEFAULT FALSE;

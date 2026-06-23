@@ -83,3 +83,7 @@ export async function getEntrenadorsList(): Promise<{ id: string; nom: string }[
 export async function reassignAtleta(id: string, newEntrenadorId: string): Promise<void> {
   await api.patch(`/entrenador/atletes/${id}/reasignar`, { new_entrenador_id: newEntrenadorId })
 }
+
+export async function toggleSubmissionGestionat(submissionId: string, gestionat: boolean): Promise<void> {
+  await api.patch(`/entrenador/submissions/${submissionId}/gestionat`, { gestionat })
+}

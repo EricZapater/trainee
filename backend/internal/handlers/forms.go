@@ -234,6 +234,45 @@ func (h *Handler) CloneForm(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": newFormID, "message": "Formulari clonat amb èxit"})
 }
 
+type TraspassarFormRequest struct {
+	TargetEntrenadorID string `json:"target_entrenador_id" binding:"required"`
+}
+
+// TraspassarForm - Copia un formulari existent sota el compte d'un altre entrenador
+func (h *Handler) TraspassarForm(c *gin.Context) {
+	entrenadorID, err := h.getEntrenadorIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
+		return
+	}
+	id := c.Param("id")
+
+	var req TraspassarFormRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify ownership
+	f, err := h.Store.GetFormDetails(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Formulari no trobat"})
+		return
+	}
+	if f.EntrenadorID != entrenadorID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "No ets el propietari d'aquest formulari"})
+		return
+	}
+
+	newFormID, err := h.Store.CloneForm(c.Request.Context(), id, req.TargetEntrenadorID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"id": newFormID, "message": "Formulari copiat amb èxit"})
+}
+
 // DeleteForm
 func (h *Handler) DeleteForm(c *gin.Context) {
 	entrenadorID, err := h.getEntrenadorIDFromContext(c)

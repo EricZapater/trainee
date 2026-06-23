@@ -151,15 +151,20 @@ func (s *PostgresStore) GetSubmissionsByEntrenadorAndWeek(ctx context.Context, e
 
 		var submissionID string
 		var estat string
+		var notesSetmana *string
+		var gestionat bool
 		err := s.pool.QueryRow(ctx,
-			`SELECT id, estat FROM weekly_submissions
+			`SELECT id, estat, notes_setmana, gestionat FROM weekly_submissions
 			 WHERE atleta_id = $1 AND week_start = $2::date`,
 			atleta.ID, weekStart,
-		).Scan(&submissionID, &estat)
+		).Scan(&submissionID, &estat, &notesSetmana, &gestionat)
 
 		if err == nil {
 			summary.HaRespost = true
+			summary.SubmissionID = &submissionID
 			summary.Estat = estat
+			summary.NotesSetmana = notesSetmana
+			summary.Gestionat = gestionat
 
 			rows, err := s.pool.Query(ctx,
 				`SELECT se.id, se.submission_id, se.dia, se.ordre, se.activitat_id,
@@ -288,3 +293,19 @@ func (s *PostgresStore) GetInformeAtleta(ctx context.Context, atletaID string, s
 	return resp, nil
 }
 
+func (s *PostgresStore) ToggleSubmissionGestionat(ctx context.Context, submissionID string, entrenadorID string, gestionat bool) error {
+	res, err := s.pool.Exec(ctx,
+		`UPDATE weekly_submissions ws
+		 SET gestionat = $1, updated_at = now()
+		 FROM atletes a
+		 WHERE ws.id = $2 AND ws.atleta_id = a.id AND a.entrenador_id = $3`,
+		gestionat, submissionID, entrenadorID,
+	)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return errors.New("no s'ha trobat la setmana o no tens permís")
+	}
+	return nil
+}
