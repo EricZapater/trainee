@@ -78,10 +78,14 @@ const togglePendingFilter = () => {
 
 const filteredAtletes = computed(() => {
   if (!submissionsData.value) return []
+  
+  let list = submissionsData.value.atletes
   if (showOnlyPending.value) {
-    return submissionsData.value.atletes.filter(a => !a.ha_respost)
+    list = list.filter(a => !a.ha_respost)
   }
-  return submissionsData.value.atletes
+  
+  // Sort by athlete name ascending
+  return list.slice().sort((a, b) => a.nom.localeCompare(b.nom))
 })
 
 const paginatedAtletes = computed(() => {
