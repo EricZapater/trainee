@@ -223,7 +223,7 @@ const handleChangeLanguage = async () => {
             <span class="user-name">{{ authStore.usuari?.nom }}</span>
             <i class="ti ti-chevron-down text-sm"></i>
           </button>
-          <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" />
+          <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" appendTo="body" />
         </div>
       </div>
     </header>
@@ -465,6 +465,8 @@ const handleChangeLanguage = async () => {
     gap: 24px;
     border-bottom: 1px solid var(--border);
     box-shadow: var(--shadow-md);
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
     transform: translateY(-150%);
     transition: transform var(--transition-normal);
     z-index: 99;
