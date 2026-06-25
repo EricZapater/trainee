@@ -190,6 +190,11 @@
     "deactivated": "Deactivated",
     "close": "Close"
   },
+  "competitionsTipus": {
+    "A": "Main competition (A)",
+    "B": "Preparation competition for A (B)",
+    "C": "Training with bib (C)"
+  },
   "activitiesManager": {
     "title": "Activity Management",
     "newActivity": "New activity",

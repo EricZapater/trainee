@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { getEntrenadorCompeticions, traspassarCompeticio } from '@/api/competicions'
 import type { Competicio } from '@/types'
 import { useCompeticionsStore } from '@/stores/useCompeticionsStore'
@@ -34,7 +34,11 @@ onMounted(() => {
 const editingComp = ref<Competicio | null>(null)
 const isEditingTipus = ref(false)
 const selectedTipus = ref<string>('A')
-const tipusOptions = ['A', 'B', 'C']
+const tipusOptions = computed(() => [
+  { label: t('competitionsTipus.A'), value: 'A' },
+  { label: t('competitionsTipus.B'), value: 'B' },
+  { label: t('competitionsTipus.C'), value: 'C' }
+])
 
 const openEditTipus = (comp: Competicio) => {
   editingComp.value = comp
@@ -93,7 +97,7 @@ const handleTraspassar = async (comp: Competicio) => {
           </div>
           <div class="comp-details text-secondary mt-2">
             <span><i class="ti ti-calendar"></i> {{ comp.data }}</span>
-            <span><i class="ti ti-tag"></i> {{ $t('competitionsManager.type') }}: {{ comp.tipus || 'A' }}</span>
+            <span><i class="ti ti-tag"></i> {{ $t('competitionsManager.type') }}: {{ $t('competitionsTipus.' + (comp.tipus || 'A')) }}</span>
             <span v-if="comp.kms"><i class="ti ti-route"></i> {{ comp.kms }} km</span>
             <span v-if="comp.desnivell"><i class="ti ti-mountain"></i> {{ comp.desnivell }} m+</span>
           </div>
@@ -114,7 +118,7 @@ const handleTraspassar = async (comp: Competicio) => {
     <Dialog v-model:visible="isEditingTipus" modal :header="$t('competitionsManager.editTypeTitle')" :style="{ width: '90vw', maxWidth: '25rem' }">
       <div class="flex flex-col gap-4 py-4">
         <label for="tipus" class="font-bold">{{ $t('competitionsManager.type') }} (A, B, C)</label>
-        <Select id="tipus" v-model="selectedTipus" :options="tipusOptions" :placeholder="$t('competitionsManager.selectType')" class="w-full" />
+        <Select id="tipus" v-model="selectedTipus" :options="tipusOptions" optionLabel="label" optionValue="value" :placeholder="$t('competitionsManager.selectType')" class="w-full" />
       </div>
       <template #footer>
         <Button :label="$t('competitionsManager.cancel')" icon="ti ti-x" text severity="secondary" @click="isEditingTipus = false" />

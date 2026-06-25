@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getAtletaCompeticions, createCompeticio, updateCompeticio } from '@/api/competicions'
 import type { Competicio } from '@/types'
@@ -35,7 +35,11 @@ const form = ref({
   estat: 'activa' as 'activa' | 'descartada'
 })
 
-const tipusOptions = ['A', 'B', 'C']
+const tipusOptions = computed(() => [
+  { label: t('competitionsTipus.A'), value: 'A' },
+  { label: t('competitionsTipus.B'), value: 'B' },
+  { label: t('competitionsTipus.C'), value: 'C' }
+])
 
 const loadCompeticions = async () => {
   loading.value = true
@@ -209,7 +213,7 @@ const handleCreate = async () => {
           </div>
           <div class="comp-details text-secondary mt-2" :class="{ 'opacity-50': comp.estat === 'descartada' }">
             <span><i class="ti ti-calendar"></i> {{ comp.data }}</span>
-            <span><i class="ti ti-tag"></i> {{ $t('athleteCompetitions.type') }}: {{ comp.tipus || 'A' }}</span>
+            <span><i class="ti ti-tag"></i> {{ $t('athleteCompetitions.type') }}: {{ $t('competitionsTipus.' + (comp.tipus || 'A')) }}</span>
             <span v-if="comp.kms"><i class="ti ti-route"></i> {{ comp.kms }} km</span>
             <span v-if="comp.desnivell"><i class="ti ti-mountain"></i> {{ comp.desnivell }} m+</span>
           </div>
@@ -236,7 +240,7 @@ const handleCreate = async () => {
         </div>
         <div class="field">
           <label>{{ $t('athleteCompetitions.typeLabel') }}</label>
-          <Select v-model="form.tipus" :options="tipusOptions" :placeholder="$t('athleteCompetitions.typePlaceholder')" class="w-full" />
+          <Select v-model="form.tipus" :options="tipusOptions" optionLabel="label" optionValue="value" :placeholder="$t('athleteCompetitions.typePlaceholder')" class="w-full" />
         </div>
         <div class="flex gap-4">
           <div class="field flex-1">

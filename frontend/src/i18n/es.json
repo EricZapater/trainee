@@ -190,6 +190,11 @@
     "deactivated": "Desactivado",
     "close": "Cerrar"
   },
+  "competitionsTipus": {
+    "A": "Competición principal (A)",
+    "B": "Competición para preparar A (B)",
+    "C": "Entrenamiento con dorsal (C)"
+  },
   "activitiesManager": {
     "title": "Gestión de Actividades",
     "newActivity": "Nueva actividad",

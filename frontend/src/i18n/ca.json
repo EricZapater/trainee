@@ -190,6 +190,11 @@
     "deactivated": "Desactivat",
     "close": "Tancar"
   },
+  "competitionsTipus": {
+    "A": "Competició principal (A)",
+    "B": "Competició per preparar A (B)",
+    "C": "Entrenament amb dorsal (C)"
+  },
   "activitiesManager": {
     "title": "Gestió d'Activitats",
     "newActivity": "Nova activitat",
