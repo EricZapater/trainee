@@ -56,8 +56,14 @@ const handleSpecialClick = (slot: any) => {
       <div v-if="!atleta.ha_respost" class="no-response">
         {{ $t('athleteDrawer.noResponse') }}
       </div>
-      
       <div v-else class="days-list">
+        
+        <div v-if="atleta.notes_setmana" class="week-notes-section">
+          <h4>{{ $t('calendar.weekNotesTitle') || 'Notes de la Setmana' }}</h4>
+          <div class="week-notes-content">
+            {{ atleta.notes_setmana }}
+          </div>
+        </div>
         <template v-for="dia in 7" :key="dia">
           <div v-if="getSlotsForDay(dia-1).length > 0" class="day-section">
             <h4 class="day-title">{{ $t(`athleteDrawer.fullDays.${dia}`) }}</h4>
@@ -208,5 +214,26 @@ const handleSpecialClick = (slot: any) => {
 }
 .cursor-pointer:hover {
   filter: brightness(1.2);
+}
+
+.week-notes-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.week-notes-section h4 {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.week-notes-content {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 </style>

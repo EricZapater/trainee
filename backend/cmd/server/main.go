@@ -98,6 +98,14 @@ func main() {
 		authenticated.POST("/auth/change-password", h.ChangePassword)
 		authenticated.PATCH("/usuaris/me/idioma", h.UpdateIdioma)
 
+		// Anuncis (accessible by all roles)
+		authenticated.GET("/anuncis", h.ListAnuncis)
+		authenticated.POST("/anuncis", h.CreateAnunci)
+		authenticated.PATCH("/anuncis/:id/status", h.UpdateAnunciStatus)
+		authenticated.PATCH("/anuncis/:id/estat", h.UpdateAnunciEstat)
+		authenticated.GET("/anuncis/tags", h.GetAnunciTags)
+		authenticated.POST("/anuncis/upload", h.UploadAnunciImage)
+
 		atletesAuth := authenticated.Group("/atletes")
 		atletesAuth.Use(middleware.RequireRole("atleta"))
 		atletesAuth.GET("/me", h.GetMe)

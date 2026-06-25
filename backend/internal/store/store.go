@@ -97,4 +97,12 @@ type Store interface {
 	// System Settings
 	GetSystemSetting(ctx context.Context, key string) ([]byte, error)
 	UpdateSystemSetting(ctx context.Context, key string, value []byte) error
+
+	// Anuncis
+	ListAnuncis(ctx context.Context) ([]models.Anunci, error)
+	CreateAnunci(ctx context.Context, autorID string, req models.CreateAnunciRequest, estat string) (*models.Anunci, error)
+	UpdateAnunciStatus(ctx context.Context, id string, actiu bool) error
+	UpdateAnunciEstat(ctx context.Context, id string, estat string) error
+	GetAnunciByID(ctx context.Context, id string) (*models.Anunci, error)
+	GetUniqueAnunciTags(ctx context.Context) ([]string, error)
 }

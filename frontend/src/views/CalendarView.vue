@@ -75,15 +75,21 @@ const handleColumnDrop = (e: DragEvent, dia: number) => {
   const dataString = e.dataTransfer?.getData('application/json')
   if (dataString) {
     try {
-      const act = JSON.parse(dataString)
-      calendarStore.addSlotToDay(dia, {
-        activitat_id: act.id,
-        activitat_nom: act.nom,
-        activitat_icona: act.icona,
-        activitat_color: act.color,
-        durada_hores: 1.0,
-        notes: ''
-      })
+      const payload = JSON.parse(dataString)
+      if (payload.type === 'multi' && Array.isArray(payload.activities)) {
+        payload.activities.forEach((act: any) => {
+          calendarStore.addSlotToDay(dia, {
+            activitat_id: act.id,
+            activitat_nom: act.nom,
+            activitat_icona: act.icona,
+            activitat_color: act.color,
+            durada_hores: calendarStore.horesDisponiblesPerDia[dia] || 1.0,
+            notes: ''
+          })
+        })
+        // Clear selection after dropping successfully
+        calendarStore.selectedMobileActivities = []
+      }
     } catch (err) {}
     return
   }
@@ -101,17 +107,18 @@ const handleColumnDrop = (e: DragEvent, dia: number) => {
 
 const handleMobileAdd = (dia: number) => {
   if (!isWeekOpen.value) return
-  if (calendarStore.selectedMobileActivity) {
-    const act = calendarStore.selectedMobileActivity
-    calendarStore.addSlotToDay(dia, {
-      activitat_id: act.id,
-      activitat_nom: act.nom,
-      activitat_icona: act.icona,
-      activitat_color: act.color,
-      durada_hores: 1.0,
-      notes: ''
+  if (calendarStore.selectedMobileActivities.length > 0) {
+    calendarStore.selectedMobileActivities.forEach(act => {
+      calendarStore.addSlotToDay(dia, {
+        activitat_id: act.id,
+        activitat_nom: act.nom,
+        activitat_icona: act.icona,
+        activitat_color: act.color,
+        durada_hores: calendarStore.horesDisponiblesPerDia[dia] || 1.0,
+        notes: ''
+      })
     })
-    calendarStore.selectedMobileActivity = null
+    calendarStore.selectedMobileActivities = []
   }
 }
 
@@ -180,6 +187,22 @@ const handleSave = async (isCompleted: boolean = false) => {
           <div v-for="(dia, i) in dies" :key="dia" class="grid-header-cell day-header">
             <span class="day-name">{{ typeof dia === 'string' ? dia.substring(0, 3) : '' }}</span>
             <span class="day-date">{{ formatDate(calendarStore.currentWeekStart, i) }}</span>
+            <div class="day-hours-selector">
+              <i class="ti ti-clock"></i>
+              <select 
+                v-model="calendarStore.horesDisponiblesPerDia[i]"
+                @change="calendarStore.setHoresDia(i, calendarStore.horesDisponiblesPerDia[i])"
+                class="duration-select-header"
+                :disabled="!isWeekOpen"
+              >
+                <option :value="1.0">1h</option>
+                <option :value="1.5">1.5h</option>
+                <option :value="2.0">2h</option>
+                <option :value="2.5">2.5h</option>
+                <option :value="3.0">3h</option>
+                <option :value="4.0">>3h</option>
+              </select>
+            </div>
           </div>
 
           <!-- 7 Columns -->
@@ -215,6 +238,21 @@ const handleSave = async (isCompleted: boolean = false) => {
               <h3>{{ typeof dies[dia-1] === 'string' ? dies[dia-1] : '' }}</h3>
               <span class="mobile-date">{{ formatDate(calendarStore.currentWeekStart, dia-1) }}</span>
             </div>
+            <div class="mobile-day-hours" @click.stop>
+              <select 
+                v-model="calendarStore.horesDisponiblesPerDia[dia-1]"
+                @change="calendarStore.setHoresDia(dia-1, calendarStore.horesDisponiblesPerDia[dia-1])"
+                class="duration-select-header"
+                :disabled="!isWeekOpen"
+              >
+                <option :value="1.0">1h</option>
+                <option :value="1.5">1.5h</option>
+                <option :value="2.0">2h</option>
+                <option :value="2.5">2.5h</option>
+                <option :value="3.0">3h</option>
+                <option :value="4.0">>3h</option>
+              </select>
+            </div>
             <i :class="expandedDays.includes(dia-1) ? 'ti ti-chevron-up' : 'ti ti-chevron-down'" class="text-secondary text-xl"></i>
           </div>
           <div v-show="expandedDays.includes(dia-1)" class="mobile-moments-list">
@@ -231,11 +269,15 @@ const handleSave = async (isCompleted: boolean = false) => {
             <div 
               v-if="isWeekOpen"
               class="mobile-add-zone"
-              :class="{ 'can-tap': calendarStore.selectedMobileActivity }"
+              :class="{ 'can-tap': calendarStore.selectedMobileActivities.length > 0 }"
               @click="handleMobileAdd(dia-1)"
             >
               <i class="ti ti-plus"></i>
-              <span>{{ calendarStore.selectedMobileActivity ? $t('calendar.tapToPlace') : $t('calendar.chooseActivityTop') }}</span>
+              <span>
+                {{ calendarStore.selectedMobileActivities.length > 0 
+                  ? `${$t('calendar.tapToPlace')} (${calendarStore.selectedMobileActivities.length})` 
+                  : $t('calendar.chooseActivityTop') }}
+              </span>
             </div>
           </div>
         </div>
@@ -547,5 +589,61 @@ const handleSave = async (isCompleted: boolean = false) => {
     width: auto;
     min-width: 250px;
   }
+}
+
+/* Styles for header selectors */
+.day-hours-selector {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.day-hours-selector i {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.mobile-day-hours {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.duration-select-header {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-fast);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px top 50%;
+  background-size: 8px auto;
+  padding-right: 16px;
+}
+
+.duration-select-header:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-hover);
+}
+
+.duration-select-header:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(var(--accent-primary-rgb), 0.2);
+}
+
+.duration-select-header:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

@@ -13,9 +13,11 @@
     "weeks": "Setmanes",
     "activities": "Activitats",
     "planning": "Planning",
-    "athleteReports": "Informe Atletes"
+    "athleteReports": "Informe Atletes",
+    "announcements": "Tauler d'Anuncis"
   },
   "userMenu": {
+    "help": "Ajuda / Manual",
     "changePassword": "Canviar Contrasenya",
     "changeLanguage": "Canviar Idioma",
     "logout": "Tancar Sessió"

@@ -14,6 +14,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import { changePassword } from '@/api/auth'
+import { getAnuncis } from '@/api/anuncis'
 
 const router = useRouter()
 const toast = useToast()
@@ -24,6 +25,16 @@ const testsStore = useTestsStore()
 const isMenuOpen = ref(false)
 
 const isAdminImpersonating = ref(false)
+const pendingAnuncisCount = ref(0)
+
+const loadAnuncisPendingCount = async () => {
+  try {
+    const data = await getAnuncis()
+    pendingAnuncisCount.value = data.filter(a => a.estat === 'pendent').length
+  } catch (e) {
+    console.error('Failed to load pending anuncis count', e)
+  }
+}
 
 onMounted(async () => {
   isAdminImpersonating.value = !!localStorage.getItem('admin_token')
@@ -32,12 +43,18 @@ onMounted(async () => {
     compStore.loadPendingCount()
     testsStore.loadData()
   }
+  if (authStore.isAuthenticated && (authStore.isEntrenador || authStore.usuari?.rol === 'admin')) {
+    loadAnuncisPendingCount()
+  }
 })
 
 watch(() => authStore.isAuthenticated, (newVal) => {
   if (newVal && authStore.isEntrenador) {
     compStore.loadPendingCount()
     testsStore.loadData()
+  }
+  if (newVal && (authStore.isEntrenador || authStore.usuari?.rol === 'admin')) {
+    loadAnuncisPendingCount()
   }
 })
 
@@ -68,6 +85,11 @@ const restoreAdminSession = async () => {
 
 const userMenu = ref()
 const userMenuItems = computed(() => [
+  {
+    label: t('userMenu.help'),
+    icon: 'ti ti-book',
+    command: () => router.push('/manual')
+  },
   {
     label: t('userMenu.changePassword'),
     icon: 'ti ti-key',
@@ -163,6 +185,10 @@ const handleChangeLanguage = async () => {
 
       <div class="nav-menu" :class="{ 'is-open': isMenuOpen }">
         <nav class="nav-links" @click="isMenuOpen = false">
+          <router-link to="/anuncis" class="nav-link menu-with-badge">
+            {{ $t('nav.announcements') || 'Tauler d\'Anuncis' }}
+            <span v-if="pendingAnuncisCount > 0 && (authStore.isEntrenador || authStore.usuari?.rol === 'admin')" class="badge">{{ pendingAnuncisCount }}</span>
+          </router-link>
           <template v-if="authStore.isAtleta">
             <router-link to="/calendar" class="nav-link">{{ $t('nav.calendar') }}</router-link>
             <router-link to="/competicions/atleta" class="nav-link">{{ $t('nav.competitions') }}</router-link>

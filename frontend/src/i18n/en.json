@@ -13,9 +13,11 @@
     "weeks": "Weeks",
     "activities": "Activities",
     "planning": "Planning",
-    "athleteReports": "Athlete Reports"
+    "athleteReports": "Athlete Reports",
+    "announcements": "Announcements Board"
   },
   "userMenu": {
+    "help": "Help / Manual",
     "changePassword": "Change Password",
     "changeLanguage": "Change Language",
     "logout": "Log Out"

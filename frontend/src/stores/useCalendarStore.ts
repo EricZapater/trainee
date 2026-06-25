@@ -19,7 +19,11 @@ export const useCalendarStore = defineStore('calendar', () => {
   const notesSetmana = ref<string>('')
   const estat = ref<string>('esborrany')
   const loading = ref<boolean>(false)
-  const selectedMobileActivity = ref<Activitat | null>(null)
+  const selectedMobileActivities = ref<Activitat[]>([])
+  
+  const horesDisponiblesPerDia = ref<Record<number, number>>({
+    0: 1.0, 1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0, 6: 1.0
+  })
 
   function addSlotToDay(dia: number, data: SlotData) {
     slotsByDay.value[dia].push(data)
@@ -31,6 +35,13 @@ export const useCalendarStore = defineStore('calendar', () => {
 
   function updateSlotInDay(dia: number, index: number, data: SlotData) {
     slotsByDay.value[dia][index] = data
+  }
+
+  function setHoresDia(dia: number, hores: number) {
+    horesDisponiblesPerDia.value[dia] = hores
+    slotsByDay.value[dia].forEach(slot => {
+      slot.durada_hores = hores
+    })
   }
 
   function moveSlot(dia: number, fromIndex: number, toIndex: number) {
@@ -51,6 +62,17 @@ export const useCalendarStore = defineStore('calendar', () => {
       clearSlots()
       notesSetmana.value = data.notes_setmana || ''
       estat.value = (data as any).estat || 'esborrany'
+      
+      // Initialize available hours
+      for (let dia = 0; dia < 7; dia++) {
+        const slotsDia = data.slots.filter(s => s.dia === dia)
+        if (slotsDia.length > 0) {
+          horesDisponiblesPerDia.value[dia] = slotsDia[0].durada_hores
+        } else {
+          horesDisponiblesPerDia.value[dia] = 1.0
+        }
+      }
+      
       for (const s of data.slots) {
         addSlotToDay(s.dia, {
           activitat_id: s.activitat_id,
@@ -106,10 +128,12 @@ export const useCalendarStore = defineStore('calendar', () => {
     notesSetmana,
     estat,
     loading,
-    selectedMobileActivity,
+    selectedMobileActivities,
+    horesDisponiblesPerDia,
     addSlotToDay,
     removeSlotFromDay,
     updateSlotInDay,
+    setHoresDia,
     moveSlot,
     clearSlots,
     loadSubmission,

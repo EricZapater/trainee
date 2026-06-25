@@ -464,3 +464,37 @@ type FormResponseWithAnswers struct {
 	Answers []FormAnswer `json:"answers"`
 }
 
+// ============================================================
+// Anuncis Models
+// ============================================================
+
+type Anunci struct {
+	ID         string    `json:"id"`
+	AutorID    string    `json:"autor_id"`
+	AutorNom   string    `json:"autor_nom"`
+	Titol      string    `json:"titol"`
+	Descripcio string    `json:"descripcio"`
+	Enllac     *string   `json:"enllac,omitempty"`
+	Imatges    []string  `json:"imatges"`
+	Tags       []string  `json:"tags"`
+	Estat      string    `json:"estat"` // 'pendent', 'aprovat', 'rebutjat'
+	Actiu      bool      `json:"actiu"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type CreateAnunciRequest struct {
+	Titol      string   `json:"titol" binding:"required"`
+	Descripcio string   `json:"descripcio" binding:"required"`
+	Enllac     *string  `json:"enllac"`
+	Imatges    []string `json:"imatges"`
+	Tags       []string `json:"tags"`
+	Actiu      bool     `json:"actiu"`
+}
+
+type UpdateAnunciStatusRequest struct {
+	Actiu bool `json:"actiu"`
+}
+
+type UpdateAnunciEstatRequest struct {
+	Estat string `json:"estat" binding:"required,oneof=pendent aprovat rebutjat"`
+}

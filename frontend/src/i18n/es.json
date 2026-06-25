@@ -13,9 +13,11 @@
     "weeks": "Semanas",
     "activities": "Actividades",
     "planning": "Planning",
-    "athleteReports": "Informe Atletas"
+    "athleteReports": "Informe Atletas",
+    "announcements": "Tablón de Anuncios"
   },
   "userMenu": {
+    "help": "Ayuda / Manual",
     "changePassword": "Cambiar Contraseña",
     "changeLanguage": "Cambiar Idioma",
     "logout": "Cerrar Sesión"

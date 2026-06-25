@@ -145,6 +145,18 @@ const router = createRouter({
       name: 'public_form',
       component: () => import('@/views/PublicFormView.vue'),
       meta: { public: true } // Explicit flag for clarity
+    },
+    {
+      path: '/anuncis',
+      name: 'anuncis',
+      component: () => import('@/views/AnuncisView.vue'),
+      meta: { requiresAuth: true } // All roles can access
+    },
+    {
+      path: '/manual',
+      name: 'manual',
+      component: () => import('@/views/ManualView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 

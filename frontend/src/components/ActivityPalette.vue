@@ -14,16 +14,33 @@ const { t } = useI18n()
 const handleDragStart = (event: DragEvent, activitat: Activitat) => {
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'copy'
-    event.dataTransfer.setData('application/json', JSON.stringify(activitat))
+    
+    // Check if the dragged activity is part of the current selection
+    const isSelected = calendarStore.selectedMobileActivities.some(a => a.id === activitat.id)
+    
+    let payload = []
+    if (isSelected) {
+      // Drag all selected activities
+      payload = calendarStore.selectedMobileActivities
+    } else {
+      // Drag only this activity
+      payload = [activitat]
+    }
+    
+    event.dataTransfer.setData('application/json', JSON.stringify({
+      type: 'multi',
+      activities: payload
+    }))
   }
 }
 
 const handleActivityTap = (activitat: Activitat) => {
   if (props.disabled) return
-  if (calendarStore.selectedMobileActivity?.id === activitat.id) {
-    calendarStore.selectedMobileActivity = null
+  const index = calendarStore.selectedMobileActivities.findIndex(a => a.id === activitat.id)
+  if (index !== -1) {
+    calendarStore.selectedMobileActivities.splice(index, 1)
   } else {
-    calendarStore.selectedMobileActivity = activitat
+    calendarStore.selectedMobileActivities.push(activitat)
   }
 }
 </script>
@@ -37,7 +54,7 @@ const handleActivityTap = (activitat: Activitat) => {
         v-for="act in activitats" 
         :key="act.id"
         class="activity-item"
-        :class="{ 'is-selected': calendarStore.selectedMobileActivity?.id === act.id }"
+        :class="{ 'is-selected': calendarStore.selectedMobileActivities.some(a => a.id === act.id) }"
         :style="{ borderLeftColor: act.color }"
         :draggable="!disabled"
         @dragstart="handleDragStart($event, act)"
