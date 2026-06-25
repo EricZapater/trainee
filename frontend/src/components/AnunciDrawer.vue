@@ -25,9 +25,12 @@ const canDeactivate = computed(() => {
 })
 
 const isModerator = computed(() => {
-  const r = authStore.usuari?.rol
-  return r === 'admin' || r === 'entrenador'
+  return authStore.usuari?.rol === 'entrenador' || authStore.usuari?.rol === 'admin'
 })
+
+const openLink = (url: string) => {
+  window.open(url, '_blank')
+}
 
 const handleDeactivate = async () => {
   if (!props.anunci) return
@@ -111,7 +114,7 @@ const formatDate = (d: string) => {
       </div>
       
       <div class="field mt-4" v-if="anunci.enllac">
-        <Button label="Obrir Enllaç" icon="ti ti-external-link" class="w-full" severity="info" outlined @click="window.open(anunci.enllac, '_blank')" />
+        <Button label="Obrir Enllaç" icon="ti ti-external-link" class="w-full" severity="info" outlined @click="openLink(anunci.enllac)" />
       </div>
 
       <div class="field mt-4 flex flex-column gap-2" v-if="isModerator && anunci.estat === 'pendent'">
