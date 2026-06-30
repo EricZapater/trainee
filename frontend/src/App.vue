@@ -109,6 +109,11 @@ const userMenuItems = computed(() => [
     icon: 'ti ti-info-circle',
     command: () => { changelogVisible.value = true }
   },
+  ...((authStore.usuari?.rol === 'entrenador' || authStore.usuari?.rol === 'admin') ? [{
+    label: t('userMenu.feedback'),
+    icon: 'ti ti-bug',
+    command: () => router.push('/feedback')
+  }] : []),
   {
     label: t('userMenu.changePassword'),
     icon: 'ti ti-key',

@@ -111,4 +111,9 @@ type Store interface {
 	UpdateAnunciEstat(ctx context.Context, id string, estat string) error
 	GetAnunciByID(ctx context.Context, id string) (*models.Anunci, error)
 	GetUniqueAnunciTags(ctx context.Context) ([]string, error)
+
+	// Feedback Tickets
+	ListFeedbackTickets(ctx context.Context) ([]models.FeedbackTicket, error)
+	CreateFeedbackTicket(ctx context.Context, informadorID string, req models.CreateFeedbackRequest, imatgePath *string) (*models.FeedbackTicket, error)
 }
+

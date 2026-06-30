@@ -128,6 +128,13 @@ func main() {
 		authenticated.GET("/submissions/me", h.GetMySubmission)
 	}
 
+	adminAndEntrenador := authenticated.Group("")
+	adminAndEntrenador.Use(middleware.RequireRole("entrenador"))
+	{
+		adminAndEntrenador.GET("/feedback", h.GetFeedbackTickets)
+		adminAndEntrenador.POST("/feedback", h.CreateFeedbackTicket)
+	}
+
 	entrenadorRoutes := api.Group("/entrenador")
 	entrenadorRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireConsent(s, "v1.0"), middleware.RequireRole("entrenador"))
 	{

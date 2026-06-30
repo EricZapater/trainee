@@ -24,7 +24,8 @@
     "changeProfile": "Modify Profile",
     "changePassword": "Change Password",
     "changeLanguage": "Change Language",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "feedback": "Bugs and Requests"
   },
   "login": {
     "title": "Welcome to TrainEE",
@@ -69,7 +70,15 @@
     "ENG": "English"
   },
   "calendar": {
-    "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    "days": [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ],
     "weekOf": "Week of {start} to {end}",
     "loading": "Loading week...",
     "dropHere": "Drop here",
@@ -167,14 +176,26 @@
     "noAthletes": "You have no assigned athletes yet.",
     "allResponded": "No pending athletes. All have responded! 🎉",
     "days": {
-      "1": "Mo", "2": "Tu", "3": "We", "4": "Th", "5": "Fr", "6": "Sa", "7": "Su"
+      "1": "Mo",
+      "2": "Tu",
+      "3": "We",
+      "4": "Th",
+      "5": "Fr",
+      "6": "Sa",
+      "7": "Su"
     }
   },
   "athleteDrawer": {
     "noResponse": "The athlete hasn't sent their availability yet.",
     "noSlots": "The athlete has responded they have no availability this week.",
     "fullDays": {
-      "1": "Monday", "2": "Tuesday", "3": "Wednesday", "4": "Thursday", "5": "Friday", "6": "Saturday", "7": "Sunday"
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday",
+      "7": "Sunday"
     }
   },
   "athletesManager": {

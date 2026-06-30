@@ -141,6 +141,12 @@ const router = createRouter({
       meta: { requiresAuth: true, role: 'admin' }
     },
     {
+      path: '/feedback',
+      name: 'feedback_tickets',
+      component: () => import('@/views/FeedbackTicketsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/entrenador/configuracio',
       name: 'system_settings',
       component: () => import('@/views/SettingsView.vue'),

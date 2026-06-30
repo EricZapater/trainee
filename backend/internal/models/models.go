@@ -502,3 +502,25 @@ type UpdateAnunciStatusRequest struct {
 type UpdateAnunciEstatRequest struct {
 	Estat string `json:"estat" binding:"required,oneof=pendent aprovat rebutjat"`
 }
+
+// ============================================================
+// Feedback Models
+// ============================================================
+
+type FeedbackTicket struct {
+	ID            string    `json:"id"`
+	InformadorID  string    `json:"informador_id"`
+	InformadorNom string    `json:"informador_nom,omitempty"`
+	Tipus         string    `json:"tipus"` // bug, petició
+	Resum         string    `json:"resum"`
+	Descripcio    string    `json:"descripcio"`
+	ImatgePath    *string   `json:"imatge_path,omitempty"`
+	Estat         string    `json:"estat"` // pendent, en curs, desplegat, descartat
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+type CreateFeedbackRequest struct {
+	Tipus      string `form:"tipus" binding:"required"`
+	Resum      string `form:"resum" binding:"required"`
+	Descripcio string `form:"descripcio" binding:"required"`
+}

@@ -24,7 +24,8 @@
     "changeProfile": "Modificar Perfil",
     "changePassword": "Canviar Contrasenya",
     "changeLanguage": "Canviar Idioma",
-    "logout": "Tancar Sessió"
+    "logout": "Tancar Sessió",
+    "feedback": "Bugs i Peticions"
   },
   "login": {
     "title": "Benvingut/da a TrainEE",
@@ -69,7 +70,15 @@
     "ENG": "Anglès"
   },
   "calendar": {
-    "days": ["Dilluns", "Dimarts", "Dimecres", "Dijous", "Divendres", "Dissabte", "Diumenge"],
+    "days": [
+      "Dilluns",
+      "Dimarts",
+      "Dimecres",
+      "Dijous",
+      "Divendres",
+      "Dissabte",
+      "Diumenge"
+    ],
     "weekOf": "Setmana del {start} al {end}",
     "loading": "Carregant setmana...",
     "dropHere": "Deixa anar aquí",
@@ -167,14 +176,26 @@
     "noAthletes": "No tens atletes assignats encara.",
     "allResponded": "No hi ha atletes pendents. Tots han respost! 🎉",
     "days": {
-      "1": "Dl", "2": "Dt", "3": "Dc", "4": "Dj", "5": "Dv", "6": "Ds", "7": "Dg"
+      "1": "Dl",
+      "2": "Dt",
+      "3": "Dc",
+      "4": "Dj",
+      "5": "Dv",
+      "6": "Ds",
+      "7": "Dg"
     }
   },
   "athleteDrawer": {
     "noResponse": "L'atleta encara no ha enviat la seva disponibilitat.",
     "noSlots": "L'atleta ha respost que no té disponibilitat aquesta setmana.",
     "fullDays": {
-      "1": "Dilluns", "2": "Dimarts", "3": "Dimecres", "4": "Dijous", "5": "Divendres", "6": "Dissabte", "7": "Diumenge"
+      "1": "Dilluns",
+      "2": "Dimarts",
+      "3": "Dimecres",
+      "4": "Dijous",
+      "5": "Divendres",
+      "6": "Dissabte",
+      "7": "Diumenge"
     }
   },
   "athletesManager": {
