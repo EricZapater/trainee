@@ -13,11 +13,15 @@
     "weeks": "Setmanes",
     "activities": "Activitats",
     "planning": "Planning",
+    "planningGroup": "Planificació",
+    "historyCompetitions": "Històric de competicions",
     "athleteReports": "Informe Atletes",
+    "settings": "Configuració",
     "announcements": "Tauler d'Anuncis"
   },
   "userMenu": {
     "help": "Ajuda / Manual",
+    "changeProfile": "Modificar Perfil",
     "changePassword": "Canviar Contrasenya",
     "changeLanguage": "Canviar Idioma",
     "logout": "Tancar Sessió"

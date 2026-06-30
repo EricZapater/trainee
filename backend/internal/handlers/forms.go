@@ -20,15 +20,9 @@ func (h *Handler) getEntrenadorIDFromContext(c *gin.Context) (string, error) {
 	return entrenadorInfo.ID, nil
 }
 
-// ListEntrenadorForms - Llista els formularis de l'entrenador autenticat
-func (h *Handler) ListEntrenadorForms(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
-
-	forms, err := h.Store.ListEntrenadorForms(c.Request.Context(), entrenadorID)
+// ListForms - Llista tots els formularis per als entrenadors
+func (h *Handler) ListForms(c *gin.Context) {
+	forms, err := h.Store.ListForms(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -39,19 +33,13 @@ func (h *Handler) ListEntrenadorForms(c *gin.Context) {
 
 // CreateForm - Crea un nou formulari
 func (h *Handler) CreateForm(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
-	
 	var req models.CreateFormRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	f, err := h.Store.CreateForm(c.Request.Context(), entrenadorID, req)
+	f, err := h.Store.CreateForm(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -74,12 +62,6 @@ func (h *Handler) GetFormDetails(c *gin.Context) {
 		return
 	}
 
-	// Security: Check if it's my form (coach)
-	entrenadorID, _ := h.getEntrenadorIDFromContext(c)
-	if entrenadorID != "" && f.EntrenadorID != entrenadorID {
-		// they can see it but maybe warn them? We allow read for clone purposes
-	}
-
 	c.JSON(http.StatusOK, f)
 }
 
@@ -98,11 +80,6 @@ func (h *Handler) PublicGetForm(c *gin.Context) {
 
 // UpdateForm - Actualitza títol, descripció i actiu
 func (h *Handler) UpdateForm(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	id := c.Param("id")
 
 	var req models.UpdateFormRequest
@@ -111,7 +88,7 @@ func (h *Handler) UpdateForm(c *gin.Context) {
 		return
 	}
 
-	err = h.Store.UpdateForm(c.Request.Context(), id, entrenadorID, req)
+	err := h.Store.UpdateForm(c.Request.Context(), id, req)
 	if err != nil {
 		if err.Error() == "not found or forbidden" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Formulari no trobat o accés denegat"})
@@ -126,11 +103,6 @@ func (h *Handler) UpdateForm(c *gin.Context) {
 
 // AddFormQuestion - Afegeix una pregunta al formulari. NO es permet si ja té respostes.
 func (h *Handler) AddFormQuestion(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	id := c.Param("id")
 
 	var req models.CreateFormQuestionRequest
@@ -139,7 +111,7 @@ func (h *Handler) AddFormQuestion(c *gin.Context) {
 		return
 	}
 
-	q, err := h.Store.AddFormQuestion(c.Request.Context(), id, entrenadorID, req)
+	q, err := h.Store.AddFormQuestion(c.Request.Context(), id, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -150,11 +122,6 @@ func (h *Handler) AddFormQuestion(c *gin.Context) {
 
 // UpdateFormQuestion - Actualitza una pregunta. NO es permet si ja té respostes.
 func (h *Handler) UpdateFormQuestion(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	formID := c.Param("id")
 	questionID := c.Param("questionId")
 
@@ -164,7 +131,7 @@ func (h *Handler) UpdateFormQuestion(c *gin.Context) {
 		return
 	}
 
-	err = h.Store.UpdateFormQuestion(c.Request.Context(), formID, questionID, entrenadorID, req)
+	err := h.Store.UpdateFormQuestion(c.Request.Context(), formID, questionID, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -175,15 +142,10 @@ func (h *Handler) UpdateFormQuestion(c *gin.Context) {
 
 // DeleteFormQuestion - Elimina una pregunta
 func (h *Handler) DeleteFormQuestion(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	formID := c.Param("id")
 	questionID := c.Param("questionId")
 
-	err = h.Store.DeleteFormQuestion(c.Request.Context(), formID, questionID, entrenadorID)
+	err := h.Store.DeleteFormQuestion(c.Request.Context(), formID, questionID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -194,11 +156,6 @@ func (h *Handler) DeleteFormQuestion(c *gin.Context) {
 
 // ReorderFormQuestions - Actualitza l'ordre de les preguntes
 func (h *Handler) ReorderFormQuestions(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	formID := c.Param("id")
 
 	var req []models.ReorderFormQuestionRequest
@@ -207,7 +164,7 @@ func (h *Handler) ReorderFormQuestions(c *gin.Context) {
 		return
 	}
 
-	err = h.Store.ReorderFormQuestions(c.Request.Context(), formID, entrenadorID, req)
+	err := h.Store.ReorderFormQuestions(c.Request.Context(), formID, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -216,16 +173,11 @@ func (h *Handler) ReorderFormQuestions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Reordenat correctament"})
 }
 
-// CloneForm - Clona un formulari existent sota el compte del propi entrenador
+// CloneForm - Clona un formulari existent
 func (h *Handler) CloneForm(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	id := c.Param("id") // The form to clone
 
-	newFormID, err := h.Store.CloneForm(c.Request.Context(), id, entrenadorID)
+	newFormID, err := h.Store.CloneForm(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -234,55 +186,11 @@ func (h *Handler) CloneForm(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": newFormID, "message": "Formulari clonat amb èxit"})
 }
 
-type TraspassarFormRequest struct {
-	TargetEntrenadorID string `json:"target_entrenador_id" binding:"required"`
-}
-
-// TraspassarForm - Copia un formulari existent sota el compte d'un altre entrenador
-func (h *Handler) TraspassarForm(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
-	id := c.Param("id")
-
-	var req TraspassarFormRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Verify ownership
-	f, err := h.Store.GetFormDetails(c.Request.Context(), id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Formulari no trobat"})
-		return
-	}
-	if f.EntrenadorID != entrenadorID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "No ets el propietari d'aquest formulari"})
-		return
-	}
-
-	newFormID, err := h.Store.CloneForm(c.Request.Context(), id, req.TargetEntrenadorID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"id": newFormID, "message": "Formulari copiat amb èxit"})
-}
-
 // DeleteForm
 func (h *Handler) DeleteForm(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	id := c.Param("id")
 
-	err = h.Store.DeleteForm(c.Request.Context(), id, entrenadorID)
+	err := h.Store.DeleteForm(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -293,14 +201,9 @@ func (h *Handler) DeleteForm(c *gin.Context) {
 
 // GetFormResponses - Llista els candidats que han respost
 func (h *Handler) GetFormResponses(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	id := c.Param("id")
 
-	responses, err := h.Store.GetFormResponses(c.Request.Context(), id, entrenadorID)
+	responses, err := h.Store.GetFormResponses(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		return
@@ -311,11 +214,6 @@ func (h *Handler) GetFormResponses(c *gin.Context) {
 
 // UpdateResponseStatus - Canvia l'estat d'una resposta
 func (h *Handler) UpdateResponseStatus(c *gin.Context) {
-	entrenadorID, err := h.getEntrenadorIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No s'ha pogut identificar l'entrenador"})
-		return
-	}
 	responseID := c.Param("responseId")
 
 	var req models.UpdateFormResponseStatusRequest
@@ -324,7 +222,7 @@ func (h *Handler) UpdateResponseStatus(c *gin.Context) {
 		return
 	}
 
-	err = h.Store.UpdateResponseStatus(c.Request.Context(), responseID, entrenadorID, req.Estat)
+	err := h.Store.UpdateResponseStatus(c.Request.Context(), responseID, req.Estat)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

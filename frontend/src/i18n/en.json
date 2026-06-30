@@ -13,11 +13,15 @@
     "weeks": "Weeks",
     "activities": "Activities",
     "planning": "Planning",
+    "planningGroup": "Planning",
+    "historyCompetitions": "Competitions History",
     "athleteReports": "Athlete Reports",
+    "settings": "Settings",
     "announcements": "Announcements Board"
   },
   "userMenu": {
     "help": "Help / Manual",
+    "changeProfile": "Modify Profile",
     "changePassword": "Change Password",
     "changeLanguage": "Change Language",
     "logout": "Log Out"

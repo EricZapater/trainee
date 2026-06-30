@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { listEntrenadorForms, createForm, deleteForm, cloneForm, traspassarForm, type FormWithQuestions } from '@/api/forms'
+import { listForms, createForm, deleteForm, cloneForm, type FormWithQuestions } from '@/api/forms'
 import { getEntrenadorsList } from '@/api/entrenador'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -24,7 +24,7 @@ const entrenadors = ref<{id: string, nom: string}[]>([])
 const loadForms = async () => {
   loading.value = true
   try {
-    forms.value = await listEntrenadorForms()
+    forms.value = await listForms()
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut carregar els formularis', life: 3000 })
   } finally {
@@ -97,31 +97,6 @@ const copyLink = (id: string) => {
   toast.add({ severity: 'info', summary: 'Copiada', detail: 'Enllaç copiat al porta-retalls', life: 3000 })
 }
 
-// Traspassar form
-const traspassarVisible = ref(false)
-const traspassarFormId = ref('')
-const targetEntrenadorId = ref('')
-const traspassarLoading = ref(false)
-
-const openTraspassar = (id: string) => {
-  traspassarFormId.value = id
-  targetEntrenadorId.value = ''
-  traspassarVisible.value = true
-}
-
-const handleTraspassar = async () => {
-  if (!traspassarFormId.value || !targetEntrenadorId.value) return
-  traspassarLoading.value = true
-  try {
-    await traspassarForm(traspassarFormId.value, targetEntrenadorId.value)
-    toast.add({ severity: 'success', summary: 'Copiada', detail: 'S\'ha copiat el formulari a l\'entrenador destí', life: 3000 })
-    traspassarVisible.value = false
-  } catch (e) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut copiar el formulari', life: 3000 })
-  } finally {
-    traspassarLoading.value = false
-  }
-}
 
 </script>
 
@@ -169,7 +144,6 @@ const handleTraspassar = async () => {
           <Button v-tooltip.top="$t('forms.edit')" icon="ti ti-edit" outlined @click="router.push(`/entrenador/forms/${form.id}/edit`)" />
           <Button v-tooltip.top="$t('forms.viewResponses')" icon="ti ti-eye" severity="secondary" outlined @click="router.push(`/entrenador/forms/${form.id}/responses`)" />
           <Button v-tooltip.top="$t('forms.clone')" icon="ti ti-copy" severity="info" outlined @click="handleClone(form.id)" />
-          <Button v-tooltip.top="'Copiar cap a'" icon="ti ti-arrow-forward" severity="warning" outlined @click="openTraspassar(form.id)" />
           <Button v-if="form.actiu" v-tooltip.top="$t('forms.share')" icon="ti ti-link" severity="success" outlined @click="copyLink(form.id)" />
           <Button v-tooltip.top="'Esborrar'" icon="ti ti-trash" severity="danger" text @click="confirmDelete(form.id)" />
         </div>
@@ -198,27 +172,6 @@ const handleTraspassar = async () => {
       </template>
     </Dialog>
 
-    <!-- Traspassar Modal -->
-    <Dialog v-model:visible="traspassarVisible" header="Copiar Formulari" modal :style="{ width: '400px' }">
-      <div class="flex flex-col gap-4 mt-2">
-        <p class="text-sm text-secondary">Tria l'entrenador a qui vols copiar aquest formulari.</p>
-        <div class="field">
-          <label>Entrenador destí</label>
-          <Select 
-            v-model="targetEntrenadorId" 
-            :options="entrenadors" 
-            optionLabel="nom" 
-            optionValue="id" 
-            placeholder="Selecciona un entrenador" 
-            class="w-full"
-          />
-        </div>
-      </div>
-      <template #footer>
-        <Button label="Cancel·lar" icon="ti ti-x" text @click="traspassarVisible = false" />
-        <Button label="Copiar" icon="ti ti-check" @click="handleTraspassar" :loading="traspassarLoading" />
-      </template>
-    </Dialog>
   </div>
 </template>
 

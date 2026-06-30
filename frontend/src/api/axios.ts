@@ -22,6 +22,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('trainee_token')
       router.push('/login')
+    } else if (error.response?.status === 428 && error.response?.data?.error === 'CONSENT_REQUIRED') {
+      if (router.currentRoute.value.path !== '/legal-consent') {
+        router.push({
+          path: '/legal-consent',
+          query: { redirect: router.currentRoute.value.fullPath }
+        })
+      }
     }
     return Promise.reject(error)
   }

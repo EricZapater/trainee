@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getAtletes, toggleAtletaStatus, getAtletaStatusHistory, getEntrenadorsList, reassignAtleta } from '@/api/entrenador'
 import type { UserStatusHistory } from '@/types'
@@ -41,6 +41,13 @@ const loadAtletes = async () => {
 
 onMounted(() => {
   loadAtletes()
+})
+
+const searchQuery = ref('')
+const filteredAtletes = computed(() => {
+  if (!searchQuery.value) return atletes.value
+  const query = searchQuery.value.toLowerCase()
+  return atletes.value.filter(a => a.nom.toLowerCase().includes(query))
 })
 
 const handleToggleStatus = async (atleta: any, newValue: boolean) => {
@@ -109,7 +116,26 @@ const confirmReassign = async () => {
     </div>
 
     <div class="list mt-4 glass-card p-4">
-      <DataTable :value="atletes" :loading="loading" responsiveLayout="scroll" :emptyMessage="$t('athletesManager.emptyState')">
+      <div class="flex justify-end mb-3">
+        <span class="p-input-icon-left" style="width: 250px;">
+          <input 
+            type="text" 
+            v-model="searchQuery" 
+            placeholder="Cercar per nom..." 
+            class="p-inputtext p-component w-full" 
+            style="padding-left: 10px;"
+          />
+        </span>
+      </div>
+      <DataTable 
+        :value="filteredAtletes" 
+        :loading="loading" 
+        responsiveLayout="scroll" 
+        :emptyMessage="$t('athletesManager.emptyState')"
+        paginator 
+        :rows="10" 
+        :rowsPerPageOptions="[10, 25, 50]"
+      >
         <Column field="nom" :header="$t('athletesManager.name')"></Column>
         <Column field="email" :header="$t('athletesManager.email')"></Column>
         <Column :header="$t('athletesManager.status')">

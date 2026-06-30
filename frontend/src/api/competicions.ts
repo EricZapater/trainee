@@ -48,6 +48,11 @@ export const getEntrenadorCompeticions = async (): Promise<Competicio[]> => {
   return data
 }
 
+export const getHistoricCompeticions = async (): Promise<Competicio[]> => {
+  const { data } = await axios.get('/entrenador/competicions/historic')
+  return data
+}
+
 export const traspassarCompeticio = async (id: string): Promise<void> => {
   await axios.post(`/entrenador/competicions/${id}/traspassar`)
 }

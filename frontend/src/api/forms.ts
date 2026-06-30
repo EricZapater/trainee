@@ -3,7 +3,6 @@ import apiClient from './axios'
 // Types
 export interface Form {
   id: string
-  entrenador_id: string
   titol: string
   descripcio: string | null
   actiu: boolean
@@ -49,7 +48,7 @@ export interface FormResponseWithAnswers extends FormResponse {
 }
 
 // Entrenador Endpoints
-export const listEntrenadorForms = async (): Promise<FormWithQuestions[]> => {
+export const listForms = async (): Promise<FormWithQuestions[]> => {
   const { data } = await apiClient.get('/entrenador/forms')
   return data
 }
@@ -77,10 +76,7 @@ export const cloneForm = async (id: string): Promise<{ id: string; message: stri
   return data
 }
 
-export const traspassarForm = async (id: string, targetEntrenadorId: string): Promise<{ id: string; message: string }> => {
-  const { data } = await apiClient.post(`/entrenador/forms/${id}/traspassar`, { target_entrenador_id: targetEntrenadorId })
-  return data
-}
+
 
 export const addFormQuestion = async (
   formId: string, 

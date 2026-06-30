@@ -133,44 +133,40 @@ const deleteQuestion = async (qid: string) => {
   }
 }
 
-const moveUp = async (index: number) => {
-  if (isReadOnly.value || index === 0 || !form.value) return
-  const current = form.value.questions[index]
-  const prev = form.value.questions[index - 1]
-  
-  // Swap order locally
-  const temp = current.ordre
-  current.ordre = prev.ordre
-  prev.ordre = temp
-  
-  // Send bulk update
-  try {
-    await reorderFormQuestions(formId, [
-      { id: current.id, ordre: current.ordre },
-      { id: prev.id, ordre: prev.ordre }
-    ])
-    loadForm()
-  } catch(e) {
-    loadForm() // rollback
+const draggedIndex = ref<number | null>(null)
+
+const onDragStart = (e: DragEvent, index: number) => {
+  if (isReadOnly.value) return
+  draggedIndex.value = index
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', index.toString())
   }
 }
 
-const moveDown = async (index: number) => {
-  if (isReadOnly.value || !form.value || index === form.value.questions.length - 1) return
-  const current = form.value.questions[index]
-  const next = form.value.questions[index + 1]
+const onDrop = async (e: DragEvent, dropIndex: number) => {
+  if (isReadOnly.value || draggedIndex.value === null || draggedIndex.value === dropIndex || !form.value) return
   
-  const temp = current.ordre
-  current.ordre = next.ordre
-  next.ordre = temp
+  const startIndex = draggedIndex.value
+  draggedIndex.value = null
+  
+  const questions = [...form.value.questions]
+  const [movedItem] = questions.splice(startIndex, 1)
+  questions.splice(dropIndex, 0, movedItem)
+  
+  // Update order locally
+  questions.forEach((q, i) => {
+    q.ordre = i + 1
+  })
+  form.value.questions = questions
+  
+  // Bulk update all questions to guarantee consistency
+  const payload = questions.map(q => ({ id: q.id, ordre: q.ordre }))
   
   try {
-    await reorderFormQuestions(formId, [
-      { id: current.id, ordre: current.ordre },
-      { id: next.id, ordre: next.ordre }
-    ])
-    loadForm()
-  } catch(e) {
+    await reorderFormQuestions(formId, payload)
+  } catch(err) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut desar l\'ordre. Es revertiran els canvis.', life: 3000 })
     loadForm()
   }
 }
@@ -235,12 +231,22 @@ const moveDown = async (index: number) => {
         </div>
 
         <div class="questions-list flex flex-col gap-3">
-          <div v-for="(q, index) in form.questions" :key="q.id" class="question-item border rounded-lg p-4 flex gap-4 transition-all">
+          <div 
+            v-for="(q, index) in form.questions" 
+            :key="q.id" 
+            class="question-item border rounded-lg p-4 flex gap-4 transition-all"
+            :class="{ 'dragging': draggedIndex === index }"
+            :draggable="!isReadOnly"
+            @dragstart="onDragStart($event, index)"
+            @dragover.prevent
+            @dragenter.prevent
+            @drop="onDrop($event, index)"
+            @dragend="draggedIndex = null"
+          >
             <!-- Order controls -->
-            <div class="flex flex-col gap-1 align-center justify-center border-r pr-4 opacity-50" :class="{ 'opacity-100': !isReadOnly }">
-              <button class="icon-btn text-sm" @click="moveUp(index)" :disabled="isReadOnly || index === 0"><i class="ti ti-chevron-up"></i></button>
-              <span class="text-xs font-mono">{{ index + 1 }}</span>
-              <button class="icon-btn text-sm" @click="moveDown(index)" :disabled="isReadOnly || index === form.questions.length - 1"><i class="ti ti-chevron-down"></i></button>
+            <div class="flex flex-col gap-1 align-center justify-center border-r pr-4" :class="{ 'cursor-move': !isReadOnly, 'opacity-50': isReadOnly }">
+              <i class="ti ti-grip-vertical text-xl text-muted" v-if="!isReadOnly"></i>
+              <span class="text-xs font-mono" :class="{'mt-1': !isReadOnly}">{{ index + 1 }}</span>
             </div>
             
             <!-- Question info -->

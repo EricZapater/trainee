@@ -9,6 +9,7 @@ import DatePicker from 'primevue/datepicker'
 import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
+import Checkbox from 'primevue/checkbox'
 import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
@@ -19,6 +20,7 @@ const selectedAtletaId = ref<string | null>(null)
 const startDate = ref<Date>(new Date())
 const selectedPeriod = ref<number>(6) // months
 const loading = ref(false)
+const hideDiscarded = ref(false)
 
 const periodOptions = computed(() => [
   { label: t('planningManager.months3'), value: 3 },
@@ -97,6 +99,7 @@ const weeks = computed(() => {
 
 const getCompeticionsForWeek = (weekStart: Date, weekEnd: Date) => {
   return competicions.value.filter(comp => {
+    if (hideDiscarded.value && comp.estat === 'descartada') return false
     const compDate = new Date(comp.data)
     return compDate >= weekStart && compDate <= weekEnd
   })
@@ -146,6 +149,10 @@ const getBadgeClass = (comp: Competicio) => {
         <div class="field">
           <label>{{ $t('planningManager.period') }}</label>
           <Select v-model="selectedPeriod" :options="periodOptions" optionLabel="label" optionValue="value" class="w-full" />
+        </div>
+        <div class="checkbox-wrapper" style="display: flex; align-items: center; gap: 8px; margin-top: 1.8rem;">
+          <Checkbox v-model="hideDiscarded" binary inputId="hideDiscarded" />
+          <label for="hideDiscarded" style="margin-bottom: 0; cursor: pointer;">Amagar descartades</label>
         </div>
       </div>
     </div>

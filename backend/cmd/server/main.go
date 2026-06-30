@@ -92,11 +92,19 @@ func main() {
 	api.POST("/auth/magic-login", h.MagicLogin)
 	api.GET("/entrenadors", h.ListEntrenadors)
 
+	// Rutes que requereixen JWT però NO consentiment
+	jwtOnly := api.Group("")
+	jwtOnly.Use(middleware.JWTAuth(cfg.JWTSecret))
+	{
+		jwtOnly.POST("/legal/consent", h.RecordLegalConsent)
+	}
+
 	authenticated := api.Group("")
-	authenticated.Use(middleware.JWTAuth(cfg.JWTSecret))
+	authenticated.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireConsent(s, "v1.0"))
 	{
 		authenticated.POST("/auth/change-password", h.ChangePassword)
 		authenticated.PATCH("/usuaris/me/idioma", h.UpdateIdioma)
+		authenticated.PUT("/usuaris/me", h.UpdateProfile)
 
 		// Anuncis (accessible by all roles)
 		authenticated.GET("/anuncis", h.ListAnuncis)
@@ -121,7 +129,7 @@ func main() {
 	}
 
 	entrenadorRoutes := api.Group("/entrenador")
-	entrenadorRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireRole("entrenador"))
+	entrenadorRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireConsent(s, "v1.0"), middleware.RequireRole("entrenador"))
 	{
 		entrenadorRoutes.GET("/submissions", h.GetEntrenadorSubmissions)
 		entrenadorRoutes.PATCH("/submissions/:id/gestionat", h.ToggleSubmissionGestionat)
@@ -131,6 +139,7 @@ func main() {
 		entrenadorRoutes.POST("/weeks", h.CreateWeek)
 		entrenadorRoutes.PATCH("/weeks/:id", h.UpdateWeek)
 		entrenadorRoutes.GET("/competicions", h.ListEntrenadorCompeticions)
+		entrenadorRoutes.GET("/competicions/historic", h.ListEntrenadorHistoricCompeticions)
 		entrenadorRoutes.PATCH("/competicions/:id/tipus", h.UpdateCompeticioTipus)
 		entrenadorRoutes.POST("/competicions/:id/traspassar", h.TraspassarCompeticio)
 		entrenadorRoutes.GET("/atletes/:id/competicions", h.GetAtletaCompeticionsTimeline)
@@ -151,13 +160,12 @@ func main() {
 		entrenadorRoutes.PATCH("/activitats/:id", h.UpdateActivitat)
 		entrenadorRoutes.DELETE("/activitats/:id", h.DeleteActivitat)
 
-		entrenadorRoutes.GET("/forms", h.ListEntrenadorForms)
+		entrenadorRoutes.GET("/forms", h.ListForms)
 		entrenadorRoutes.POST("/forms", h.CreateForm)
 		entrenadorRoutes.GET("/forms/:id", h.GetFormDetails)
 		entrenadorRoutes.PUT("/forms/:id", h.UpdateForm)
 		entrenadorRoutes.DELETE("/forms/:id", h.DeleteForm)
 		entrenadorRoutes.POST("/forms/:id/clone", h.CloneForm)
-		entrenadorRoutes.POST("/forms/:id/traspassar", h.TraspassarForm)
 		
 		entrenadorRoutes.POST("/forms/:id/questions", h.AddFormQuestion)
 		entrenadorRoutes.PUT("/forms/:id/questions/:questionId", h.UpdateFormQuestion)
@@ -173,7 +181,7 @@ func main() {
 	}
 
 	adminRoutes := api.Group("/admin")
-	adminRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireRole("admin"))
+	adminRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireConsent(s, "v1.0"), middleware.RequireRole("admin"))
 	{
 		adminRoutes.GET("/system-logs", systemLogsHandler.GetSystemLogs)
 		adminRoutes.GET("/usuaris", adminHandler.GetUsuaris)

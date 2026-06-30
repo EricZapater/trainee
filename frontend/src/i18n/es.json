@@ -13,11 +13,15 @@
     "weeks": "Semanas",
     "activities": "Actividades",
     "planning": "Planning",
+    "planningGroup": "Planificación",
+    "historyCompetitions": "Historial de competiciones",
     "athleteReports": "Informe Atletas",
+    "settings": "Configuración",
     "announcements": "Tablón de Anuncios"
   },
   "userMenu": {
     "help": "Ayuda / Manual",
+    "changeProfile": "Modificar Perfil",
     "changePassword": "Cambiar Contraseña",
     "changeLanguage": "Cambiar Idioma",
     "logout": "Cerrar Sesión"

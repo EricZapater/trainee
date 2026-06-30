@@ -27,6 +27,12 @@ const router = createRouter({
       meta: { guestOnly: true }
     },
     {
+      path: '/legal-consent',
+      name: 'legal-consent',
+      component: () => import('@/views/LegalConsentView.vue'),
+      meta: { requiresAuth: true } // Així ens assegurem que l'usuari està autenticat però no fem crides addicionals API al muntar-se.
+    },
+    {
       path: '/magic-login',
       name: 'magic-login',
       component: () => import('@/views/MagicLoginView.vue'),
@@ -102,6 +108,12 @@ const router = createRouter({
       path: '/competicions/entrenador',
       name: 'competicions_entrenador',
       component: () => import('@/views/CompeticionsManagerView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/competicions/historic',
+      name: 'competicions_historic',
+      component: () => import('@/views/CompeticionsHistoricView.vue'),
       meta: { requiresAuth: true, role: 'entrenador' }
     },
     {

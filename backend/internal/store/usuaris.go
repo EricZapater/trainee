@@ -63,6 +63,14 @@ func (s *PostgresStore) UpdateUsuariIdioma(ctx context.Context, id, idioma strin
 	return err
 }
 
+func (s *PostgresStore) UpdateUsuariProfile(ctx context.Context, id, nom, email string) error {
+	_, err := s.pool.Exec(ctx,
+		`UPDATE usuaris SET nom = $1, email = $2 WHERE id = $3`,
+		nom, email, id,
+	)
+	return err
+}
+
 func (s *PostgresStore) ListAllUsuaris(ctx context.Context) ([]models.Usuari, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, nom, email, rol, actiu, idioma, created_at

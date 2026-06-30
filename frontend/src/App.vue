@@ -12,6 +12,7 @@ import Dialog from 'primevue/dialog'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
+import InputText from 'primevue/inputtext'
 import { useToast } from 'primevue/usetoast'
 import { changePassword } from '@/api/auth'
 import { getAnuncis } from '@/api/anuncis'
@@ -23,6 +24,8 @@ const authStore = useAuthStore()
 const compStore = useCompeticionsStore()
 const testsStore = useTestsStore()
 const isMenuOpen = ref(false)
+const changelogVisible = ref(false)
+const APP_VERSION = 'v1.1.0'
 
 const isAdminImpersonating = ref(false)
 const pendingAnuncisCount = ref(0)
@@ -91,6 +94,22 @@ const userMenuItems = computed(() => [
     command: () => router.push('/manual')
   },
   {
+    label: t('userMenu.changeProfile'),
+    icon: 'ti ti-user-edit',
+    command: () => {
+      changeProfileForm.value = {
+        nom: authStore.usuari?.nom || '',
+        email: authStore.usuari?.email || ''
+      }
+      changeProfileVisible.value = true
+    }
+  },
+  {
+    label: `Versió ${APP_VERSION}`,
+    icon: 'ti ti-info-circle',
+    command: () => { changelogVisible.value = true }
+  },
+  {
     label: t('userMenu.changePassword'),
     icon: 'ti ti-key',
     command: () => {
@@ -117,6 +136,84 @@ const toggleUserMenu = (event: Event) => {
   userMenu.value.toggle(event)
 }
 
+const compMenu = ref()
+const compMenuItems = computed(() => [
+  {
+    label: t('nav.weeks'),
+    icon: 'ti ti-calendar',
+    command: () => router.push('/weeks')
+  },
+  {
+    label: t('nav.tests'),
+    icon: 'ti ti-clipboard-data',
+    command: () => router.push('/tests'),
+    badge: testsStore.notificationCount > 0 ? testsStore.notificationCount : undefined
+  },
+  {
+    label: t('nav.competitions'),
+    icon: 'ti ti-list',
+    command: () => router.push('/competicions/entrenador'),
+    badge: compStore.pendingCount > 0 ? compStore.pendingCount : undefined
+  },
+  {
+    label: t('nav.historyCompetitions'),
+    icon: 'ti ti-history',
+    command: () => router.push('/competicions/historic')
+  },
+  {
+    label: t('nav.planning'),
+    icon: 'ti ti-calendar-event',
+    command: () => router.push('/planning')
+  }
+])
+const toggleCompMenu = (event: Event) => {
+  compMenu.value.toggle(event)
+}
+
+const configMenu = ref()
+const configMenuItems = computed(() => [
+  {
+    label: t('nav.activities'),
+    icon: 'ti ti-activity',
+    command: () => router.push('/activitats')
+  },
+  {
+    label: t('nav.settings'),
+    icon: 'ti ti-settings',
+    command: () => router.push('/entrenador/configuracio')
+  }
+])
+const toggleConfigMenu = (event: Event) => {
+  configMenu.value.toggle(event)
+}
+
+const atletesMenu = ref()
+const atletesMenuItems = computed(() => [
+  {
+    label: t('nav.forms'),
+    icon: 'ti ti-file-description',
+    command: () => router.push('/entrenador/forms')
+  },
+  {
+    label: t('nav.users'),
+    icon: 'ti ti-users',
+    command: () => router.push('/atletes')
+  },
+  {
+    label: t('nav.athleteReports'),
+    icon: 'ti ti-file-analytics',
+    command: () => router.push('/informe')
+  },
+  {
+    label: t('nav.dashboard'),
+    icon: 'ti ti-layout-dashboard',
+    command: () => router.push('/dashboard')
+  }
+])
+const toggleAtletesMenu = (event: Event) => {
+  atletesMenu.value.toggle(event)
+}
+
 const changePassVisible = ref(false)
 const changePassLoading = ref(false)
 const changePassForm = ref({ old_password: '', new_password: '' })
@@ -137,6 +234,29 @@ const handleChangePassword = async () => {
     toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 3000 })
   } finally {
     changePassLoading.value = false
+  }
+}
+
+const changeProfileVisible = ref(false)
+const changeProfileLoading = ref(false)
+const changeProfileForm = ref({ nom: '', email: '' })
+
+const handleChangeProfile = async () => {
+  if (!changeProfileForm.value.nom || !changeProfileForm.value.email) {
+    toast.add({ severity: 'warn', summary: 'Avís', detail: 'Omple tots els camps.', life: 3000 })
+    return
+  }
+  
+  changeProfileLoading.value = true
+  try {
+    await authStore.updateProfile(changeProfileForm.value)
+    toast.add({ severity: 'success', summary: 'Èxit', detail: 'Perfil actualitzat correctament', life: 3000 })
+    changeProfileVisible.value = false
+  } catch (error: any) {
+    const msg = error.response?.data?.error || 'Error canviant el perfil'
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 3000 })
+  } finally {
+    changeProfileLoading.value = false
   }
 }
 
@@ -195,22 +315,16 @@ const handleChangeLanguage = async () => {
             <router-link to="/informe" class="nav-link">{{ $t('nav.myHistory') }}</router-link>
           </template>
           <template v-if="authStore.isEntrenador">
-            <router-link to="/dashboard" class="nav-link">{{ $t('nav.dashboard') }}</router-link>
-            <router-link to="/tests" class="nav-link menu-with-badge">
-              {{ $t('nav.tests') }}
-              <span v-if="testsStore.notificationCount > 0" class="badge">{{ testsStore.notificationCount }}</span>
-            </router-link>
-            <router-link to="/atletes" class="nav-link">{{ $t('nav.users') }}</router-link>
-            <router-link to="/entrenador/forms" class="nav-link">{{ $t('nav.forms') }}</router-link>
-            <router-link to="/weeks" class="nav-link">{{ $t('nav.weeks') }}</router-link>
-            <router-link to="/activitats" class="nav-link">{{ $t('nav.activities') }}</router-link>
-            <router-link to="/planning" class="nav-link">{{ $t('nav.planning') }}</router-link>
-            <router-link to="/competicions/entrenador" class="nav-link menu-with-badge">
-              {{ $t('nav.competitions') }}
-              <span v-if="compStore.pendingCount > 0" class="badge">{{ compStore.pendingCount }}</span>
-            </router-link>
-            <router-link to="/informe" class="nav-link">{{ $t('nav.athleteReports') }}</router-link>
-            <router-link to="/entrenador/configuracio" class="nav-link">Configuració</router-link>
+            <button @click="toggleAtletesMenu" class="nav-link menu-with-badge" style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:inherit;">
+              {{ $t('nav.users') }} <i class="ti ti-chevron-down text-sm"></i>
+            </button>
+            <button @click="toggleCompMenu" class="nav-link menu-with-badge" style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:inherit;">
+              {{ $t('nav.planningGroup') }} <i class="ti ti-chevron-down text-sm"></i>
+              <span v-if="(compStore.pendingCount + testsStore.notificationCount) > 0" class="badge">{{ compStore.pendingCount + testsStore.notificationCount }}</span>
+            </button>
+            <button @click="toggleConfigMenu" class="nav-link menu-with-badge" style="background:none;border:none;cursor:pointer;font-family:inherit;font-size:inherit;">
+              {{ $t('nav.settings') }} <i class="ti ti-chevron-down text-sm"></i>
+            </button>
           </template>
           <template v-if="authStore.usuari?.rol === 'admin' && !isAdminImpersonating">
             <router-link to="/admin" class="nav-link"><i class="ti ti-shield-check"></i> Panell d'Admin</router-link>
@@ -224,6 +338,37 @@ const handleChangeLanguage = async () => {
             <i class="ti ti-chevron-down text-sm"></i>
           </button>
           <Menu ref="userMenu" id="overlay_menu" :model="userMenuItems" :popup="true" appendTo="body" />
+          <Menu ref="compMenu" id="comp_menu" :model="compMenuItems" :popup="true" appendTo="body">
+            <template #item="{ item, props }">
+              <a v-bind="props.action" class="flex align-center w-full justify-between p-2">
+                <div class="flex align-center gap-2">
+                  <i :class="item.icon"></i>
+                  <span>{{ item.label }}</span>
+                </div>
+                <span v-if="item.badge" class="badge" style="margin-left: 8px;">{{ item.badge }}</span>
+              </a>
+            </template>
+          </Menu>
+          <Menu ref="configMenu" id="config_menu" :model="configMenuItems" :popup="true" appendTo="body">
+            <template #item="{ item, props }">
+              <a v-bind="props.action" class="flex align-center w-full justify-between p-2">
+                <div class="flex align-center gap-2">
+                  <i :class="item.icon"></i>
+                  <span>{{ item.label }}</span>
+                </div>
+              </a>
+            </template>
+          </Menu>
+          <Menu ref="atletesMenu" id="atletes_menu" :model="atletesMenuItems" :popup="true" appendTo="body">
+            <template #item="{ item, props }">
+              <a v-bind="props.action" class="flex align-center w-full justify-between p-2">
+                <div class="flex align-center gap-2">
+                  <i :class="item.icon"></i>
+                  <span>{{ item.label }}</span>
+                </div>
+              </a>
+            </template>
+          </Menu>
         </div>
       </div>
     </header>
@@ -254,6 +399,64 @@ const handleChangeLanguage = async () => {
       <template #footer>
         <Button label="Cancel·lar" icon="ti ti-x" text @click="changeLangVisible = false" />
         <Button label="Guardar" icon="ti ti-check" @click="handleChangeLanguage" :loading="changeLangLoading" />
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="changeProfileVisible" :header="$t('userMenu.changeProfile')" modal :style="{ width: '400px' }">
+      <div class="flex flex-col gap-4 mt-2">
+        <div class="field">
+          <label>Nom</label>
+          <InputText v-model="changeProfileForm.nom" class="w-full" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <InputText type="email" v-model="changeProfileForm.email" class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel·lar" icon="ti ti-x" text @click="changeProfileVisible = false" />
+        <Button label="Guardar" icon="ti ti-check" @click="handleChangeProfile" :loading="changeProfileLoading" />
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="changelogVisible" :header="`Novetats - ${APP_VERSION}`" modal :style="{ width: '600px', maxWidth: '90vw' }">
+      <div class="flex flex-col gap-4 mt-2 text-surface-800 leading-relaxed text-sm">
+        <div class="bg-primary-50 p-4 rounded-xl border border-primary-100 mb-2">
+          <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
+            <i class="ti ti-rocket text-xl"></i> Versió 1.1.0 (30 Juny 2026)
+          </h3>
+          <p class="text-primary-800">S'ha implementat el compliment normatiu del RGPD juntament amb múltiples millores a l'edició de formularis i navegació.</p>
+        </div>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-shield-check text-primary"></i> 1. Privacitat i RGPD</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li>Acceptació obligatòria de la Política de Privacitat per a tots els usuaris.</li>
+          <li>Registre segur del consentiment, incloent l'adreça IP i versió de la política acceptada.</li>
+          <li>Nova pantalla visual per a la informació legal (Primera Capa).</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-file-description text-primary"></i> 2. Formularis (Form Builder)</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Formularis globals:</strong> Ara els formularis són independents de l'entrenador.</li>
+          <li><strong>Drag & Drop:</strong> Les preguntes del formulari es poden reordenar arrossegant i deixant anar (arrossega la icona de punts).</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-layout-dashboard text-primary"></i> 3. Tauler i Vistes</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li>Els textos llargs als camps de notes ara es mostren completament en multilínia.</li>
+          <li>Cerca per nom i paginació afegida al llistat d'atletes.</li>
+          <li>Graella d'activitats redistribuïda a 2 columnes.</li>
+          <li>Filtre afegit a la vista de Planificació per ocultar les competicions descartades.</li>
+          <li>Filtre de setmanes ordenat de forma cronològica (de més antiga a més nova).</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-compass text-primary"></i> 4. Navegació</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li>Reestructuració de la barra superior agrupant la navegació en Atletes, Planificació i Configuració.</li>
+        </ul>
+      </div>
+      <template #footer>
+        <Button label="Tancar" icon="ti ti-x" @click="changelogVisible = false" autofocus />
       </template>
     </Dialog>
 

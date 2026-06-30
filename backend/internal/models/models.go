@@ -181,6 +181,11 @@ type UpdateIdiomaRequest struct {
 	Idioma string `json:"idioma" binding:"required,oneof=CAT ESP ENG"`
 }
 
+type UpdateProfileRequest struct {
+	Nom   string `json:"nom" binding:"required"`
+	Email string `json:"email" binding:"required,email"`
+}
+
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
@@ -372,7 +377,6 @@ type JWTClaims struct {
 
 type Form struct {
 	ID           string    `json:"id"`
-	EntrenadorID string    `json:"entrenador_id"`
 	Titol        string    `json:"titol"`
 	Descripcio   *string   `json:"descripcio"`
 	Actiu        bool      `json:"actiu"`

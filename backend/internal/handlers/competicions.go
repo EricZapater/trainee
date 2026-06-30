@@ -178,6 +178,27 @@ func (h *Handler) ListEntrenadorCompeticions(c *gin.Context) {
 	c.JSON(http.StatusOK, comps)
 }
 
+func (h *Handler) ListEntrenadorHistoricCompeticions(c *gin.Context) {
+	usuariID := c.GetString("user_id")
+	
+	entrenadorInfo, err := h.Store.GetEntrenadorByUsuariID(c.Request.Context(), usuariID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha trobat l'entrenador"})
+		return
+	}
+
+	comps, err := h.Store.ListHistoricCompeticionsByEntrenador(c.Request.Context(), entrenadorInfo.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error llistant competicions"})
+		return
+	}
+	
+	if comps == nil {
+		comps = []models.Competicio{}
+	}
+	c.JSON(http.StatusOK, comps)
+}
+
 func (h *Handler) TraspassarCompeticio(c *gin.Context) {
 	usuariID := c.GetString("user_id")
 	competicioID := c.Param("id")

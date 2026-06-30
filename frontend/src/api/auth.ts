@@ -35,3 +35,13 @@ export async function updateIdioma(idioma: string): Promise<{ message: string }>
   const { data } = await api.patch<{ message: string }>('/usuaris/me/idioma', { idioma })
   return data
 }
+
+export async function updateProfile(payload: { nom: string; email: string }): Promise<{ message: string }> {
+  const { data } = await api.put<{ message: string }>('/usuaris/me', payload)
+  return data
+}
+
+export async function acceptLegalConsent(version: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/legal/consent', { version })
+  return data
+}

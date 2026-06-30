@@ -205,3 +205,26 @@ func (h *Handler) UpdateIdioma(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "idioma actualitzat correctament"})
 }
+
+func (h *Handler) UpdateProfile(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req models.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify if email is already taken by another user
+	if existingUser, err := h.Store.GetUsuariByEmail(c.Request.Context(), req.Email); err == nil && existingUser.ID != userID {
+		c.JSON(http.StatusConflict, gin.H{"error": "l'email ja està en ús"})
+		return
+	}
+
+	if err := h.Store.UpdateUsuariProfile(c.Request.Context(), userID, req.Nom, req.Email); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha pogut actualitzar el perfil"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "perfil actualitzat correctament"})
+}

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as apiLogin, register as apiRegister, magicLogin as apiMagicLogin, updateIdioma as apiUpdateIdioma } from '@/api/auth'
+import { login as apiLogin, register as apiRegister, magicLogin as apiMagicLogin, updateIdioma as apiUpdateIdioma, updateProfile as apiUpdateProfile } from '@/api/auth'
 import type { Usuari } from '@/types'
 import router from '@/router'
 import i18n, { idiomToLocale } from '@/i18n'
@@ -82,6 +82,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateProfile(payload: { nom: string; email: string }) {
+    await apiUpdateProfile(payload)
+    if (usuari.value) {
+      usuari.value.nom = payload.nom
+      usuari.value.email = payload.email
+      localStorage.setItem('trainee_usuari', JSON.stringify(usuari.value))
+    }
+  }
+
   async function loadFromStorage() {
     // Si tenim token però s'ha perdut l'usuari del localStorage (corrupte)
     if (token.value && !usuari.value) {
@@ -100,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     updateIdioma,
+    updateProfile,
     loadFromStorage
   }
 })

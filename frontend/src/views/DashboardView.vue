@@ -19,6 +19,7 @@ const weeks = ref<ManagedWeekWithCount[]>([])
 const selectedWeek = ref<string>('')
 const submissionsData = ref<EntrenadorSubmissionsResponse | null>(null)
 const loading = ref(false)
+const searchAthlete = ref('')
 
 const drawerVisible = ref(false)
 const selectedAthlete = ref<AtletaSubmissionSummary | null>(null)
@@ -29,10 +30,17 @@ const showOnlyPending = ref(false)
 
 const loadWeeks = async () => {
   try {
-    weeks.value = await getEntrenadorWeeks()
+    const allWeeks = await getEntrenadorWeeks()
+    weeks.value = allWeeks
+      .filter(w => w.estat === 'oberta')
+      .sort((a, b) => a.week_start.localeCompare(b.week_start)) // oldest to newest
+    
     if (weeks.value.length > 0 && !selectedWeek.value) {
       selectedWeek.value = weeks.value[0].week_start
       await loadSubmissions()
+    } else if (weeks.value.length === 0) {
+      selectedWeek.value = ''
+      submissionsData.value = null
     }
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut carregar les setmanes', life: 3000 })
@@ -82,6 +90,11 @@ const filteredAtletes = computed(() => {
   let list = submissionsData.value.atletes
   if (showOnlyPending.value) {
     list = list.filter(a => !a.ha_respost)
+  }
+  
+  if (searchAthlete.value) {
+    const query = searchAthlete.value.toLowerCase()
+    list = list.filter(a => a.nom.toLowerCase().includes(query))
   }
   
   // Sort by athlete name ascending
@@ -141,6 +154,16 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
           </template>
         </Select>
         
+        <span class="p-input-icon-left" style="width: 200px;">
+          <input 
+            type="text" 
+            v-model="searchAthlete" 
+            placeholder="Cercar atleta..." 
+            class="p-inputtext p-component w-full" 
+            style="padding-left: 10px;"
+          />
+        </span>
+        
         <Button 
           :icon="showOnlyPending ? 'ti ti-filter-off' : 'ti ti-filter'" 
           :severity="showOnlyPending ? 'info' : 'secondary'"
@@ -174,7 +197,7 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
               <th>{{ $t('dashboard.days.5') }}</th>
               <th>{{ $t('dashboard.days.6') }}</th>
               <th>{{ $t('dashboard.days.7') }}</th>
-              <th class="col-notes" style="width: 150px;">Notes</th>
+              <th class="col-notes" style="width: 300px;">Notes</th>
               <th class="col-gestionat" style="width: 80px;">Gestionat</th>
             </tr>
           </thead>
@@ -214,8 +237,8 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
                   </div>
                 </div>
               </td>
-              <td class="col-notes text-center" style="max-width: 150px;">
-                <div class="notes-preview" :title="atleta.notes_setmana" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem; color: var(--text-secondary);">
+              <td class="col-notes text-left" style="max-width: 300px;">
+                <div class="notes-preview" :title="atleta.notes_setmana" style="white-space: pre-wrap; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">
                   {{ atleta.notes_setmana || '-' }}
                 </div>
               </td>
@@ -318,7 +341,7 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
 
 .dashboard-table th.col-name {
   text-align: left;
-  width: 250px;
+  width: 180px;
 }
 
 .dashboard-table td {
@@ -328,7 +351,7 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
 
 .dashboard-table td:not(.col-name) {
   text-align: center;
-  width: calc((100% - 250px) / 7);
+  width: calc((100% - 180px) / 7);
   border-left: 1px solid var(--border);
 }
 
@@ -380,7 +403,9 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
 
 .slots-stack {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: 4px;
   min-height: 28px;
