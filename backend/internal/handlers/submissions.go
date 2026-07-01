@@ -31,10 +31,10 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 		return
 	}
 
-	validDurades := map[float64]bool{0.5: true, 1.0: true, 1.5: true, 2.0: true, 2.5: true, 3.0: true}
+	validDurades := map[float64]bool{0.5: true, 1.0: true, 1.5: true, 2.0: true, 2.5: true, 3.0: true, 4.0: true}
 	for _, slot := range req.Slots {
 		if !validDurades[slot.DuradaHores] {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "durada_hores ha de ser 0.5, 1.0, 1.5, 2.0, 2.5 o 3.0"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "durada_hores ha de ser 0.5, 1.0, 1.5, 2.0, 2.5, 3.0 o 4.0"})
 			return
 		}
 	}

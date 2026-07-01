@@ -25,7 +25,7 @@ const compStore = useCompeticionsStore()
 const testsStore = useTestsStore()
 const isMenuOpen = ref(false)
 const changelogVisible = ref(false)
-const APP_VERSION = 'v1.1.0'
+const APP_VERSION = 'v1.1.1'
 
 const isAdminImpersonating = ref(false)
 const pendingAnuncisCount = ref(0)
@@ -428,9 +428,21 @@ const handleChangeLanguage = async () => {
       <div class="flex flex-col gap-4 mt-2 text-surface-800 leading-relaxed text-sm">
         <div class="bg-primary-50 p-4 rounded-xl border border-primary-100 mb-2">
           <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
-            <i class="ti ti-rocket text-xl"></i> Versió 1.1.0 (30 Juny 2026)
+            <i class="ti ti-rocket text-xl"></i> Versió 1.1.1 (1 Juliol 2026)
           </h3>
-          <p class="text-primary-800">S'ha implementat el compliment normatiu del RGPD juntament amb múltiples millores a l'edició de formularis i navegació.</p>
+          <p class="text-primary-800">Petites correccions i millores d'estabilitat.</p>
+        </div>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-bug text-primary"></i> 1. Correcció d'errors</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li>S'ha solucionat un error que bloquejava l'aplicació en intentar desar activitats amb durades estimades superiors a 3 hores.</li>
+        </ul>
+
+        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
+          <h3 class="font-bold text-surface-900 flex items-center gap-2">
+            <i class="ti ti-clock text-lg"></i> Versió 1.1.0 (30 Juny 2026)
+          </h3>
+          <p class="text-surface-600 text-xs mt-1">S'ha implementat el compliment normatiu del RGPD juntament amb múltiples millores a l'edició de formularis i navegació.</p>
         </div>
 
         <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-shield-check text-primary"></i> 1. Privacitat i RGPD</h4>
