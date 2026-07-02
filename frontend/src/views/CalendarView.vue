@@ -50,12 +50,12 @@ const weekStatus = computed(() => {
 const isWeekOpen = computed(() => weekStatus.value === 'oberta')
 const isWeekTraspassada = computed(() => weekStatus.value === 'traspassada')
 
-const loadData = async () => {
+const loadData = async (force: boolean = false) => {
   try {
     await Promise.all([
-      activitatsStore.load(),
-      weeksStore.load(),
-      calendarStore.loadSubmission()
+      activitatsStore.load(force),
+      weeksStore.load(force),
+      calendarStore.loadSubmission(force)
     ])
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error carregant les dades', life: 3000 })
@@ -171,6 +171,7 @@ const handleSave = async (isCompleted: boolean = false) => {
           <Button icon="ti ti-chevron-left" text rounded @click="handleNavigate(-1)" />
           <h2 class="week-title">{{ currentWeekLabel }}</h2>
           <Button icon="ti ti-chevron-right" text rounded @click="handleNavigate(1)" />
+          <Button icon="ti ti-refresh" text rounded @click="loadData(true)" title="Refrescar dades" />
         </div>
         
         <WeekStatusBadge :estat="weekStatus" />

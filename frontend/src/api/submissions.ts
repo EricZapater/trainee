@@ -6,8 +6,9 @@ export async function createSubmission(payload: SubmissionRequest): Promise<Subm
   return data
 }
 
-export async function getMySubmission(weekStart: string): Promise<MySubmissionResponse> {
-  const { data } = await api.get<MySubmissionResponse>(`/submissions/me?week=${weekStart}`)
+export async function getMySubmission(weekStart: string, force: boolean = false): Promise<MySubmissionResponse> {
+  const url = force ? `/submissions/me?week=${weekStart}&_t=${Date.now()}` : `/submissions/me?week=${weekStart}`
+  const { data } = await api.get<MySubmissionResponse>(url)
   return data
 }
 

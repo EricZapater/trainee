@@ -6,8 +6,8 @@ import type { Activitat } from '@/types'
 export const useActivitatsStore = defineStore('activitats', () => {
   const activitats = ref<Activitat[]>([])
 
-  async function load() {
-    activitats.value = await getActivitats()
+  async function load(force: boolean = false) {
+    activitats.value = await getActivitats(force)
   }
 
   return {

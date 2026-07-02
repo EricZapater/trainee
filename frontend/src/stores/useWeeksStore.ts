@@ -6,8 +6,8 @@ import type { ManagedWeek } from '@/types'
 export const useWeeksStore = defineStore('weeks', () => {
   const weeks = ref<ManagedWeek[]>([])
 
-  async function load() {
-    weeks.value = await getOpenWeeks()
+  async function load(force: boolean = false) {
+    weeks.value = await getOpenWeeks(force)
   }
 
   return {

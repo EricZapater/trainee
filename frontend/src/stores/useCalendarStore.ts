@@ -55,10 +55,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     notesSetmana.value = ''
   }
 
-  async function loadSubmission() {
+  async function loadSubmission(force: boolean = false) {
     loading.value = true
     try {
-      const data = await getMySubmission(currentWeekStart.value)
+      const data = await getMySubmission(currentWeekStart.value, force)
       clearSlots()
       notesSetmana.value = data.notes_setmana || ''
       estat.value = (data as any).estat || 'esborrany'
