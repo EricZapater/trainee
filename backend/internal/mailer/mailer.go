@@ -39,10 +39,20 @@ var newCompetitionESPHTML string
 //go:embed new_competition_ENG.html
 var newCompetitionENGHTML string
 
+//go:embed password_reset_CAT.html
+var passwordResetCATHTML string
+
+//go:embed password_reset_ESP.html
+var passwordResetESPHTML string
+
+//go:embed password_reset_ENG.html
+var passwordResetENGHTML string
+
 type Mailer interface {
 	SendReminder(toEmail, toName, magicToken, weekStart, idioma string) error
 	SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error
 	SendNewCompetitionNotification(entrenadorEmail, entrenadorNom, atletaNom, competicioNom, idioma string) error
+	SendPasswordResetNotification(toEmail, toName, newPassword, idioma string) error
 }
 
 type LogMailer struct{}
@@ -59,6 +69,11 @@ func (m *LogMailer) SendNewAthleteNotification(entrenadorEmail, entrenadorNom, a
 
 func (m *LogMailer) SendNewCompetitionNotification(entrenadorEmail, entrenadorNom, atletaNom, competicioNom, idioma string) error {
 	log.Printf("[MAILER LOG] Enviant notificació de nova competició (%s de %s) a: %s (%s). Idioma: %s\n", competicioNom, atletaNom, entrenadorNom, entrenadorEmail, idioma)
+	return nil
+}
+
+func (m *LogMailer) SendPasswordResetNotification(toEmail, toName, newPassword, idioma string) error {
+	log.Printf("[MAILER LOG] Enviant nova contrasenya a: %s (%s). Idioma: %s\n", toName, toEmail, idioma)
 	return nil
 }
 
@@ -86,6 +101,13 @@ type newCompetitionData struct {
 	AtletaNom     string
 	CompeticioNom string
 	AppURL        string
+}
+
+type passwordResetData struct {
+	Nom         string
+	NewPassword string
+	AppURL      string
+	LogoURL     string
 }
 
 func (m *SMTPMailer) sendRawEmail(toEmail, subject, bodyHTML string) error {
@@ -284,6 +306,52 @@ func (m *SMTPMailer) SendNewCompetitionNotification(entrenadorEmail, entrenadorN
 	}
 
 	return m.sendRawEmail(entrenadorEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendPasswordResetNotification(toEmail, toName, newPassword, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ENG":
+		subject = "Your Trainee password has been reset"
+		tmplHTML = passwordResetENGHTML
+	case "CAT":
+		subject = "La teva contrasenya de Trainee ha estat restablerta"
+		tmplHTML = passwordResetCATHTML
+	default: // ESP is default
+		subject = "Tu contraseña de Trainee ha sido restablecida"
+		tmplHTML = passwordResetESPHTML
+	}
+
+	tmpl, err := template.New("password_reset").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.ericzapater.cat" // Fallback
+	}
+
+	logoURL := os.Getenv("MAILER_LOGO_URL")
+	if logoURL == "" {
+		logoURL = "https://trainee.ericzapater.cat/logo.png"
+	}
+
+	data := passwordResetData{
+		Nom:         toName,
+		NewPassword: newPassword,
+		AppURL:      appURL + "/login",
+		LogoURL:     logoURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
 }
 
 // NewMailer creates a new Mailer. If host is empty, it returns a LogMailer.

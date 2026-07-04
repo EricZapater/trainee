@@ -30,3 +30,7 @@ export async function impersonateUser(id: string): Promise<ImpersonateResponse> 
   const { data } = await api.post<ImpersonateResponse>(`/admin/impersonate/${id}`)
   return data
 }
+
+export async function resetUserPassword(id: string): Promise<void> {
+  await api.post(`/admin/usuaris/${id}/reset-password`)
+}

@@ -1,21 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getUsuaris, impersonateUser, type AdminUser } from '@/api/admin'
+import { getUsuaris, impersonateUser, resetUserPassword, type AdminUser } from '@/api/admin'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
+import { FilterMatchMode } from '@primevue/core/api'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import ConfirmDialog from 'primevue/confirmdialog'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const toast = useToast()
+const confirm = useConfirm()
 
 const usuaris = ref<AdminUser[]>([])
 const loading = ref(true)
 const impersonatingId = ref<string | null>(null)
+const resettingId = ref<string | null>(null)
+
+const filters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+})
 
 async function loadUsuaris() {
   loading.value = true
@@ -73,6 +83,28 @@ async function handleImpersonate(user: AdminUser) {
   }
 }
 
+async function handleResetPassword(user: AdminUser) {
+  confirm.require({
+    message: `Estàs segur que vols restablir la contrasenya de ${user.nom}? Se li enviarà un correu electrònic amb la nova contrasenya.`,
+    header: 'Confirmació de Restabliment',
+    icon: 'ti ti-alert-triangle',
+    acceptLabel: 'Sí, restablir',
+    rejectLabel: 'Cancel·lar',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      resettingId.value = user.id
+      try {
+        await resetUserPassword(user.id)
+        toast.add({ severity: 'success', summary: 'Contrasenya Restablerta', detail: `La contrasenya de ${user.nom} s'ha restablert i enviat per correu.`, life: 5000 })
+      } catch (err: any) {
+        toast.add({ severity: 'error', summary: 'Error', detail: err.response?.data?.error || 'No s\'ha pogut restablir la contrasenya', life: 3000 })
+      } finally {
+        resettingId.value = null
+      }
+    }
+  })
+}
+
 const formatRole = (role: string) => {
   return role.charAt(0).toUpperCase() + role.slice(1)
 }
@@ -101,16 +133,29 @@ onMounted(() => {
       <Button icon="ti ti-refresh" label="Actualitzar" @click="loadUsuaris" :loading="loading" />
     </div>
 
+    <ConfirmDialog></ConfirmDialog>
+
     <div class="glass-card table-container">
       <DataTable 
+        v-model:filters="filters"
         :value="usuaris" 
         :loading="loading" 
         responsiveLayout="scroll"
         class="custom-table"
         :paginator="true"
         :rows="20"
+        :rowsPerPageOptions="[10, 20, 50]"
+        :globalFilterFields="['nom', 'email']"
         stripedRows
       >
+        <template #header>
+          <div class="flex justify-end p-2">
+            <span class="p-input-icon-left">
+              <i class="ti ti-search" />
+              <InputText v-model="filters['global'].value" placeholder="Cerca per nom o correu..." />
+            </span>
+          </div>
+        </template>
         <template #empty>
           <div class="p-4 text-center text-gray-500">No s'han trobat usuaris.</div>
         </template>
@@ -130,16 +175,25 @@ onMounted(() => {
           </template>
         </Column>
 
-        <Column header="Accions" :exportable="false" style="min-width:8rem">
+        <Column header="Accions" :exportable="false" style="min-width:12rem">
           <template #body="{ data }">
-            <Button 
-              icon="ti ti-spy" 
-              label="Entrar" 
-              class="p-button-sm p-button-outlined p-button-info" 
-              @click="handleImpersonate(data)" 
-              :loading="impersonatingId === data.id"
-              v-if="data.id !== authStore.usuari?.id"
-            />
+            <div class="flex gap-2">
+              <Button 
+                icon="ti ti-spy" 
+                label="Entrar" 
+                class="p-button-sm p-button-outlined p-button-info" 
+                @click="handleImpersonate(data)" 
+                :loading="impersonatingId === data.id"
+                v-if="data.id !== authStore.usuari?.id"
+              />
+              <Button 
+                icon="ti ti-key" 
+                label="Restablir Contrasenya" 
+                class="p-button-sm p-button-outlined p-button-warning" 
+                @click="handleResetPassword(data)" 
+                :loading="resettingId === data.id"
+              />
+            </div>
           </template>
         </Column>
       </DataTable>

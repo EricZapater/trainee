@@ -73,7 +73,7 @@ func main() {
 	h := handlers.NewHandler(s, mailService, cfg.JWTSecret)
 	systemLogsHandler := handlers.NewSystemLogsHandler(s)
 	settingsHandler := handlers.NewSettingsHandler(s, jm)
-	adminHandler := handlers.NewAdminHandler(s, cfg.JWTSecret)
+	adminHandler := handlers.NewAdminHandler(s, mailService, cfg.JWTSecret)
 
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -193,6 +193,7 @@ func main() {
 		adminRoutes.GET("/system-logs", systemLogsHandler.GetSystemLogs)
 		adminRoutes.GET("/usuaris", adminHandler.GetUsuaris)
 		adminRoutes.POST("/impersonate/:id", adminHandler.Impersonate)
+		adminRoutes.POST("/usuaris/:id/reset-password", adminHandler.ResetPassword)
 	}
 
 	publicRoutes := api.Group("/public")
