@@ -111,6 +111,7 @@ export interface AtletaSubmissionSummary {
   submission_id?: string
   nom: string
   email: string
+  actiu: boolean
   ha_respost: boolean
   estat: string
   notes_setmana?: string

@@ -154,6 +154,11 @@ const handleSave = async (isCompleted: boolean = false) => {
     isSaving.value = false
   }
 }
+
+const copyDay = (diaIndex: number) => {
+  calendarStore.copyDayToAll(diaIndex)
+  toast.add({ severity: 'success', summary: 'Dia copiat', detail: 'S\'han copiat les hores i activitats a la resta de dies de la setmana', life: 3000 })
+}
 </script>
 
 <template>
@@ -203,6 +208,15 @@ const handleSave = async (isCompleted: boolean = false) => {
                 <option :value="3.0">3h</option>
                 <option :value="4.0">>3h</option>
               </select>
+              <Button 
+                icon="ti ti-copy" 
+                text 
+                rounded 
+                @click="copyDay(i)" 
+                v-tooltip="'Copiar dia'" 
+                :disabled="!isWeekOpen" 
+                style="width: 24px; height: 24px; padding: 0; margin-left: 4px;" 
+              />
             </div>
           </div>
 
@@ -253,6 +267,14 @@ const handleSave = async (isCompleted: boolean = false) => {
                 <option :value="3.0">3h</option>
                 <option :value="4.0">>3h</option>
               </select>
+              <Button 
+                icon="ti ti-copy" 
+                text 
+                rounded 
+                @click.stop="copyDay(dia-1)" 
+                :disabled="!isWeekOpen" 
+                style="width: 28px; height: 28px; padding: 0; margin-left: 6px;" 
+              />
             </div>
             <i :class="expandedDays.includes(dia-1) ? 'ti ti-chevron-up' : 'ti ti-chevron-down'" class="text-secondary text-xl"></i>
           </div>

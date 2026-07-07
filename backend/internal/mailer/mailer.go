@@ -63,6 +63,7 @@ type Mailer interface {
 	SendNewCompetitionNotification(entrenadorEmail, entrenadorNom, atletaNom, competicioNom, idioma string) error
 	SendPasswordResetNotification(toEmail, toName, newPassword, idioma string) error
 	SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error
+	SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error
 }
 
 type LogMailer struct{}
@@ -89,6 +90,11 @@ func (m *LogMailer) SendPasswordResetNotification(toEmail, toName, newPassword, 
 
 func (m *LogMailer) SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error {
 	log.Printf("[MAILER LOG] Enviant resposta feedback a: %s (%s). Ticket: %s. Nou estat: %s\n", toName, toEmail, resum, estat)
+	return nil
+}
+
+func (m *LogMailer) SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error {
+	log.Printf("[MAILER LOG] Enviant notificació planificació a: %s (%s). Setmana: %s. Idioma: %s\n", toName, toEmail, weekStart, idioma)
 	return nil
 }
 
@@ -132,6 +138,59 @@ type feedbackReplyData struct {
 	Estat    string
 	LogoURL  string
 }
+
+type weekPlannedData struct {
+	Nom       string
+	WeekStart string
+	AppURL    string
+	LogoURL   string
+}
+
+// --- Week Planned Templates ---
+const weekPlannedCATHTML = `
+<!DOCTYPE html>
+<html>
+<head><style>body { font-family: sans-serif; color: #333; line-height: 1.6; } .btn { display: inline-block; padding: 10px 20px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }</style></head>
+<body>
+    <h2>Hola {{.Nom}},</h2>
+    <p>El teu entrenador acaba de planificar els entrenaments per la setmana del <strong>{{.WeekStart}}</strong>.</p>
+    <p>Ja pots entrar a l'aplicació per veure els detalls i preparar-te!</p>
+    <a href="{{.AppURL}}" class="btn">Anar a l'App</a>
+    <p>Salutacions,<br>L'equip de Trainee</p>
+    {{if .LogoURL}}<div style="margin-top:30px;"><img src="{{.LogoURL}}" alt="Logo" style="height:40px;"/></div>{{end}}
+</body>
+</html>
+`
+
+const weekPlannedESPHTML = `
+<!DOCTYPE html>
+<html>
+<head><style>body { font-family: sans-serif; color: #333; line-height: 1.6; } .btn { display: inline-block; padding: 10px 20px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }</style></head>
+<body>
+    <h2>Hola {{.Nom}},</h2>
+    <p>Tu entrenador acaba de planificar los entrenamientos para la semana del <strong>{{.WeekStart}}</strong>.</p>
+    <p>¡Ya puedes entrar a la aplicación para ver los detalles y prepararte!</p>
+    <a href="{{.AppURL}}" class="btn">Ir a la App</a>
+    <p>Saludos,<br>El equipo de Trainee</p>
+    {{if .LogoURL}}<div style="margin-top:30px;"><img src="{{.LogoURL}}" alt="Logo" style="height:40px;"/></div>{{end}}
+</body>
+</html>
+`
+
+const weekPlannedENGHTML = `
+<!DOCTYPE html>
+<html>
+<head><style>body { font-family: sans-serif; color: #333; line-height: 1.6; } .btn { display: inline-block; padding: 10px 20px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }</style></head>
+<body>
+    <h2>Hello {{.Nom}},</h2>
+    <p>Your coach just planned your training for the week of <strong>{{.WeekStart}}</strong>.</p>
+    <p>You can now open the app to see the details and get ready!</p>
+    <a href="{{.AppURL}}" class="btn">Go to App</a>
+    <p>Best regards,<br>The Trainee Team</p>
+    {{if .LogoURL}}<div style="margin-top:30px;"><img src="{{.LogoURL}}" alt="Logo" style="height:40px;"/></div>{{end}}
+</body>
+</html>
+`
 
 func (m *SMTPMailer) sendRawEmail(toEmail, subject, bodyHTML string) error {
 	var message bytes.Buffer
@@ -409,6 +468,52 @@ func (m *SMTPMailer) SendFeedbackReplyNotification(toEmail, toName, resum, respo
 		Resposta: resposta,
 		Estat:    estat,
 		LogoURL:  logoURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ENG":
+		subject = "Your training week is planned!"
+		tmplHTML = weekPlannedENGHTML
+	case "CAT":
+		subject = "La teva setmana d'entrenament ja està planificada!"
+		tmplHTML = weekPlannedCATHTML
+	default: // ESP
+		subject = "¡Tu semana de entrenamiento ya está planificada!"
+		tmplHTML = weekPlannedESPHTML
+	}
+	
+	tmpl, err := template.New("week_planned").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.ericzapater.cat" // Fallback
+	}
+	
+	logoURL := os.Getenv("MAILER_LOGO_URL")
+	if logoURL == "" {
+		logoURL = "https://trainee.ericzapater.cat/logo.png"
+	}
+
+	data := weekPlannedData{
+		Nom:       toName,
+		WeekStart: weekStart,
+		AppURL:    appURL,
+		LogoURL:   logoURL,
 	}
 
 	var body bytes.Buffer

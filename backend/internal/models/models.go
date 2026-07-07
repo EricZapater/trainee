@@ -292,6 +292,7 @@ type AtletaSubmissionSummary struct {
 	SubmissionID *string     `json:"submission_id,omitempty"`
 	Nom          string      `json:"nom"`
 	Email        string      `json:"email"`
+	Actiu        bool        `json:"actiu"`
 	HaRespost    bool        `json:"ha_respost"`
 	Estat        string      `json:"estat"`
 	NotesSetmana *string     `json:"notes_setmana"`
@@ -301,6 +302,13 @@ type AtletaSubmissionSummary struct {
 
 type ToggleSubmissionGestionatRequest struct {
 	Gestionat bool `json:"gestionat"`
+}
+
+type ToggleSubmissionGestionatResult struct {
+	Email     string
+	Nom       string
+	Idioma    string
+	WeekStart string
 }
 
 type EntrenadorSubmissionsResponse struct {

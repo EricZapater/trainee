@@ -145,6 +145,7 @@ func (s *PostgresStore) GetSubmissionsByEntrenadorAndWeek(ctx context.Context, e
 			AtletaID:  atleta.ID,
 			Nom:       atleta.Nom,
 			Email:     atleta.Email,
+			Actiu:     atleta.Actiu,
 			HaRespost: false,
 			Slots:     []models.SlotEntry{},
 		}
@@ -293,19 +294,29 @@ func (s *PostgresStore) GetInformeAtleta(ctx context.Context, atletaID string, s
 	return resp, nil
 }
 
-func (s *PostgresStore) ToggleSubmissionGestionat(ctx context.Context, submissionID string, entrenadorID string, gestionat bool) error {
-	res, err := s.pool.Exec(ctx,
+func (s *PostgresStore) ToggleSubmissionGestionat(ctx context.Context, submissionID string, entrenadorID string, gestionat bool) (*models.ToggleSubmissionGestionatResult, error) {
+	var email, nom, idioma, weekStart string
+	err := s.pool.QueryRow(ctx,
 		`UPDATE weekly_submissions ws
 		 SET gestionat = $1, updated_at = now()
 		 FROM atletes a
-		 WHERE ws.id = $2 AND ws.atleta_id = a.id AND a.entrenador_id = $3`,
+		 JOIN usuaris u ON a.usuari_id = u.id
+		 WHERE ws.id = $2 AND ws.atleta_id = a.id AND a.entrenador_id = $3
+		 RETURNING u.email, u.nom, COALESCE(u.idioma, 'CAT'), ws.week_start`,
 		gestionat, submissionID, entrenadorID,
-	)
+	).Scan(&email, &nom, &idioma, &weekStart)
+	
 	if err != nil {
-		return err
+		if err.Error() == "no rows in result set" {
+			return nil, errors.New("no s'ha trobat la setmana o no tens permís")
+		}
+		return nil, err
 	}
-	if res.RowsAffected() == 0 {
-		return errors.New("no s'ha trobat la setmana o no tens permís")
-	}
-	return nil
+	
+	return &models.ToggleSubmissionGestionatResult{
+		Email:     email,
+		Nom:       nom,
+		Idioma:    idioma,
+		WeekStart: weekStart,
+	}, nil
 }

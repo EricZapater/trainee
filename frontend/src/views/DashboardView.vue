@@ -27,6 +27,14 @@ const selectedAthlete = ref<AtletaSubmissionSummary | null>(null)
 const first = ref(0)
 const rows = ref(10)
 const showOnlyPending = ref(false)
+const showInactive = ref(false)
+
+const planFilter = ref<'all' | 'planned' | 'unplanned'>('all')
+const planFilterOptions = [
+  { label: 'Tots els estats', value: 'all' },
+  { label: 'Només planificats', value: 'planned' },
+  { label: 'Pendents de planificar', value: 'unplanned' }
+]
 
 const loadWeeks = async () => {
   try {
@@ -88,8 +96,18 @@ const filteredAtletes = computed(() => {
   if (!submissionsData.value) return []
   
   let list = submissionsData.value.atletes
+  if (!showInactive.value) {
+    list = list.filter(a => a.actiu)
+  }
+  
   if (showOnlyPending.value) {
     list = list.filter(a => !a.ha_respost)
+  }
+  
+  if (planFilter.value === 'planned') {
+    list = list.filter(a => a.gestionat)
+  } else if (planFilter.value === 'unplanned') {
+    list = list.filter(a => !a.gestionat)
   }
   
   if (searchAthlete.value) {
@@ -164,6 +182,14 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
           />
         </span>
         
+        <Select 
+          v-model="planFilter" 
+          :options="planFilterOptions" 
+          optionLabel="label" 
+          optionValue="value"
+          class="w-48"
+        />
+        
         <Button 
           :icon="showOnlyPending ? 'ti ti-filter-off' : 'ti ti-filter'" 
           :severity="showOnlyPending ? 'info' : 'secondary'"
@@ -171,6 +197,14 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
           rounded 
           v-tooltip="$t('dashboard.filterPending')"
           @click="togglePendingFilter" 
+        />
+        <Button 
+          :icon="showInactive ? 'ti ti-user-off' : 'ti ti-user'" 
+          :severity="showInactive ? 'info' : 'secondary'"
+          :text="!showInactive"
+          rounded 
+          v-tooltip="'Mostra inactius'"
+          @click="showInactive = !showInactive" 
         />
         <Button icon="ti ti-refresh" text rounded @click="loadSubmissions" :loading="loading" />
       </div>
@@ -206,7 +240,7 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
               v-for="atleta in paginatedAtletes" 
               :key="atleta.atleta_id"
               class="athlete-row"
-              :class="{ 'has-response': atleta.ha_respost }"
+              :class="{ 'has-response': atleta.ha_respost && !atleta.gestionat, 'is-managed': atleta.gestionat }"
               @click="openAthleteDrawer(atleta)"
             >
               <td class="col-name">
@@ -372,6 +406,14 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
   background-color: rgba(34, 197, 94, 0.08);
 }
 
+.athlete-row.is-managed {
+  background-color: rgba(99, 102, 241, 0.05); /* Indigo/Primary tint */
+}
+
+.athlete-row.is-managed:hover {
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
 .athlete-info {
   display: flex;
   align-items: center;
@@ -511,6 +553,10 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
   
   .athlete-row.has-response td.col-name {
     background: #192b23;
+  }
+  
+  .athlete-row.is-managed td.col-name {
+    background: #1a1e36; /* Darker indigo for sticky col in dark mode */
   }
   
   .dashboard-table td:not(.col-name) {

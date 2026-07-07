@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -242,10 +243,19 @@ func (h *Handler) ToggleSubmissionGestionat(ctx *gin.Context) {
 		return
 	}
 
-	err = h.Store.ToggleSubmissionGestionat(ctx.Request.Context(), submissionID, entrenador.ID, req.Gestionat)
+	res, err := h.Store.ToggleSubmissionGestionat(ctx.Request.Context(), submissionID, entrenador.ID, req.Gestionat)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error canviant l'estat gestionat"})
 		return
+	}
+
+	// Send email if it was marked as planned
+	if req.Gestionat && res != nil {
+		go func() {
+			if err := h.Mailer.SendWeekPlannedNotification(res.Email, res.Nom, res.WeekStart, res.Idioma); err != nil {
+				log.Printf("Error sending week planned notification to %s: %v", res.Email, err)
+			}
+		}()
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"success": true})

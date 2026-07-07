@@ -44,6 +44,18 @@ export const useCalendarStore = defineStore('calendar', () => {
     })
   }
 
+  function copyDayToAll(diaIndex: number) {
+    const slotsToCopy = slotsByDay.value[diaIndex]
+    const hoursToCopy = horesDisponiblesPerDia.value[diaIndex]
+    
+    for (let d = 0; d < 7; d++) {
+      if (d !== diaIndex) {
+        slotsByDay.value[d] = slotsToCopy.map(s => ({ ...s }))
+        horesDisponiblesPerDia.value[d] = hoursToCopy
+      }
+    }
+  }
+
   function moveSlot(dia: number, fromIndex: number, toIndex: number) {
     const list = slotsByDay.value[dia]
     const [item] = list.splice(fromIndex, 1)
@@ -134,6 +146,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     removeSlotFromDay,
     updateSlotInDay,
     setHoresDia,
+    copyDayToAll,
     moveSlot,
     clearSlots,
     loadSubmission,

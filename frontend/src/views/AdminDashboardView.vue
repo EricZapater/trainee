@@ -23,6 +23,8 @@ const loading = ref(true)
 const impersonatingId = ref<string | null>(null)
 const resettingId = ref<string | null>(null)
 const syncingId = ref<string | null>(null)
+const selectedUsers = ref<AdminUser[]>([])
+const bulkSyncLoading = ref(false)
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -119,6 +121,35 @@ async function handleBrevoSync(user: AdminUser) {
   }
 }
 
+async function handleBulkBrevoSync() {
+  if (selectedUsers.value.length === 0) return
+  
+  bulkSyncLoading.value = true
+  let successCount = 0
+  let failCount = 0
+  
+  await Promise.allSettled(selectedUsers.value.map(async (user) => {
+    try {
+      await forceBrevoSync(user.id)
+      user.brevo_sync_status = 'pending'
+      successCount++
+    } catch (e) {
+      failCount++
+    }
+  }))
+  
+  bulkSyncLoading.value = false
+  
+  if (successCount > 0) {
+    toast.add({ severity: 'success', summary: 'Sincronització massiva', detail: `S'ha iniciat la sincronització de ${successCount} usuaris.`, life: 3000 })
+  }
+  if (failCount > 0) {
+    toast.add({ severity: 'error', summary: 'Errors en sincronitzar', detail: `Hi ha hagut errors al sincronitzar ${failCount} usuaris.`, life: 3000 })
+  }
+  
+  selectedUsers.value = []
+}
+
 const formatRole = (role: string) => {
   return role.charAt(0).toUpperCase() + role.slice(1)
 }
@@ -153,15 +184,27 @@ onMounted(() => {
         <h1 class="page-title"><i class="ti ti-shield-check page-icon"></i> Panell d'Administrador</h1>
         <p class="page-subtitle">Llistat de tots els usuaris de la plataforma.</p>
       </div>
-      <Button icon="ti ti-refresh" label="Actualitzar" @click="loadUsuaris" :loading="loading" />
+      <div class="flex gap-2">
+        <Button 
+          v-if="selectedUsers.length > 0"
+          icon="ti ti-mail" 
+          :label="`Sincronitzar seleccionats (${selectedUsers.length})`" 
+          severity="secondary"
+          @click="handleBulkBrevoSync" 
+          :loading="bulkSyncLoading" 
+        />
+        <Button icon="ti ti-refresh" label="Actualitzar" @click="loadUsuaris" :loading="loading" />
+      </div>
     </div>
 
     <ConfirmDialog></ConfirmDialog>
 
     <div class="glass-card table-container">
       <DataTable 
+        v-model:selection="selectedUsers"
         v-model:filters="filters"
         :value="usuaris" 
+        dataKey="id"
         :loading="loading" 
         responsiveLayout="scroll"
         class="custom-table"
@@ -183,6 +226,7 @@ onMounted(() => {
           <div class="p-4 text-center text-gray-500">No s'han trobat usuaris.</div>
         </template>
         
+        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
         <Column field="nom" header="Nom" :sortable="true"></Column>
         <Column field="cognoms" header="Cognoms" :sortable="true"></Column>
         <Column field="email" header="Email" :sortable="true"></Column>

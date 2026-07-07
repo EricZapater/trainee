@@ -435,7 +435,7 @@ const handleChangeLanguage = async () => {
           <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
             <i class="ti ti-rocket text-xl"></i> Versió 1.2.0 (7 Juliol 2026)
           </h3>
-          <p class="text-primary-800">Sincronització amb Brevo i camp de cognoms afegit.</p>
+          <p class="text-primary-800">Sincronització amb Brevo, feedback i millores al panell d'entrenadors i atletes.</p>
         </div>
 
         <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-mail text-primary"></i> 1. Integració amb Brevo</h4>
@@ -447,6 +447,24 @@ const handleChangeLanguage = async () => {
         <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-user text-primary"></i> 2. Nou camp Cognoms</h4>
         <ul class="list-disc pl-5 space-y-1 text-surface-700">
           <li><strong>Registre i Perfil:</strong> Els usuaris ara poden (i se'ls demana) introduir els seus cognoms durant el registre i l'edició del perfil.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-messages text-primary"></i> 3. Gestió de Feedback i Petició</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Estat i Resposta:</strong> Ara es pot contestar a les peticions dels usuaris i canviar el seu estat.</li>
+          <li><strong>Notificació per Email:</strong> L'usuari rep un correu electrònic automàtic quan se li contesta el tiquet de feedback.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-chart-bar text-primary"></i> 4. Millores al Dashboard (Entrenadors)</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Atletes Actius/Inactius:</strong> Per defecte s'oculten els atletes inactius i s'ha afegit un filtre per poder-los mostrar.</li>
+          <li><strong>Estats de Planificació:</strong> S'ha afegit un filtre per veure quins atletes estan planificats i quins no, i la fila queda ombrejada quan s'ha marcat com a planificat.</li>
+          <li><strong>Notificacions automàtiques:</strong> En marcar la setmana com a planificada, l'atleta rep un correu electrònic avisant-lo.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-calendar text-primary"></i> 5. Calendari i Disponibilitat (Atletes)</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Copiar Dies:</strong> S'ha afegit un botó per poder copiar les hores i activitats marcades d'un dia a la resta de dies de la setmana d'una sola vegada.</li>
         </ul>
 
         <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
