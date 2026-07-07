@@ -138,6 +138,7 @@ func main() {
 	adminAndEntrenador.Use(middleware.RequireRole("entrenador"))
 	{
 		adminAndEntrenador.GET("/feedback", h.GetFeedbackTickets)
+		adminAndEntrenador.PATCH("/feedback/:id", h.UpdateFeedbackTicket)
 		adminAndEntrenador.POST("/feedback", h.CreateFeedbackTicket)
 	}
 

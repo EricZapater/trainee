@@ -48,11 +48,21 @@ var passwordResetESPHTML string
 //go:embed password_reset_ENG.html
 var passwordResetENGHTML string
 
+//go:embed feedback_reply_CAT.html
+var feedbackReplyCATHTML string
+
+//go:embed feedback_reply_ESP.html
+var feedbackReplyESPHTML string
+
+//go:embed feedback_reply_ENG.html
+var feedbackReplyENGHTML string
+
 type Mailer interface {
 	SendReminder(toEmail, toName, magicToken, weekStart, idioma string) error
 	SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error
 	SendNewCompetitionNotification(entrenadorEmail, entrenadorNom, atletaNom, competicioNom, idioma string) error
 	SendPasswordResetNotification(toEmail, toName, newPassword, idioma string) error
+	SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error
 }
 
 type LogMailer struct{}
@@ -74,6 +84,11 @@ func (m *LogMailer) SendNewCompetitionNotification(entrenadorEmail, entrenadorNo
 
 func (m *LogMailer) SendPasswordResetNotification(toEmail, toName, newPassword, idioma string) error {
 	log.Printf("[MAILER LOG] Enviant nova contrasenya a: %s (%s). Idioma: %s\n", toName, toEmail, idioma)
+	return nil
+}
+
+func (m *LogMailer) SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error {
+	log.Printf("[MAILER LOG] Enviant resposta feedback a: %s (%s). Ticket: %s. Nou estat: %s\n", toName, toEmail, resum, estat)
 	return nil
 }
 
@@ -108,6 +123,14 @@ type passwordResetData struct {
 	NewPassword string
 	AppURL      string
 	LogoURL     string
+}
+
+type feedbackReplyData struct {
+	Nom      string
+	Resum    string
+	Resposta string
+	Estat    string
+	LogoURL  string
 }
 
 func (m *SMTPMailer) sendRawEmail(toEmail, subject, bodyHTML string) error {
@@ -344,6 +367,48 @@ func (m *SMTPMailer) SendPasswordResetNotification(toEmail, toName, newPassword,
 		NewPassword: newPassword,
 		AppURL:      appURL + "/login",
 		LogoURL:     logoURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ENG":
+		subject = "Update on your feedback ticket: " + resum
+		tmplHTML = feedbackReplyENGHTML
+	case "CAT":
+		subject = "Actualització del teu tiquet de feedback: " + resum
+		tmplHTML = feedbackReplyCATHTML
+	default:
+		subject = "Actualización de tu ticket de feedback: " + resum
+		tmplHTML = feedbackReplyESPHTML
+	}
+
+	tmpl, err := template.New("feedback_reply").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	logoURL := os.Getenv("MAILER_LOGO_URL")
+	if logoURL == "" {
+		logoURL = "https://trainee.ericzapater.cat/logo.png"
+	}
+
+	data := feedbackReplyData{
+		Nom:      toName,
+		Resum:    resum,
+		Resposta: resposta,
+		Estat:    estat,
+		LogoURL:  logoURL,
 	}
 
 	var body bytes.Buffer

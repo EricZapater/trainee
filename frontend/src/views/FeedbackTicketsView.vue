@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { getFeedbackTickets, createFeedbackTicket, type FeedbackTicket } from '@/api/feedback'
+import { getFeedbackTickets, createFeedbackTicket, updateFeedbackTicket, type FeedbackTicket } from '@/api/feedback'
 import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -113,6 +113,42 @@ const viewDetails = (ticket: FeedbackTicket) => {
   sidebarVisible.value = true
 }
 
+const manageDialogVisible = ref(false)
+const manageLoading = ref(false)
+const manageForm = ref({
+  id: '',
+  estat: '',
+  resposta: ''
+})
+
+const openManage = (ticket: FeedbackTicket) => {
+  selectedTicket.value = ticket
+  manageForm.value = {
+    id: ticket.id,
+    estat: ticket.estat,
+    resposta: ticket.resposta || ''
+  }
+  manageDialogVisible.value = true
+}
+
+const submitManage = async () => {
+  manageLoading.value = true
+  try {
+    const payload = {
+      estat: manageForm.value.estat,
+      resposta: manageForm.value.resposta.trim() || undefined
+    }
+    await updateFeedbackTicket(manageForm.value.id, payload)
+    toast.add({ severity: 'success', summary: 'Actualitzat', detail: 'S\'ha actualitzat el tiquet correctament', life: 3000 })
+    manageDialogVisible.value = false
+    loadTickets()
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.error || 'No s\'ha pogut actualitzar la petició', life: 3000 })
+  } finally {
+    manageLoading.value = false
+  }
+}
+
 const getStatusSeverity = (status: string) => {
   switch (status) {
     case 'pendent': return 'warn'
@@ -197,9 +233,12 @@ const formatDate = (val: string) => {
           </template>
         </Column>
 
-        <Column header="Accions" style="width: 100px; text-align: center">
+        <Column header="Accions" style="width: 120px; text-align: center">
           <template #body="{ data }">
-            <Button icon="ti ti-eye" text rounded aria-label="Veure detall" @click="viewDetails(data)" />
+            <div class="flex items-center justify-center gap-2">
+              <Button icon="ti ti-eye" text rounded aria-label="Veure detall" @click="viewDetails(data)" />
+              <Button icon="ti ti-edit" text rounded aria-label="Gestionar" @click="openManage(data)" />
+            </div>
           </template>
         </Column>
       </DataTable>
@@ -382,8 +421,32 @@ const formatDate = (val: string) => {
             <img :src="selectedTicket.imatge_path" alt="Captura" class="drawer-img" />
           </a>
         </div>
+
+        <div v-if="selectedTicket.resposta" class="drawer-desc-box mt-4" style="background-color: var(--primary-50); border-color: var(--primary-200);">
+          <h4 class="drawer-img-title text-primary-700">Resposta de l'equip:</h4>
+          <p class="drawer-desc" style="color: var(--primary-900);">{{ selectedTicket.resposta }}</p>
+        </div>
       </div>
     </Drawer>
+
+    <!-- Manage Dialog -->
+    <Dialog v-model:visible="manageDialogVisible" modal :style="{ width: '500px', maxWidth: '95vw' }" header="Gestionar Tiquet">
+      <div class="flex flex-col gap-4 mt-2">
+        <div class="field">
+          <label class="font-semibold block mb-2">Estat</label>
+          <Dropdown v-model="manageForm.estat" :options="estatOptions.filter(o => o.value !== null)" optionLabel="label" optionValue="value" class="w-full" />
+        </div>
+        
+        <div class="field">
+          <label class="font-semibold block mb-2">Resposta (opcional, s'enviarà per email)</label>
+          <Textarea v-model="manageForm.resposta" rows="5" class="w-full resize-none" placeholder="Escriu la teva resposta aquí..." />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel·lar" icon="ti ti-x" text @click="manageDialogVisible = false" />
+        <Button label="Guardar i Enviar" icon="ti ti-check" @click="submitManage" :loading="manageLoading" />
+      </template>
+    </Dialog>
   </div>
 </template>
 

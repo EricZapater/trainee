@@ -521,6 +521,7 @@ type FeedbackTicket struct {
 	Descripcio    string    `json:"descripcio"`
 	ImatgePath    *string   `json:"imatge_path,omitempty"`
 	Estat         string    `json:"estat"` // pendent, en curs, desplegat, descartat
+	Resposta      *string   `json:"resposta,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 
@@ -528,4 +529,9 @@ type CreateFeedbackRequest struct {
 	Tipus      string `form:"tipus" binding:"required"`
 	Resum      string `form:"resum" binding:"required"`
 	Descripcio string `form:"descripcio" binding:"required"`
+}
+
+type UpdateFeedbackRequest struct {
+	Estat    string  `json:"estat" binding:"required,oneof=pendent 'en curs' desplegat descartat"`
+	Resposta *string `json:"resposta"`
 }

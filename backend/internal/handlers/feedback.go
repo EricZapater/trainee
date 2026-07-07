@@ -104,3 +104,48 @@ func (h *Handler) CreateFeedbackTicket(c *gin.Context) {
 
 	c.JSON(http.StatusOK, ticket)
 }
+
+func (h *Handler) UpdateFeedbackTicket(c *gin.Context) {
+	id := c.Param("id")
+
+	var req models.UpdateFeedbackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dades invàlides"})
+		return
+	}
+
+	// Fetch existing ticket to compare
+	ticket, err := h.Store.GetFeedbackTicketByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket no trobat"})
+		return
+	}
+
+	// Update DB
+	if err := h.Store.UpdateFeedbackTicket(c.Request.Context(), id, req.Estat, req.Resposta); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualitzar el ticket"})
+		return
+	}
+
+	// Send email if there's a response and it hasn't been sent before? 
+	// Or maybe just send it every time the admin saves if there's a response or state change.
+	// We'll send it if Resposta is not nil (even if empty, maybe they want to clear it, but let's assume they only type it to reply)
+	// Actually, if the state changes or there's a reply, let's send it.
+	stateChanged := ticket.Estat != req.Estat
+	responseChanged := req.Resposta != nil && (ticket.Resposta == nil || *ticket.Resposta != *req.Resposta)
+
+	if stateChanged || responseChanged {
+		user, err := h.Store.GetUsuariByID(c.Request.Context(), ticket.InformadorID)
+		if err == nil && user != nil {
+			resposta := ""
+			if req.Resposta != nil {
+				resposta = *req.Resposta
+			}
+			go func() {
+				_ = h.Mailer.SendFeedbackReplyNotification(user.Email, user.Nom, ticket.Resum, resposta, req.Estat, user.Idioma)
+			}()
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Ticket actualitzat correctament"})
+}

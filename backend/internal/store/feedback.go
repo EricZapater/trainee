@@ -9,7 +9,7 @@ import (
 
 func (s *PostgresStore) ListFeedbackTickets(ctx context.Context) ([]models.FeedbackTicket, error) {
 	query := `
-		SELECT f.id, f.informador_id, u.nom, f.tipus, f.resum, f.descripcio, f.imatge_path, f.estat, f.created_at
+		SELECT f.id, f.informador_id, u.nom, f.tipus, f.resum, f.descripcio, f.imatge_path, f.estat, f.resposta, f.created_at
 		FROM feedback_tickets f
 		JOIN usuaris u ON f.informador_id = u.id
 		ORDER BY f.created_at DESC
@@ -25,7 +25,7 @@ func (s *PostgresStore) ListFeedbackTickets(ctx context.Context) ([]models.Feedb
 		var t models.FeedbackTicket
 		if err := rows.Scan(
 			&t.ID, &t.InformadorID, &t.InformadorNom, &t.Tipus,
-			&t.Resum, &t.Descripcio, &t.ImatgePath, &t.Estat, &t.CreatedAt,
+			&t.Resum, &t.Descripcio, &t.ImatgePath, &t.Estat, &t.Resposta, &t.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan feedback ticket: %w", err)
 		}
@@ -52,4 +52,35 @@ func (s *PostgresStore) CreateFeedbackTicket(ctx context.Context, informadorID s
 		return nil, fmt.Errorf("insert feedback ticket: %w", err)
 	}
 	return &t, nil
+}
+
+func (s *PostgresStore) GetFeedbackTicketByID(ctx context.Context, id string) (*models.FeedbackTicket, error) {
+	query := `
+		SELECT f.id, f.informador_id, u.nom, f.tipus, f.resum, f.descripcio, f.imatge_path, f.estat, f.resposta, f.created_at
+		FROM feedback_tickets f
+		JOIN usuaris u ON f.informador_id = u.id
+		WHERE f.id = $1
+	`
+	var t models.FeedbackTicket
+	err := s.pool.QueryRow(ctx, query, id).Scan(
+		&t.ID, &t.InformadorID, &t.InformadorNom, &t.Tipus,
+		&t.Resum, &t.Descripcio, &t.ImatgePath, &t.Estat, &t.Resposta, &t.CreatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get feedback ticket by id: %w", err)
+	}
+	return &t, nil
+}
+
+func (s *PostgresStore) UpdateFeedbackTicket(ctx context.Context, id string, estat string, resposta *string) error {
+	query := `
+		UPDATE feedback_tickets
+		SET estat = $1, resposta = $2
+		WHERE id = $3
+	`
+	_, err := s.pool.Exec(ctx, query, estat, resposta, id)
+	if err != nil {
+		return fmt.Errorf("update feedback ticket: %w", err)
+	}
+	return nil
 }
