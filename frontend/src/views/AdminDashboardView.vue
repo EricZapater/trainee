@@ -128,15 +128,26 @@ async function handleBulkBrevoSync() {
   let successCount = 0
   let failCount = 0
   
-  await Promise.allSettled(selectedUsers.value.map(async (user) => {
-    try {
-      await forceBrevoSync(user.id)
-      user.brevo_sync_status = 'pending'
-      successCount++
-    } catch (e) {
-      failCount++
+  const usersToSync = [...selectedUsers.value]
+  const chunkSize = 10
+  
+  for (let i = 0; i < usersToSync.length; i += chunkSize) {
+    const chunk = usersToSync.slice(i, i + chunkSize)
+    
+    await Promise.allSettled(chunk.map(async (user) => {
+      try {
+        await forceBrevoSync(user.id)
+        user.brevo_sync_status = 'pending'
+        successCount++
+      } catch (e) {
+        failCount++
+      }
+    }))
+    
+    if (i + chunkSize < usersToSync.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000))
     }
-  }))
+  }
   
   bulkSyncLoading.value = false
   
