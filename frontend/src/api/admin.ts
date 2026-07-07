@@ -3,6 +3,7 @@ import api from './axios'
 export interface AdminUser {
   id: string
   nom: string
+  cognoms: string
   email: string
   rol: string
   actiu: boolean

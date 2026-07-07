@@ -168,7 +168,7 @@ onMounted(() => {
         :paginator="true"
         :rows="20"
         :rowsPerPageOptions="[10, 20, 50]"
-        :globalFilterFields="['nom', 'email']"
+        :globalFilterFields="['nom', 'cognoms', 'email']"
         stripedRows
       >
         <template #header>
@@ -184,6 +184,7 @@ onMounted(() => {
         </template>
         
         <Column field="nom" header="Nom" :sortable="true"></Column>
+        <Column field="cognoms" header="Cognoms" :sortable="true"></Column>
         <Column field="email" header="Email" :sortable="true"></Column>
         
         <Column field="rol" header="Rol" :sortable="true">
