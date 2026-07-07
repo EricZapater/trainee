@@ -1,0 +1,3 @@
+ALTER TABLE usuaris ADD COLUMN cognoms VARCHAR(255) DEFAULT '';
+ALTER TABLE usuaris ADD COLUMN brevo_id VARCHAR(255);
+ALTER TABLE usuaris ADD COLUMN brevo_sync_status VARCHAR(50) DEFAULT 'pending';

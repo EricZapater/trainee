@@ -7,6 +7,7 @@ export interface AdminUser {
   rol: string
   actiu: boolean
   idioma: string
+  brevo_sync_status: string
   created_at: string
 }
 
@@ -33,4 +34,8 @@ export async function impersonateUser(id: string): Promise<ImpersonateResponse> 
 
 export async function resetUserPassword(id: string): Promise<void> {
   await api.post(`/admin/usuaris/${id}/reset-password`)
+}
+
+export async function forceBrevoSync(id: string): Promise<void> {
+  await api.post(`/admin/usuaris/${id}/brevo-sync`)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 
 	"trainee-backend/config"
+	"trainee-backend/internal/brevo"
 	"trainee-backend/internal/handlers"
 	"trainee-backend/internal/jobs"
 	"trainee-backend/internal/mailer"
@@ -60,6 +61,11 @@ func main() {
 		log.Fatalf("Error connectant a la base de dades: %v", err)
 	}
 	defer s.Close()
+
+	if cfg.BrevoAPIKey != "" {
+		b := brevo.NewService(cfg.BrevoAPIKey)
+		s.SetBrevo(b)
+	}
 
 	// Inicialitzar JobManager (substitueix cron antic)
 	mailService := mailer.NewMailer(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass)
@@ -194,6 +200,7 @@ func main() {
 		adminRoutes.GET("/usuaris", adminHandler.GetUsuaris)
 		adminRoutes.POST("/impersonate/:id", adminHandler.Impersonate)
 		adminRoutes.POST("/usuaris/:id/reset-password", adminHandler.ResetPassword)
+		adminRoutes.POST("/usuaris/:id/brevo-sync", adminHandler.ForceBrevoSync)
 	}
 
 	publicRoutes := api.Group("/public")

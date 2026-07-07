@@ -13,8 +13,9 @@ type Config struct {
 	Env       string
 	SMTPHost  string
 	SMTPPort  string
-	SMTPUser  string
-	SMTPPass  string
+	SMTPUser    string
+	SMTPPass    string
+	BrevoAPIKey string
 }
 
 func Load() *Config {
@@ -33,8 +34,9 @@ func Load() *Config {
 		Env:       getEnv("ENV", "development"),
 		SMTPHost:  getEnv("SMTP_HOST", ""),
 		SMTPPort:  getEnv("SMTP_PORT", "587"),
-		SMTPUser:  getEnv("SMTP_USER", ""),
-		SMTPPass:  getEnv("SMTP_PASS", ""),
+		SMTPUser:    getEnv("SMTP_USER", ""),
+		SMTPPass:    getEnv("SMTP_PASS", ""),
+		BrevoAPIKey: getEnv("BREVO_API_KEY", ""),
 	}
 }
 

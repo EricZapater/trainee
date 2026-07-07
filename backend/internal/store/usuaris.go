@@ -7,27 +7,32 @@ import (
 	"trainee-backend/internal/models"
 )
 
-func (s *PostgresStore) CreateUsuari(ctx context.Context, nom, email, passwordHash, rol, idioma string) (*models.Usuari, error) {
+func (s *PostgresStore) CreateUsuari(ctx context.Context, nom, cognoms, email, passwordHash, rol, idioma string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`INSERT INTO usuaris (nom, email, password_hash, rol, idioma)
-		 VALUES ($1, $2, $3, $4, $5)
-		 RETURNING id, nom, email, password_hash, rol, actiu, idioma, created_at`,
-		nom, email, passwordHash, rol, idioma,
-	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt)
+		`INSERT INTO usuaris (nom, cognoms, email, password_hash, rol, idioma)
+		 VALUES ($1, $2, $3, $4, $5, $6)
+		 RETURNING id, nom, cognoms, email, password_hash, rol, actiu, idioma, brevo_id, brevo_sync_status, created_at`,
+		nom, cognoms, email, passwordHash, rol, idioma,
+	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
+
+	if s.brevo != nil {
+		go s.syncBrevo(u.Email, u.Nom, u.Cognoms, u.Actiu)
+	}
+
 	return &u, nil
 }
 
 func (s *PostgresStore) GetUsuariByEmail(ctx context.Context, email string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, nom, email, password_hash, rol, actiu, idioma, created_at
+		`SELECT id, nom, cognoms, email, password_hash, rol, actiu, idioma, brevo_id, brevo_sync_status, created_at
 		 FROM usuaris WHERE email = $1`,
 		email,
-	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt)
+	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -37,10 +42,10 @@ func (s *PostgresStore) GetUsuariByEmail(ctx context.Context, email string) (*mo
 func (s *PostgresStore) GetUsuariByID(ctx context.Context, id string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, nom, email, password_hash, rol, actiu, idioma, created_at
+		`SELECT id, nom, cognoms, email, password_hash, rol, actiu, idioma, brevo_id, brevo_sync_status, created_at
 		 FROM usuaris WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt)
+	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -63,17 +68,25 @@ func (s *PostgresStore) UpdateUsuariIdioma(ctx context.Context, id, idioma strin
 	return err
 }
 
-func (s *PostgresStore) UpdateUsuariProfile(ctx context.Context, id, nom, email string) error {
+func (s *PostgresStore) UpdateUsuariProfile(ctx context.Context, id, nom, cognoms, email string) error {
+	var oldActiu bool
+	_ = s.pool.QueryRow(ctx, `SELECT actiu FROM usuaris WHERE id = $1`, id).Scan(&oldActiu)
+
 	_, err := s.pool.Exec(ctx,
-		`UPDATE usuaris SET nom = $1, email = $2 WHERE id = $3`,
-		nom, email, id,
+		`UPDATE usuaris SET nom = $1, cognoms = $2, email = $3 WHERE id = $4`,
+		nom, cognoms, email, id,
 	)
+
+	if err == nil && s.brevo != nil {
+		go s.syncBrevo(email, nom, cognoms, oldActiu)
+	}
+
 	return err
 }
 
 func (s *PostgresStore) ListAllUsuaris(ctx context.Context) ([]models.Usuari, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, nom, email, rol, actiu, idioma, created_at
+		`SELECT id, nom, cognoms, email, rol, actiu, idioma, brevo_id, brevo_sync_status, created_at
 		 FROM usuaris ORDER BY nom`,
 	)
 	if err != nil {
@@ -84,7 +97,7 @@ func (s *PostgresStore) ListAllUsuaris(ctx context.Context) ([]models.Usuari, er
 	var usuaris []models.Usuari
 	for rows.Next() {
 		var u models.Usuari
-		if err := rows.Scan(&u.ID, &u.Nom, &u.Email, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.Rol, &u.Actiu, &u.Idioma, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt); err != nil {
 			return nil, err
 		}
 		usuaris = append(usuaris, u)
@@ -128,12 +141,12 @@ func (s *PostgresStore) GetEntrenadorByUsuariID(ctx context.Context, usuariID st
 func (s *PostgresStore) GetUsuariByEntrenadorID(ctx context.Context, entrenadorID string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`SELECT u.id, u.nom, u.email, u.password_hash, u.rol, u.actiu, u.idioma, u.created_at
+		`SELECT u.id, u.nom, u.cognoms, u.email, u.password_hash, u.rol, u.actiu, u.idioma, u.brevo_id, u.brevo_sync_status, u.created_at
 		 FROM usuaris u
 		 JOIN entrenadors e ON u.id = e.usuari_id
 		 WHERE e.id = $1`,
 		entrenadorID,
-	).Scan(&u.ID, &u.Nom, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.CreatedAt)
+	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +285,41 @@ func (s *PostgresStore) ToggleUserStatus(ctx context.Context, usuariID string, a
 		return err
 	}
 
-	return tx.Commit(ctx)
+	err = tx.Commit(ctx)
+	if err == nil && s.brevo != nil {
+		var u models.Usuari
+		_ = s.pool.QueryRow(context.Background(), `SELECT nom, cognoms, email FROM usuaris WHERE id = $1`, usuariID).Scan(&u.Nom, &u.Cognoms, &u.Email)
+		go s.syncBrevo(u.Email, u.Nom, u.Cognoms, actiu)
+	}
+
+	return err
+}
+
+func (s *PostgresStore) UpdateBrevoSyncStatus(ctx context.Context, email string, brevoID *int64, status string) error {
+	var idStr *string
+	if brevoID != nil {
+		str := fmt.Sprintf("%d", *brevoID)
+		idStr = &str
+	}
+	_, err := s.pool.Exec(ctx,
+		`UPDATE usuaris SET brevo_id = $1, brevo_sync_status = $2 WHERE email = $3`,
+		idStr, status, email,
+	)
+	return err
+}
+
+func (s *PostgresStore) syncBrevo(email, nom, cognoms string, actiu bool) {
+	if s.brevo == nil {
+		return
+	}
+	id, err := s.brevo.SyncContact(email, nom, cognoms, actiu)
+	ctx := context.Background()
+	if err != nil {
+		s.UpdateBrevoSyncStatus(ctx, email, nil, "failed")
+		fmt.Printf("[BREVO SYNC ERROR] Failed to sync %s: %v\n", email, err)
+	} else {
+		s.UpdateBrevoSyncStatus(ctx, email, id, "synced")
+	}
 }
 
 func (s *PostgresStore) GetUserStatusHistory(ctx context.Context, usuariID string) ([]models.UserStatusHistory, error) {
@@ -297,4 +344,16 @@ func (s *PostgresStore) GetUserStatusHistory(ctx context.Context, usuariID strin
 		history = append(history, h)
 	}
 	return history, nil
+}
+
+func (s *PostgresStore) ForceBrevoSync(ctx context.Context, id string) error {
+	var u models.Usuari
+	err := s.pool.QueryRow(ctx, `SELECT nom, cognoms, email, actiu FROM usuaris WHERE id = $1`, id).Scan(&u.Nom, &u.Cognoms, &u.Email, &u.Actiu)
+	if err != nil {
+		return err
+	}
+	if s.brevo != nil {
+		go s.syncBrevo(u.Email, u.Nom, u.Cognoms, u.Actiu)
+	}
+	return nil
 }

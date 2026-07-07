@@ -36,8 +36,8 @@ export async function updateIdioma(idioma: string): Promise<{ message: string }>
   return data
 }
 
-export async function updateProfile(payload: { nom: string; email: string }): Promise<{ message: string }> {
-  const { data } = await api.put<{ message: string }>('/usuaris/me', payload)
+export async function updateProfile(payload: { nom: string; cognoms?: string; email: string }): Promise<{ message: string }> {
+  const { data } = await api.put('/usuaris/me', payload)
   return data
 }
 

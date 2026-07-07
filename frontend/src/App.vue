@@ -25,7 +25,7 @@ const compStore = useCompeticionsStore()
 const testsStore = useTestsStore()
 const isMenuOpen = ref(false)
 const changelogVisible = ref(false)
-const APP_VERSION = 'v1.1.1'
+const APP_VERSION = 'v1.2.0'
 
 const isAdminImpersonating = ref(false)
 const pendingAnuncisCount = ref(0)
@@ -99,6 +99,7 @@ const userMenuItems = computed(() => [
     command: () => {
       changeProfileForm.value = {
         nom: authStore.usuari?.nom || '',
+        cognoms: authStore.usuari?.cognoms || '',
         email: authStore.usuari?.email || ''
       }
       changeProfileVisible.value = true
@@ -244,7 +245,7 @@ const handleChangePassword = async () => {
 
 const changeProfileVisible = ref(false)
 const changeProfileLoading = ref(false)
-const changeProfileForm = ref({ nom: '', email: '' })
+const changeProfileForm = ref({ nom: '', cognoms: '', email: '' })
 
 const handleChangeProfile = async () => {
   if (!changeProfileForm.value.nom || !changeProfileForm.value.email) {
@@ -414,6 +415,10 @@ const handleChangeLanguage = async () => {
           <InputText v-model="changeProfileForm.nom" class="w-full" />
         </div>
         <div class="field">
+          <label>Cognoms</label>
+          <InputText v-model="changeProfileForm.cognoms" class="w-full" />
+        </div>
+        <div class="field">
           <label>Email</label>
           <InputText type="email" v-model="changeProfileForm.email" class="w-full" />
         </div>
@@ -428,15 +433,28 @@ const handleChangeLanguage = async () => {
       <div class="flex flex-col gap-4 mt-2 text-surface-800 leading-relaxed text-sm">
         <div class="bg-primary-50 p-4 rounded-xl border border-primary-100 mb-2">
           <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
-            <i class="ti ti-rocket text-xl"></i> Versió 1.1.1 (1 Juliol 2026)
+            <i class="ti ti-rocket text-xl"></i> Versió 1.2.0 (7 Juliol 2026)
           </h3>
-          <p class="text-primary-800">Petites correccions i millores d'estabilitat.</p>
+          <p class="text-primary-800">Sincronització amb Brevo i camp de cognoms afegit.</p>
         </div>
 
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-bug text-primary"></i> 1. Correcció d'errors</h4>
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-mail text-primary"></i> 1. Integració amb Brevo</h4>
         <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li>S'ha solucionat un error que bloquejava l'aplicació en intentar desar activitats amb durades estimades superiors a 3 hores.</li>
+          <li><strong>Sincronització automàtica:</strong> S'ha vinculat la base de dades d'usuaris amb la plataforma d'email màrqueting Brevo de manera automàtica.</li>
+          <li><strong>Gestió des de l'admin:</strong> S'ha afegit una columna al tauler d'administrador per veure l'estat de la sincronització de cada usuari i la possibilitat de forçar-ne una manualment en cas d'error.</li>
         </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-user text-primary"></i> 2. Nou camp Cognoms</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Registre i Perfil:</strong> Els usuaris ara poden (i se'ls demana) introduir els seus cognoms durant el registre i l'edició del perfil.</li>
+        </ul>
+
+        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
+          <h3 class="font-bold text-surface-900 flex items-center gap-2">
+            <i class="ti ti-clock text-lg"></i> Versió 1.1.1 (1 Juliol 2026)
+          </h3>
+          <p class="text-surface-600 text-xs mt-1">Petites correccions i millores d'estabilitat.</p>
+        </div>
 
         <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
           <h3 class="font-bold text-surface-900 flex items-center gap-2">

@@ -8,15 +8,16 @@ import (
 
 type Store interface {
 	// Usuaris
-	CreateUsuari(ctx context.Context, nom, email, passwordHash, rol, idioma string) (*models.Usuari, error)
+	CreateUsuari(ctx context.Context, nom, cognoms, email, passwordHash, rol, idioma string) (*models.Usuari, error)
 	GetUsuariByEmail(ctx context.Context, email string) (*models.Usuari, error)
 	GetUsuariByID(ctx context.Context, id string) (*models.Usuari, error)
 	ListAllUsuaris(ctx context.Context) ([]models.Usuari, error)
 	UpdateUsuariPassword(ctx context.Context, id, passwordHash string) error
 	UpdateUsuariIdioma(ctx context.Context, id, idioma string) error
-	UpdateUsuariProfile(ctx context.Context, id, nom, email string) error
+	UpdateUsuariProfile(ctx context.Context, id, nom, cognoms, email string) error
 	ToggleUserStatus(ctx context.Context, usuariID string, actiu bool, changedBy *string) error
 	GetUserStatusHistory(ctx context.Context, usuariID string) ([]models.UserStatusHistory, error)
+	ForceBrevoSync(ctx context.Context, id string) error
 
 	// Legal
 	RecordLegalConsent(ctx context.Context, userID, version, ip string) error

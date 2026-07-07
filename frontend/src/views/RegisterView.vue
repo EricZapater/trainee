@@ -16,6 +16,7 @@ const toast = useToast()
 
 const formData = ref({
   nom: '',
+  cognoms: '',
   email: '',
   password: '',
   rol: 'atleta' as 'atleta' | 'entrenador',
@@ -65,6 +66,10 @@ const handleRegister = async () => {
       <form @submit.prevent="handleRegister" class="auth-form">
         <div class="field">
           <InputText v-model="formData.nom" :placeholder="$t('register.namePlaceholder')" class="w-full" />
+        </div>
+
+        <div class="field">
+          <InputText v-model="formData.cognoms" :placeholder="$t('register.surnamePlaceholder', 'Cognoms')" class="w-full" />
         </div>
         
         <div class="field">

@@ -82,10 +82,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function updateProfile(payload: { nom: string; email: string }) {
+  async function updateProfile(payload: { nom: string; cognoms?: string; email: string }) {
     await apiUpdateProfile(payload)
     if (usuari.value) {
       usuari.value.nom = payload.nom
+      usuari.value.cognoms = payload.cognoms || ''
       usuari.value.email = payload.email
       localStorage.setItem('trainee_usuari', JSON.stringify(usuari.value))
     }

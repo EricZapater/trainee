@@ -44,7 +44,7 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	user, err := h.Store.CreateUsuari(c.Request.Context(), req.Nom, req.Email, string(hash), req.Rol, req.Idioma)
+	user, err := h.Store.CreateUsuari(c.Request.Context(), req.Nom, req.Cognoms, req.Email, string(hash), req.Rol, req.Idioma)
 	if err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "l'email ja està registrat"})
 		return
@@ -221,8 +221,8 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	if err := h.Store.UpdateUsuariProfile(c.Request.Context(), userID, req.Nom, req.Email); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha pogut actualitzar el perfil"})
+	if err := h.Store.UpdateUsuariProfile(c.Request.Context(), userID, req.Nom, req.Cognoms, req.Email); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error actualitzant el perfil"})
 		return
 	}
 

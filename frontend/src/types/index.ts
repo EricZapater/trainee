@@ -1,10 +1,12 @@
 export interface Usuari {
   id: string
   nom: string
+  cognoms?: string
   email: string
   rol: 'atleta' | 'entrenador' | 'admin'
   actiu: boolean
   idioma: string
+  brevo_sync_status?: string
   created_at: string
 }
 

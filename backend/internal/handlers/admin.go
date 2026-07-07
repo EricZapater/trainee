@@ -108,3 +108,15 @@ func (h *AdminHandler) ResetPassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "contrasenya restablerta i correu enviat"})
 }
+
+func (h *AdminHandler) ForceBrevoSync(c *gin.Context) {
+	targetID := c.Param("id")
+	ctx := c.Request.Context()
+
+	if err := h.Store.ForceBrevoSync(ctx, targetID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error iniciant sincronització"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Sincronització en procés"})
+}

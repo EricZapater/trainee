@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getUsuaris, impersonateUser, resetUserPassword, type AdminUser } from '@/api/admin'
+import { getUsuaris, impersonateUser, resetUserPassword, forceBrevoSync, type AdminUser } from '@/api/admin'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -22,6 +22,7 @@ const usuaris = ref<AdminUser[]>([])
 const loading = ref(true)
 const impersonatingId = ref<string | null>(null)
 const resettingId = ref<string | null>(null)
+const syncingId = ref<string | null>(null)
 
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS }
@@ -105,6 +106,19 @@ async function handleResetPassword(user: AdminUser) {
   })
 }
 
+async function handleBrevoSync(user: AdminUser) {
+  syncingId.value = user.id
+  try {
+    await forceBrevoSync(user.id)
+    toast.add({ severity: 'success', summary: 'Sincronització iniciada', detail: `La sincronització de ${user.nom} amb Brevo està en procés.`, life: 3000 })
+    user.brevo_sync_status = 'pending'
+  } catch (err: any) {
+    toast.add({ severity: 'error', summary: 'Error', detail: err.response?.data?.error || 'No s\'ha pogut iniciar la sincronització', life: 3000 })
+  } finally {
+    syncingId.value = null
+  }
+}
+
 const formatRole = (role: string) => {
   return role.charAt(0).toUpperCase() + role.slice(1)
 }
@@ -115,6 +129,15 @@ const getRoleSeverity = (role: string) => {
     case 'entrenador': return 'warning'
     case 'atleta': return 'info'
     default: return 'success'
+  }
+}
+
+const getBrevoSeverity = (status: string) => {
+  switch (status) {
+    case 'synced': return 'success'
+    case 'pending': return 'warning'
+    case 'failed': return 'danger'
+    default: return 'secondary'
   }
 }
 
@@ -175,7 +198,13 @@ onMounted(() => {
           </template>
         </Column>
 
-        <Column header="Accions" :exportable="false" style="min-width:12rem">
+        <Column field="brevo_sync_status" header="Brevo" :sortable="true">
+          <template #body="{ data }">
+            <Tag :value="data.brevo_sync_status || 'untracked'" :severity="getBrevoSeverity(data.brevo_sync_status)" />
+          </template>
+        </Column>
+
+        <Column header="Accions" :exportable="false" style="min-width:18rem">
           <template #body="{ data }">
             <div class="flex gap-2">
               <Button 
@@ -192,6 +221,13 @@ onMounted(() => {
                 class="p-button-sm p-button-outlined p-button-warning" 
                 @click="handleResetPassword(data)" 
                 :loading="resettingId === data.id"
+              />
+              <Button 
+                icon="ti ti-mail" 
+                label="Sinc Brevo" 
+                class="p-button-sm p-button-outlined p-button-secondary" 
+                @click="handleBrevoSync(data)" 
+                :loading="syncingId === data.id"
               />
             </div>
           </template>
