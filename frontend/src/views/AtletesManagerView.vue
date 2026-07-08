@@ -11,6 +11,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
 import Dropdown from 'primevue/dropdown'
+import InputText from 'primevue/inputtext'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -247,21 +248,19 @@ const confirmSaveDetails = async () => {
       <div v-if="editingAtleta" class="flex flex-col gap-4">
         <div class="field">
           <label for="atletaNom" class="block mb-2 font-medium">Nom</label>
-          <input 
-            type="text" 
+          <InputText 
             id="atletaNom" 
             v-model="editingAtleta.nom" 
-            class="p-inputtext p-component w-full" 
+            class="w-full" 
             placeholder="Ex: Joan"
           />
         </div>
         <div class="field">
           <label for="atletaCognoms" class="block mb-2 font-medium">Cognoms</label>
-          <input 
-            type="text" 
+          <InputText 
             id="atletaCognoms" 
             v-model="editingAtleta.cognoms" 
-            class="p-inputtext p-component w-full" 
+            class="w-full" 
             placeholder="Ex: Garcia"
           />
         </div>
