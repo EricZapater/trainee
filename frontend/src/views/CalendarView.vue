@@ -438,7 +438,7 @@ const copyDay = (diaIndex: number) => {
       v-model:visible="showSaveTemplateDialog" 
       header="Guardar com a Plantilla" 
       modal 
-      :style="{ width: '400px' }"
+      :style="{ width: '400px', maxWidth: '95vw' }"
     >
       <div class="p-fluid">
         <div class="field">
@@ -464,7 +464,7 @@ const copyDay = (diaIndex: number) => {
       v-model:visible="showManageTemplatesDialog" 
       header="Gestionar Plantilles" 
       modal 
-      :style="{ width: '500px' }"
+      :style="{ width: '500px', maxWidth: '95vw' }"
     >
       <div v-if="calendarStore.templates.length === 0" class="text-center p-4">
         No tens cap plantilla guardada.
@@ -475,7 +475,7 @@ const copyDay = (diaIndex: number) => {
           :key="t.id" 
           class="template-item flex items-center justify-between p-3 border rounded border-gray-200 dark:border-gray-700"
         >
-          <span class="font-medium">{{ t.nom }}</span>
+          <span class="font-medium mr-2" style="max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ t.nom }}</span>
           <Button 
             icon="ti ti-trash" 
             severity="danger" 

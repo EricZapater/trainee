@@ -198,7 +198,7 @@ const confirmSaveDetails = async () => {
       </DataTable>
     </div>
 
-    <Dialog v-model:visible="historyDialogVisible" modal :header="$t('athletesManager.historyTitle', { name: selectedAtletaNom })" :style="{ width: '500px' }">
+    <Dialog v-model:visible="historyDialogVisible" modal :header="$t('athletesManager.historyTitle', { name: selectedAtletaNom })" :style="{ width: '500px', maxWidth: '95vw' }">
       <div v-if="historyLoading" class="text-center py-4">
         <i class="ti ti-loader ti-spin text-2xl text-secondary"></i>
       </div>
@@ -221,7 +221,7 @@ const confirmSaveDetails = async () => {
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="reassignDialogVisible" modal header="Reassignar Atleta" :style="{ width: '400px' }">
+    <Dialog v-model:visible="reassignDialogVisible" modal header="Reassignar Atleta" :style="{ width: '400px', maxWidth: '95vw' }">
       <p class="mb-4 text-secondary">Selecciona el nou entrenador per a l'atleta <strong>{{ selectedAtletaToReassign?.nom }}</strong>. Tu perdràs l'accés a aquest atleta i als seus entrenaments.</p>
       
       <div class="field">
@@ -244,7 +244,7 @@ const confirmSaveDetails = async () => {
     </Dialog>
 
     <!-- Dialog to Edit Athlete Name and Surnames -->
-    <Dialog v-model:visible="editDetailsDialogVisible" modal header="Editar Dades de l'Atleta" :style="{ width: '400px' }">
+    <Dialog v-model:visible="editDetailsDialogVisible" modal header="Editar Dades de l'Atleta" :style="{ width: '400px', maxWidth: '95vw' }">
       <div v-if="editingAtleta" class="flex flex-col gap-4">
         <div class="field">
           <label for="atletaNom" class="block mb-2 font-medium">Nom</label>
