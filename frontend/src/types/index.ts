@@ -248,3 +248,25 @@ export interface UpdateRecordatoriRequest {
   estat: 'resolt' | 'cancelat' | 'pendent'
 }
 
+export interface TemplateSlot {
+  dia: number
+  ordre: number
+  activitat_id: string
+  durada_hores: number
+  notes: string
+}
+
+export interface WeekTemplate {
+  id: string
+  atleta_id: string
+  nom: string
+  slots: TemplateSlot[]
+  created_at: string
+}
+
+export interface CreateTemplateRequest {
+  nom: string
+  slots: TemplateSlot[]
+}
+
+

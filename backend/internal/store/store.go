@@ -36,6 +36,11 @@ type Store interface {
 	ListAllActiveAtletes(ctx context.Context) ([]models.Atleta, error)
 	ReassignAtleta(ctx context.Context, atletaID, nouEntrenadorID string) error
 
+	// Week Templates
+	ListWeekTemplatesByAtleta(ctx context.Context, atletaID string) ([]models.WeekTemplate, error)
+	CreateWeekTemplate(ctx context.Context, atletaID, nom string, slots []models.TemplateSlotRequest) (*models.WeekTemplate, error)
+	DeleteWeekTemplate(ctx context.Context, id, atletaID string) error
+
 	// Activitats
 	ListActivitats(ctx context.Context, onlyActive bool) ([]models.Activitat, error)
 	CreateActivitat(ctx context.Context, nom, icona, color string) (*models.Activitat, error)

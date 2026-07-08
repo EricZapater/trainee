@@ -95,7 +95,9 @@
     "saveAvailability": "Save Availability",
     "trainingAvailableTitle": "Training Available!",
     "trainingAvailableDesc": "Your coach has transferred your training. Open your usual app to see details.",
-    "weekClosedDesc": "This week is closed. Your training is being prepared."
+    "weekClosedDesc": "This week is closed. Your training is being prepared.",
+    "templateLabel": "Template",
+    "selectTemplatePlaceholder": "Select template..."
   },
   "athleteCompetitions": {
     "title": "My Competitions",

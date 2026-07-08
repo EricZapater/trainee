@@ -547,3 +547,37 @@ type UpdateFeedbackRequest struct {
 	Estat    string  `json:"estat" binding:"required,oneof=pendent 'en curs' desplegat descartat"`
 	Resposta *string `json:"resposta"`
 }
+
+// ============================================================
+// Week Templates Models
+// ============================================================
+
+type WeekTemplate struct {
+	ID        string         `json:"id"`
+	AtletaID  string         `json:"atleta_id"`
+	Nom       string         `json:"nom"`
+	Slots     []TemplateSlot `json:"slots,omitempty"`
+	CreatedAt string         `json:"created_at"`
+}
+
+type TemplateSlot struct {
+	Dia         int     `json:"dia"`
+	Ordre       int     `json:"ordre"`
+	ActivitatID string  `json:"activitat_id"`
+	DuradaHores float64 `json:"durada_hores"`
+	Notes       string  `json:"notes"`
+}
+
+type CreateTemplateRequest struct {
+	Nom   string                `json:"nom" binding:"required"`
+	Slots []TemplateSlotRequest `json:"slots" binding:"required"`
+}
+
+type TemplateSlotRequest struct {
+	Dia         int     `json:"dia"`
+	Ordre       int     `json:"ordre"`
+	ActivitatID string  `json:"activitat_id" binding:"required,uuid"`
+	DuradaHores float64 `json:"durada_hores" binding:"required"`
+	Notes       string  `json:"notes"`
+}
+

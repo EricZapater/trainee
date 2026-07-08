@@ -95,7 +95,9 @@
     "saveAvailability": "Guardar disponibilitat",
     "trainingAvailableTitle": "Entrenament Disponible!",
     "trainingAvailableDesc": "El teu entrenador ja ha traspassat el teu entrenament. Obre la teva app habitual per veure'n els detalls.",
-    "weekClosedDesc": "Aquesta setmana està tancada. S'està preparant el teu entrenament."
+    "weekClosedDesc": "Aquesta setmana està tancada. S'està preparant el teu entrenament.",
+    "templateLabel": "Plantilla",
+    "selectTemplatePlaceholder": "Selecciona plantilla..."
   },
   "athleteCompetitions": {
     "title": "Les meves Competicions",

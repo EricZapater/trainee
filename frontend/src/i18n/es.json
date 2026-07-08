@@ -95,7 +95,9 @@
     "saveAvailability": "Guardar disponibilidad",
     "trainingAvailableTitle": "¡Entrenamiento Disponible!",
     "trainingAvailableDesc": "Tu entrenador ya ha traspasado tu entrenamiento. Abre tu app habitual para ver los detalles.",
-    "weekClosedDesc": "Esta semana está cerrada. Se está preparando tu entrenamiento."
+    "weekClosedDesc": "Esta semana está cerrada. Se está preparando tu entrenamiento.",
+    "templateLabel": "Plantilla",
+    "selectTemplatePlaceholder": "Selecciona plantilla..."
   },
   "athleteCompetitions": {
     "title": "Mis Competiciones",

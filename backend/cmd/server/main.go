@@ -128,6 +128,9 @@ func main() {
 		atletesAuth.GET("/competicions", h.ListAtletaCompeticions)
 		atletesAuth.POST("/competicions", h.CreateCompeticio)
 		atletesAuth.PATCH("/competicions/:id", h.UpdateCompeticio)
+		atletesAuth.GET("/templates", h.ListWeekTemplates)
+		atletesAuth.POST("/templates", h.CreateWeekTemplate)
+		atletesAuth.DELETE("/templates/:id", h.DeleteWeekTemplate)
 		authenticated.GET("/activitats", h.ListActivitats)
 		authenticated.GET("/weeks", h.ListOpenWeeks)
 

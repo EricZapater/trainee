@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getMySubmission, createSubmission } from '@/api/submissions'
-import type { SlotData, Activitat } from '@/types'
+import { listWeekTemplates, createWeekTemplate, deleteWeekTemplate } from '@/api/templates'
+import type { SlotData, Activitat, WeekTemplate } from '@/types'
 
 function getThisMonday(): string {
   const d = new Date()
@@ -134,6 +135,64 @@ export const useCalendarStore = defineStore('calendar', () => {
     await loadSubmission()
   }
 
+  const templates = ref<WeekTemplate[]>([])
+
+  async function loadTemplates() {
+    try {
+      templates.value = await listWeekTemplates()
+    } catch (e) {
+      console.error('Error carregant plantilles', e)
+    }
+  }
+
+  async function saveAsTemplate(nom: string) {
+    const payloadSlots: any[] = []
+    for (let dia = 0; dia < 7; dia++) {
+      slotsByDay.value[dia].forEach((data, index) => {
+        payloadSlots.push({
+          dia,
+          ordre: index,
+          activitat_id: data.activitat_id,
+          durada_hores: data.durada_hores,
+          notes: data.notes
+        })
+      })
+    }
+    const newTemplate = await createWeekTemplate({ nom, slots: payloadSlots })
+    templates.value.push(newTemplate)
+  }
+
+  async function deleteTemplate(id: string) {
+    await deleteWeekTemplate(id)
+    templates.value = templates.value.filter(t => t.id !== id)
+  }
+
+  function applyTemplate(template: WeekTemplate, activitats: Activitat[]) {
+    clearSlots()
+    
+    // Set hours for each day based on template slots
+    for (let dia = 0; dia < 7; dia++) {
+      const slotsDia = template.slots.filter(s => s.dia === dia)
+      if (slotsDia.length > 0) {
+        horesDisponiblesPerDia.value[dia] = slotsDia[0].durada_hores
+      } else {
+        horesDisponiblesPerDia.value[dia] = 1.0
+      }
+    }
+
+    for (const s of template.slots) {
+      const act = activitats.find(a => a.id === s.activitat_id)
+      addSlotToDay(s.dia, {
+        activitat_id: s.activitat_id,
+        activitat_nom: act?.nom || '',
+        activitat_icona: act?.icona || '',
+        activitat_color: act?.color || '',
+        durada_hores: s.durada_hores,
+        notes: s.notes || ''
+      })
+    }
+  }
+
   return {
     currentWeekStart,
     slotsByDay,
@@ -142,6 +201,7 @@ export const useCalendarStore = defineStore('calendar', () => {
     loading,
     selectedMobileActivities,
     horesDisponiblesPerDia,
+    templates,
     addSlotToDay,
     removeSlotFromDay,
     updateSlotInDay,
@@ -151,6 +211,10 @@ export const useCalendarStore = defineStore('calendar', () => {
     clearSlots,
     loadSubmission,
     saveSubmission,
-    navigateWeek
+    navigateWeek,
+    loadTemplates,
+    saveAsTemplate,
+    deleteTemplate,
+    applyTemplate
   }
 })

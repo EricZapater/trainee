@@ -25,7 +25,7 @@ const compStore = useCompeticionsStore()
 const testsStore = useTestsStore()
 const isMenuOpen = ref(false)
 const changelogVisible = ref(false)
-const APP_VERSION = 'v1.2.0'
+const APP_VERSION = 'v1.3.0'
 
 const isAdminImpersonating = ref(false)
 const pendingAnuncisCount = ref(0)
@@ -433,9 +433,34 @@ const handleChangeLanguage = async () => {
       <div class="flex flex-col gap-4 mt-2 text-surface-800 leading-relaxed text-sm">
         <div class="bg-primary-50 p-4 rounded-xl border border-primary-100 mb-2">
           <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
-            <i class="ti ti-rocket text-xl"></i> Versió 1.2.0 (7 Juliol 2026)
+            <i class="ti ti-rocket text-xl"></i> Versió 1.3.0 (8 Juliol 2026)
           </h3>
-          <p class="text-primary-800">Sincronització amb Brevo, feedback i millores al panell d'entrenadors i atletes.</p>
+          <p class="text-primary-800">Recuperació de contrasenya, plantilles de setmana per a la disponibilitat d'atletes i ajust de capçaleres de correu.</p>
+        </div>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-key text-primary"></i> 1. Recuperació de Contrasenya</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Recuperació al login:</strong> S'ha afegit un enllaç per restablir la contrasenya mitjançant correu electrònic en cas d'oblit.</li>
+          <li><strong>Seguretat contra enumeració:</strong> El servidor respon el mateix text d'èxit de forma idèntica si l'email no coincideix amb cap compte actiu.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-bookmark text-primary"></i> 2. Plantilles de Setmana</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Setmanes tipus:</strong> Els atletes poden desar configuracions setmanals de disponibilitat com a plantilles personalitzades.</li>
+          <li><strong>Selector ràpid:</strong> Permet aplicar les plantilles desades a la setmana activa d'un sol clic o seguir configurant-la manualment.</li>
+          <li><strong>Gestió inline:</strong> Opció per esborrar les plantilles desades des de la vista de Calendari.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-settings text-primary"></i> 3. Millores de Visualització</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Logo a les plantilles de correu:</strong> S'ha ajustat la capçalera dels emails de recordatori perquè s'adapti correctament a l'interior del cercle de fons blanc, evitant retalls o deformacions.</li>
+        </ul>
+
+        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
+          <h3 class="font-bold text-surface-900 flex items-center gap-2">
+            <i class="ti ti-clock text-lg"></i> Versió 1.2.0 (7 Juliol 2026)
+          </h3>
+          <p class="text-surface-600 text-xs mt-1">Sincronització amb Brevo, feedback i millores al panell d'entrenadors i atletes.</p>
         </div>
 
         <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-mail text-primary"></i> 1. Integració amb Brevo</h4>

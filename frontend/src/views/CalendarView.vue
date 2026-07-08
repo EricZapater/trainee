@@ -8,6 +8,8 @@ import { useWeeksStore } from '@/stores/useWeeksStore'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
 import ActivityPalette from '@/components/ActivityPalette.vue'
 import ActivityItem from '@/components/ActivityItem.vue'
 import WeekStatusBadge from '@/components/WeekStatusBadge.vue'
@@ -50,15 +52,52 @@ const weekStatus = computed(() => {
 const isWeekOpen = computed(() => weekStatus.value === 'oberta')
 const isWeekTraspassada = computed(() => weekStatus.value === 'traspassada')
 
+const selectedTemplateId = ref('')
+const showSaveTemplateDialog = ref(false)
+const showManageTemplatesDialog = ref(false)
+const newTemplateName = ref('')
+
 const loadData = async (force: boolean = false) => {
   try {
     await Promise.all([
       activitatsStore.load(force),
       weeksStore.load(force),
-      calendarStore.loadSubmission(force)
+      calendarStore.loadSubmission(force),
+      calendarStore.loadTemplates()
     ])
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error carregant les dades', life: 3000 })
+  }
+}
+
+const handleApplyTemplate = () => {
+  if (!selectedTemplateId.value) return
+  const template = calendarStore.templates.find(t => t.id === selectedTemplateId.value)
+  if (template) {
+    calendarStore.applyTemplate(template, activitatsStore.activitats)
+    toast.add({ severity: 'success', summary: 'Plantilla aplicada', detail: 'S\'ha carregat la disposició de la plantilla', life: 3000 })
+  }
+  selectedTemplateId.value = ''
+}
+
+const handleSaveTemplate = async () => {
+  if (!newTemplateName.value.trim()) return
+  try {
+    await calendarStore.saveAsTemplate(newTemplateName.value.trim())
+    toast.add({ severity: 'success', summary: 'Guardat', detail: 'Plantilla guardada correctament', life: 3000 })
+    newTemplateName.value = ''
+    showSaveTemplateDialog.value = false
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut desar la plantilla', life: 3000 })
+  }
+}
+
+const handleDeleteTemplate = async (id: string) => {
+  try {
+    await calendarStore.deleteTemplate(id)
+    toast.add({ severity: 'success', summary: 'Eliminada', detail: 'Plantilla eliminada correctament', life: 3000 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut eliminar la plantilla', life: 3000 })
   }
 }
 
@@ -180,6 +219,40 @@ const copyDay = (diaIndex: number) => {
         </div>
         
         <WeekStatusBadge :estat="weekStatus" />
+      </div>
+
+      <!-- Template Bar -->
+      <div v-if="isWeekOpen && !calendarStore.loading" class="template-bar glass-card">
+        <div class="template-actions">
+          <div class="template-select-group">
+            <span class="template-label">{{ $t('calendar.templateLabel') }}:</span>
+            <select v-model="selectedTemplateId" @change="handleApplyTemplate" class="template-select">
+              <option value="">{{ $t('calendar.selectTemplatePlaceholder') }}</option>
+              <option v-for="t in calendarStore.templates" :key="t.id" :value="t.id">
+                {{ t.nom }}
+              </option>
+            </select>
+          </div>
+          
+          <div class="template-buttons-group">
+            <Button 
+              label="Guardar com a Plantilla" 
+              icon="ti ti-bookmark" 
+              text 
+              size="small" 
+              @click="showSaveTemplateDialog = true" 
+            />
+            <Button 
+              v-if="calendarStore.templates.length > 0"
+              label="Gestionar Plantilles" 
+              icon="ti ti-settings" 
+              text 
+              size="small" 
+              severity="secondary"
+              @click="showManageTemplatesDialog = true" 
+            />
+          </div>
+        </div>
       </div>
 
       <div v-if="calendarStore.loading" class="loading-state glass-card">
@@ -359,6 +432,61 @@ const copyDay = (diaIndex: number) => {
         <p>{{ $t('calendar.weekClosedDesc') }}</p>
       </div>
     </div>
+
+    <!-- Dialog to Save Template -->
+    <Dialog 
+      v-model:visible="showSaveTemplateDialog" 
+      header="Guardar com a Plantilla" 
+      modal 
+      :style="{ width: '400px' }"
+    >
+      <div class="p-fluid">
+        <div class="field">
+          <label for="templateName" class="font-bold mb-2 block">Nom de la plantilla</label>
+          <InputText 
+            id="templateName" 
+            v-model="newTemplateName" 
+            placeholder="Ex: Setmana tipus alta intensitat" 
+            autofocus 
+            class="w-full"
+            @keyup.enter="handleSaveTemplate"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel·lar" icon="ti ti-x" text @click="showSaveTemplateDialog = false" severity="secondary" />
+        <Button label="Guardar" icon="ti ti-check" @click="handleSaveTemplate" :disabled="!newTemplateName.trim()" />
+      </template>
+    </Dialog>
+
+    <!-- Dialog to Manage Templates -->
+    <Dialog 
+      v-model:visible="showManageTemplatesDialog" 
+      header="Gestionar Plantilles" 
+      modal 
+      :style="{ width: '500px' }"
+    >
+      <div v-if="calendarStore.templates.length === 0" class="text-center p-4">
+        No tens cap plantilla guardada.
+      </div>
+      <div v-else class="templates-list flex flex-col gap-3 max-h-[300px] overflow-y-auto">
+        <div 
+          v-for="t in calendarStore.templates" 
+          :key="t.id" 
+          class="template-item flex items-center justify-between p-3 border rounded border-gray-200 dark:border-gray-700"
+        >
+          <span class="font-medium">{{ t.nom }}</span>
+          <Button 
+            icon="ti ti-trash" 
+            severity="danger" 
+            text 
+            rounded 
+            @click="handleDeleteTemplate(t.id)" 
+            title="Eliminar plantilla"
+          />
+        </div>
+      </div>
+    </Dialog>
   </div>
 </template>
 
@@ -668,5 +796,73 @@ const copyDay = (diaIndex: number) => {
 .duration-select-header:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Template Bar & Actions */
+.template-bar {
+  padding: 12px 20px;
+}
+
+.template-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.template-select-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.template-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.template-select {
+  padding: 6px 32px 6px 12px;
+  font-size: 0.9rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: transparent;
+  color: var(--text-primary);
+  outline: none;
+  cursor: pointer;
+  min-width: 200px;
+  transition: all var(--transition-fast);
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px top 50%;
+  background-size: 10px auto;
+}
+
+.template-select:hover {
+  border-color: var(--accent-primary);
+}
+
+.template-select:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(var(--accent-primary-rgb), 0.2);
+}
+
+.template-buttons-group {
+  display: flex;
+  gap: 8px;
+}
+
+.template-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
 }
 </style>

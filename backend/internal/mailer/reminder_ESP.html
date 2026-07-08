@@ -106,7 +106,7 @@
           <tr>
             <td class="header" align="center">
               {{if .LogoURL}}
-              <img src="{{.LogoURL}}" alt="Logo" class="logo" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid #ffffff; object-fit: cover;">
+              <img src="{{.LogoURL}}" alt="Logo" class="logo" style="width: 120px; height: 120px; border-radius: 50%; border: 4px solid #ffffff; object-fit: contain; background-color: #ffffff; padding: 10px; box-sizing: border-box;">
               {{else}}
               <div style="width: 120px; height: 120px; border-radius: 50%; background-color: #ffffff; margin: 0 auto; display: inline-block; line-height: 120px; font-weight: bold; color: #8B0000; font-size: 14px;">LOGO</div>
               {{end}}
