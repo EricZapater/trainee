@@ -162,6 +162,7 @@ func main() {
 		entrenadorRoutes.POST("/competicions/:id/traspassar", h.TraspassarCompeticio)
 		entrenadorRoutes.GET("/atletes/:id/competicions", h.GetAtletaCompeticionsTimeline)
 
+		entrenadorRoutes.PATCH("/atletes/:id", h.UpdateAtletaDetails)
 		entrenadorRoutes.PATCH("/atletes/:id/status", h.ToggleAtletaStatus)
 		entrenadorRoutes.GET("/atletes/:id/history", h.GetAtletaStatusHistory)
 		entrenadorRoutes.PATCH("/atletes/:id/reasignar", h.ReasignarAtleta)

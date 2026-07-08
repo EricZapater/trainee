@@ -185,12 +185,12 @@ func (s *PostgresStore) CreateAtleta(ctx context.Context, usuariID, entrenadorID
 func (s *PostgresStore) GetAtletaByUsuariID(ctx context.Context, usuariID string) (*models.Atleta, error) {
 	var a models.Atleta
 	err := s.pool.QueryRow(ctx,
-		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email, u.actiu
+		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.cognoms, u.email, u.actiu
 		 FROM atletes a
 		 JOIN usuaris u ON u.id = a.usuari_id
 		 WHERE a.usuari_id = $1`,
 		usuariID,
-	).Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email, &a.Actiu)
+	).Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Cognoms, &a.Email, &a.Actiu)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +213,7 @@ func (s *PostgresStore) ReassignAtleta(ctx context.Context, atletaID, nouEntrena
 
 func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenadorID string) ([]models.Atleta, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.email, u.actiu
+		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.cognoms, u.email, u.actiu
 		 FROM atletes a
 		 JOIN usuaris u ON u.id = a.usuari_id
 		 WHERE a.entrenador_id = $1
@@ -228,7 +228,7 @@ func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenado
 	atletes := []models.Atleta{}
 	for rows.Next() {
 		var a models.Atleta
-		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Email, &a.Actiu); err != nil {
+		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Cognoms, &a.Email, &a.Actiu); err != nil {
 			return nil, err
 		}
 		atletes = append(atletes, a)
@@ -357,3 +357,18 @@ func (s *PostgresStore) ForceBrevoSync(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+func (s *PostgresStore) UpdateAtletaDetails(ctx context.Context, usuariID, nom, cognoms string) error {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE usuaris SET nom = $1, cognoms = $2 WHERE id = $3`,
+		nom, cognoms, usuariID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("usuari no trobat o no actualitzat")
+	}
+	return nil
+}
+

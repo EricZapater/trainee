@@ -35,6 +35,7 @@ type Store interface {
 	ListAtletesByEntrenadorID(ctx context.Context, entrenadorID string) ([]models.Atleta, error)
 	ListAllActiveAtletes(ctx context.Context) ([]models.Atleta, error)
 	ReassignAtleta(ctx context.Context, atletaID, nouEntrenadorID string) error
+	UpdateAtletaDetails(ctx context.Context, usuariID, nom, cognoms string) error
 
 	// Week Templates
 	ListWeekTemplatesByAtleta(ctx context.Context, atletaID string) ([]models.WeekTemplate, error)

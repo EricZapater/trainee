@@ -260,3 +260,50 @@ func (h *Handler) ToggleSubmissionGestionat(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+func (h *Handler) UpdateAtletaDetails(ctx *gin.Context) {
+	usuariID := ctx.GetString("user_id")
+	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
+		return
+	}
+
+	atletaID := ctx.Param("id")
+	// Verify athlete belongs to this coach
+	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error validant permisos"})
+		return
+	}
+
+	var targetAtleta *models.Atleta
+	for _, a := range atletes {
+		if a.ID == atletaID {
+			targetAtleta = &a
+			break
+		}
+	}
+	if targetAtleta == nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "No tens permís per modificar aquest atleta"})
+		return
+	}
+
+	var req models.UpdateAtletaDetailsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = h.Store.UpdateAtletaDetails(ctx.Request.Context(), targetAtleta.UsuariID, req.Nom, req.Cognoms)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error actualitzant les dades de l'atleta"})
+		return
+	}
+
+	// Trigger Brevo synchronization with the new details
+	h.Store.ForceBrevoSync(ctx.Request.Context(), targetAtleta.UsuariID)
+
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
+}
+

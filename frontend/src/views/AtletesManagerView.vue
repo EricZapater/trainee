@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { getAtletes, toggleAtletaStatus, getAtletaStatusHistory, getEntrenadorsList, reassignAtleta } from '@/api/entrenador'
+import { getAtletes, toggleAtletaStatus, getAtletaStatusHistory, getEntrenadorsList, reassignAtleta, updateAtletaDetails } from '@/api/entrenador'
 import type { UserStatusHistory } from '@/types'
 import { useToast } from 'primevue/usetoast'
 import DataTable from 'primevue/datatable'
@@ -14,7 +14,7 @@ import Dropdown from 'primevue/dropdown'
 
 const toast = useToast()
 const { t } = useI18n()
-const atletes = ref<{ id: string; nom: string; email: string; actiu: boolean }[]>([])
+const atletes = ref<{ id: string; nom: string; cognoms: string; email: string; actiu: boolean }[]>([])
 const loading = ref(false)
 
 const historyDialogVisible = ref(false)
@@ -27,6 +27,10 @@ const selectedAtletaToReassign = ref<any>(null)
 const allEntrenadors = ref<{ id: string; nom: string }[]>([])
 const selectedNewEntrenador = ref<string | null>(null)
 const reassignLoading = ref(false)
+
+const editDetailsDialogVisible = ref(false)
+const editingAtleta = ref<{ id: string; nom: string; cognoms: string } | null>(null)
+const saveDetailsLoading = ref(false)
 
 const loadAtletes = async () => {
   loading.value = true
@@ -47,7 +51,10 @@ const searchQuery = ref('')
 const filteredAtletes = computed(() => {
   if (!searchQuery.value) return atletes.value
   const query = searchQuery.value.toLowerCase()
-  return atletes.value.filter(a => a.nom.toLowerCase().includes(query))
+  return atletes.value.filter(a => 
+    a.nom.toLowerCase().includes(query) || 
+    (a.cognoms && a.cognoms.toLowerCase().includes(query))
+  )
 })
 
 const handleToggleStatus = async (atleta: any, newValue: boolean) => {
@@ -107,6 +114,34 @@ const confirmReassign = async () => {
     reassignLoading.value = false
   }
 }
+
+const openEditDetailsDialog = (atleta: any) => {
+  editingAtleta.value = {
+    id: atleta.id,
+    nom: atleta.nom || '',
+    cognoms: atleta.cognoms || ''
+  }
+  editDetailsDialogVisible.value = true
+}
+
+const confirmSaveDetails = async () => {
+  if (!editingAtleta.value || !editingAtleta.value.nom.trim()) return
+  
+  saveDetailsLoading.value = true
+  try {
+    await updateAtletaDetails(editingAtleta.value.id, {
+      nom: editingAtleta.value.nom.trim(),
+      cognoms: editingAtleta.value.cognoms.trim()
+    })
+    toast.add({ severity: 'success', summary: 'Actualitzat', detail: 'Dades de l\'atleta actualitzades correctament', life: 3000 })
+    editDetailsDialogVisible.value = false
+    loadAtletes()
+  } catch (e: any) {
+    toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.error || 'Error actualitzant dades de l\'atleta', life: 3000 })
+  } finally {
+    saveDetailsLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -136,7 +171,11 @@ const confirmReassign = async () => {
         :rows="10" 
         :rowsPerPageOptions="[10, 25, 50]"
       >
-        <Column field="nom" :header="$t('athletesManager.name')"></Column>
+        <Column :header="$t('athletesManager.name')">
+          <template #body="{ data }">
+            <span class="font-medium">{{ data.nom }} {{ data.cognoms || '' }}</span>
+          </template>
+        </Column>
         <Column field="email" :header="$t('athletesManager.email')"></Column>
         <Column :header="$t('athletesManager.status')">
           <template #body="{ data }">
@@ -149,6 +188,7 @@ const confirmReassign = async () => {
         <Column :header="$t('athletesManager.actions')">
           <template #body="{ data }">
             <div class="flex gap-2">
+              <Button icon="ti ti-edit" severity="secondary" variant="text" rounded aria-label="Editar dades" @click="openEditDetailsDialog(data)" title="Editar nom i cognoms" />
               <Button icon="ti ti-history" severity="secondary" variant="text" rounded :aria-label="$t('athletesManager.history')" @click="showHistory(data)" :title="$t('athletesManager.viewHistory')" />
               <Button icon="ti ti-arrows-right-left" severity="secondary" variant="text" rounded aria-label="Reassignar" @click="openReassignDialog(data)" title="Reassignar atleta a un altre entrenador" />
             </div>
@@ -199,6 +239,37 @@ const confirmReassign = async () => {
       <template #footer>
         <Button label="Cancel·lar" icon="ti ti-x" text severity="secondary" @click="reassignDialogVisible = false" />
         <Button label="Reassignar" icon="ti ti-check" @click="confirmReassign" :loading="reassignLoading" :disabled="!selectedNewEntrenador" severity="danger" />
+      </template>
+    </Dialog>
+
+    <!-- Dialog to Edit Athlete Name and Surnames -->
+    <Dialog v-model:visible="editDetailsDialogVisible" modal header="Editar Dades de l'Atleta" :style="{ width: '400px' }">
+      <div v-if="editingAtleta" class="flex flex-col gap-4">
+        <div class="field">
+          <label for="atletaNom" class="block mb-2 font-medium">Nom</label>
+          <input 
+            type="text" 
+            id="atletaNom" 
+            v-model="editingAtleta.nom" 
+            class="p-inputtext p-component w-full" 
+            placeholder="Ex: Joan"
+          />
+        </div>
+        <div class="field">
+          <label for="atletaCognoms" class="block mb-2 font-medium">Cognoms</label>
+          <input 
+            type="text" 
+            id="atletaCognoms" 
+            v-model="editingAtleta.cognoms" 
+            class="p-inputtext p-component w-full" 
+            placeholder="Ex: Garcia"
+          />
+        </div>
+      </div>
+
+      <template #footer>
+        <Button label="Cancel·lar" icon="ti ti-x" text severity="secondary" @click="editDetailsDialogVisible = false" />
+        <Button label="Guardar" icon="ti ti-check" @click="confirmSaveDetails" :loading="saveDetailsLoading" :disabled="!editingAtleta?.nom.trim()" />
       </template>
     </Dialog>
   </div>

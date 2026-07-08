@@ -435,7 +435,7 @@ const handleChangeLanguage = async () => {
           <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
             <i class="ti ti-rocket text-xl"></i> Versió 1.3.0 (8 Juliol 2026)
           </h3>
-          <p class="text-primary-800">Recuperació de contrasenya, plantilles de setmana per a la disponibilitat d'atletes i ajust de capçaleres de correu.</p>
+          <p class="text-primary-800">Recuperació de contrasenya, plantilles de setmana, edició d'atletes i millora visual del dashboard d'entrenadors.</p>
         </div>
 
         <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-key text-primary"></i> 1. Recuperació de Contrasenya</h4>
@@ -451,8 +451,15 @@ const handleChangeLanguage = async () => {
           <li><strong>Gestió inline:</strong> Opció per esborrar les plantilles desades des de la vista de Calendari.</li>
         </ul>
 
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-settings text-primary"></i> 3. Millores de Visualització</h4>
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-user-edit text-primary"></i> 3. Gestió d'Atletes (Entrenadors)</h4>
         <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Edició de dades:</strong> Els entrenadors ara poden editar el nom i cognoms dels seus atletes directament des de la secció de Gestió d'Atletes.</li>
+          <li><strong>Sincronització:</strong> Els canvis s'envoixen de fons per sincronitzar-se de forma immediata amb la base de contactes de Brevo.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-palette text-primary"></i> 4. Millores Visuals al Dashboard</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Colors d'estat de setmana:</strong> Les files es ressalten en color verdós clar quan l'atleta marca la setmana com a completada, i en un to blau visible un cop l'entrenador les ha marcat com a traspassades.</li>
           <li><strong>Logo a les plantilles de correu:</strong> S'ha ajustat la capçalera dels emails de recordatori perquè s'adapti correctament a l'interior del cercle de fons blanc, evitant retalls o deformacions.</li>
         </ul>
 

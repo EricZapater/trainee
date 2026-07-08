@@ -33,6 +33,7 @@ type Atleta struct {
 	EntrenadorID string    `json:"entrenador_id"`
 	CreatedAt    time.Time `json:"created_at"`
 	Nom          string    `json:"nom,omitempty"`
+	Cognoms      string    `json:"cognoms,omitempty"`
 	Email        string    `json:"email,omitempty"`
 	Actiu        bool      `json:"actiu"`
 	Idioma       string    `json:"idioma,omitempty"`
@@ -580,4 +581,10 @@ type TemplateSlotRequest struct {
 	DuradaHores float64 `json:"durada_hores" binding:"required"`
 	Notes       string  `json:"notes"`
 }
+
+type UpdateAtletaDetailsRequest struct {
+	Nom     string `json:"nom" binding:"required"`
+	Cognoms string `json:"cognoms" binding:"required"`
+}
+
 

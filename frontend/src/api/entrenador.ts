@@ -18,8 +18,8 @@ export async function getInformeAtleta(id: string, start: string, end: string): 
   return data
 }
 
-export async function getAtletes(): Promise<{ id: string; nom: string; email: string; actiu: boolean }[]> {
-  const { data } = await api.get<{ id: string; nom: string; email: string; actiu: boolean }[]>('/entrenador/atletes')
+export async function getAtletes(): Promise<{ id: string; nom: string; cognoms: string; email: string; actiu: boolean }[]> {
+  const { data } = await api.get<{ id: string; nom: string; cognoms: string; email: string; actiu: boolean }[]>('/entrenador/atletes')
   return data
 }
 
@@ -86,4 +86,8 @@ export async function reassignAtleta(id: string, newEntrenadorId: string): Promi
 
 export async function toggleSubmissionGestionat(submissionId: string, gestionat: boolean): Promise<void> {
   await api.patch(`/entrenador/submissions/${submissionId}/gestionat`, { gestionat })
+}
+
+export async function updateAtletaDetails(id: string, payload: { nom: string; cognoms: string }): Promise<void> {
+  await api.patch(`/entrenador/atletes/${id}`, payload)
 }

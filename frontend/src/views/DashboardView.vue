@@ -240,7 +240,11 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
               v-for="atleta in paginatedAtletes" 
               :key="atleta.atleta_id"
               class="athlete-row"
-              :class="{ 'has-response': atleta.ha_respost && !atleta.gestionat, 'is-managed': atleta.gestionat }"
+              :class="{ 
+                'is-completed': atleta.estat === 'completada' && !atleta.gestionat, 
+                'is-draft': atleta.estat === 'esborrany' && !atleta.gestionat, 
+                'is-managed': atleta.gestionat 
+              }"
               @click="openAthleteDrawer(atleta)"
             >
               <td class="col-name">
@@ -398,20 +402,28 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
   background-color: var(--bg-hover);
 }
 
-.athlete-row.has-response {
-  background-color: rgba(34, 197, 94, 0.03);
+.athlete-row.is-completed {
+  background-color: rgba(34, 197, 94, 0.12);
 }
 
-.athlete-row.has-response:hover {
-  background-color: rgba(34, 197, 94, 0.08);
+.athlete-row.is-completed:hover {
+  background-color: rgba(34, 197, 94, 0.20);
+}
+
+.athlete-row.is-draft {
+  background-color: rgba(234, 179, 8, 0.04);
+}
+
+.athlete-row.is-draft:hover {
+  background-color: rgba(234, 179, 8, 0.08);
 }
 
 .athlete-row.is-managed {
-  background-color: rgba(99, 102, 241, 0.05); /* Indigo/Primary tint */
+  background-color: rgba(59, 130, 246, 0.15);
 }
 
 .athlete-row.is-managed:hover {
-  background-color: rgba(99, 102, 241, 0.1);
+  background-color: rgba(59, 130, 246, 0.25);
 }
 
 .athlete-info {
@@ -551,12 +563,16 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
     background: var(--bg-hover);
   }
   
-  .athlete-row.has-response td.col-name {
-    background: #192b23;
+  .athlete-row.is-completed td.col-name {
+    background: #143522;
+  }
+  
+  .athlete-row.is-draft td.col-name {
+    background: #252216;
   }
   
   .athlete-row.is-managed td.col-name {
-    background: #1a1e36; /* Darker indigo for sticky col in dark mode */
+    background: #0f1c3f;
   }
   
   .dashboard-table td:not(.col-name) {
