@@ -110,6 +110,7 @@ export interface AtletaSubmissionSummary {
   atleta_id: string
   submission_id?: string
   nom: string
+  cognoms: string
   email: string
   actiu: boolean
   ha_respost: boolean

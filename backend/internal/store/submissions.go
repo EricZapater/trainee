@@ -144,6 +144,7 @@ func (s *PostgresStore) GetSubmissionsByEntrenadorAndWeek(ctx context.Context, e
 		summary := models.AtletaSubmissionSummary{
 			AtletaID:  atleta.ID,
 			Nom:       atleta.Nom,
+			Cognoms:   atleta.Cognoms,
 			Email:     atleta.Email,
 			Actiu:     atleta.Actiu,
 			HaRespost: false,

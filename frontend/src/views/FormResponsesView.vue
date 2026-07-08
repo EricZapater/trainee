@@ -8,6 +8,7 @@ import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
 import DatePicker from 'primevue/datepicker'
+import Checkbox from 'primevue/checkbox'
 
 const route = useRoute()
 const router = useRouter()
@@ -104,18 +105,101 @@ const filteredResponses = computed(() => {
     return true
   })
 })
+
+const exportModalVisible = ref(false)
+const selectedResponsesToExport = ref<FormResponseWithAnswers[]>([])
+
+const openExportModal = () => {
+  selectedResponsesToExport.value = [...filteredResponses.value]
+  exportModalVisible.value = true
+}
+
+const isResponseSelected = (res: FormResponseWithAnswers) => {
+  return selectedResponsesToExport.value.some(r => r.id === res.id)
+}
+
+const toggleSelectResponse = (res: FormResponseWithAnswers) => {
+  if (isResponseSelected(res)) {
+    selectedResponsesToExport.value = selectedResponsesToExport.value.filter(r => r.id !== res.id)
+  } else {
+    selectedResponsesToExport.value.push(res)
+  }
+}
+
+const isAllSelected = computed(() => {
+  if (filteredResponses.value.length === 0) return false
+  return filteredResponses.value.every(res => isResponseSelected(res))
+})
+
+const toggleSelectAll = (e: any) => {
+  const checked = e.checked
+  if (checked) {
+    selectedResponsesToExport.value = [...filteredResponses.value]
+  } else {
+    selectedResponsesToExport.value = []
+  }
+}
+
+const exportToExcel = () => {
+  if (!formDetails.value || selectedResponsesToExport.value.length === 0) return
+
+  const questions = [...formDetails.value.questions].sort((a, b) => a.ordre - b.ordre)
+
+  const headers = [
+    'Nom Candidat',
+    'Email',
+    'Telèfon',
+    'Data de Resposta',
+    'Estat',
+    ...questions.map(q => q.pregunta)
+  ]
+
+  const rows = selectedResponsesToExport.value.map(res => {
+    const candidateAnswers = questions.map(q => {
+      const ans = res.answers.find(a => a.question_id === q.id)
+      return ans ? ans.valor || '' : ''
+    })
+
+    return [
+      res.nom_candidat || '',
+      res.email_candidat || '',
+      res.telefon_candidat || '',
+      new Date(res.created_at).toLocaleDateString(),
+      res.estat || '',
+      ...candidateAnswers
+    ]
+  })
+
+  const csvContent = [
+    headers.map(h => `"${h.replace(/"/g, '""')}"`).join(';'),
+    ...rows.map(row => row.map(val => `"${val.replace(/"/g, '""')}"`).join(';'))
+  ].join('\n')
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', `respostes_${formDetails.value.titol.toLowerCase().replace(/\s+/g, '_')}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+
+  exportModalVisible.value = false
+  toast.add({ severity: 'success', summary: 'Exportat', detail: 'S\'ha descarregat el fitxer Excel/CSV', life: 3000 })
+}
 </script>
 
 <template>
   <div class="form-responses max-w-5xl mx-auto">
     <div class="page-header glass-card mb-6">
-      <div class="flex align-center justify-between">
+      <div class="flex align-center justify-between flex-wrap gap-4">
         <div class="flex align-center gap-4">
           <Button icon="ti ti-arrow-left" text rounded aria-label="Tornar" @click="router.back()" />
           <h1 class="page-title">{{ $t('forms.responsesTitle') }}</h1>
         </div>
         
-        <div v-if="responses.length > 0">
+        <div v-if="responses.length > 0" class="flex items-center gap-3">
           <DatePicker 
             v-model="dateRange" 
             selectionMode="range" 
@@ -124,6 +208,12 @@ const filteredResponses = computed(() => {
             showIcon 
             iconDisplay="input"
             class="w-full md:w-auto"
+          />
+          <Button 
+            label="Exportar a Excel" 
+            icon="ti ti-file-spreadsheet" 
+            severity="success" 
+            @click="openExportModal" 
           />
         </div>
       </div>
@@ -198,6 +288,50 @@ const filteredResponses = computed(() => {
           <div class="bg-surface p-3 rounded border whitespace-pre-wrap">{{ answer.valor || '-' }}</div>
         </div>
       </div>
+    </Dialog>
+
+    <!-- Dialog to Export to Excel -->
+    <Dialog v-model:visible="exportModalVisible" header="Exportar respostes a Excel" modal :style="{ width: '600px', maxWidth: '95vw' }">
+      <p class="mb-4 text-secondary text-sm">Selecciona els candidats que vols incloure a l'exportació de dades. Es generarà un fitxer Excel/CSV.</p>
+      
+      <div class="flex items-center justify-between mb-3 bg-surface p-3 rounded border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-2">
+          <Checkbox 
+            id="selectAll" 
+            :modelValue="isAllSelected" 
+            binary 
+            @change="toggleSelectAll" 
+          />
+          <label for="selectAll" class="font-bold cursor-pointer text-sm">Seleccionar-los tots</label>
+        </div>
+        <span class="text-sm text-secondary font-medium">{{ selectedResponsesToExport.length }} de {{ filteredResponses.length }} seleccionats</span>
+      </div>
+
+      <div class="export-list flex flex-col gap-2 max-h-[300px] overflow-y-auto border rounded p-2">
+        <div 
+          v-for="res in filteredResponses" 
+          :key="res.id" 
+          class="flex items-center gap-3 p-3 border rounded border-gray-200 dark:border-gray-700 hover:bg-hover cursor-pointer"
+          @click="toggleSelectResponse(res)"
+        >
+          <Checkbox 
+            :modelValue="isResponseSelected(res)" 
+            binary 
+            @click.stop
+            @change="toggleSelectResponse(res)"
+          />
+          <div class="flex flex-col text-left flex-1 min-w-0">
+            <span class="font-semibold text-sm truncate">{{ res.nom_candidat }}</span>
+            <span class="text-xs text-secondary truncate">{{ res.email_candidat }}</span>
+          </div>
+          <span class="text-xs text-secondary">{{ new Date(res.created_at).toLocaleDateString() }}</span>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button label="Cancel·lar" icon="ti ti-x" text severity="secondary" @click="exportModalVisible = false" />
+        <Button label="Descarregar Excel" icon="ti ti-download" @click="exportToExcel" :disabled="selectedResponsesToExport.length === 0" />
+      </template>
     </Dialog>
   </div>
 </template>

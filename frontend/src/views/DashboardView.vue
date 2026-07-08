@@ -248,8 +248,11 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
               @click="openAthleteDrawer(atleta)"
             >
               <td class="col-name">
-                <div class="athlete-info">
-                  <span class="athlete-name">{{ atleta.nom }}</span>
+                <div class="athlete-info flex items-center justify-between">
+                  <div class="flex flex-col text-left">
+                    <span class="athlete-name font-semibold leading-normal">{{ atleta.nom }}</span>
+                    <span class="athlete-cognoms text-xs text-secondary mt-0.5 leading-normal">{{ atleta.cognoms || '' }}</span>
+                  </div>
                   <span v-if="atleta.estat === 'completada'" class="status-badge done">Completada</span>
                   <span v-else-if="atleta.estat === 'esborrany' || atleta.ha_respost" class="status-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">Esborrany</span>
                   <span v-else class="status-badge pending">Pendent</span>

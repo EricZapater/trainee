@@ -435,7 +435,7 @@ const handleChangeLanguage = async () => {
           <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
             <i class="ti ti-rocket text-xl"></i> Versió 1.3.0 (8 Juliol 2026)
           </h3>
-          <p class="text-primary-800">Recuperació de contrasenya, plantilles de setmana, edició d'atletes i millora visual del dashboard d'entrenadors.</p>
+          <p class="text-primary-800">Recuperació de contrasenya, plantilles de setmana, edició d'atletes, exportació Excel i millora visual del dashboard d'entrenadors.</p>
         </div>
 
         <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-key text-primary"></i> 1. Recuperació de Contrasenya</h4>
@@ -461,6 +461,13 @@ const handleChangeLanguage = async () => {
         <ul class="list-disc pl-5 space-y-1 text-surface-700">
           <li><strong>Colors d'estat de setmana:</strong> Les files es ressalten en color verdós clar quan l'atleta marca la setmana com a completada, i en un to blau visible un cop l'entrenador les ha marcat com a traspassades.</li>
           <li><strong>Logo a les plantilles de correu:</strong> S'ha ajustat la capçalera dels emails de recordatori perquè s'adapti correctament a l'interior del cercle de fons blanc, evitant retalls o deformacions.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-file-spreadsheet text-primary"></i> 5. Exportació a Excel (Formularis)</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Exportació de respostes:</strong> S'ha afegit un botó per descarregar les respostes dels formularis en format Excel/CSV compatible.</li>
+          <li><strong>Taula de selecció:</strong> Permet triar exactament quins candidats/atletes incloure a l'informe descarregat.</li>
+          <li><strong>Estructura neta:</strong> Genera una fila per atleta amb les seves respostes detallades per columnes segons les preguntes.</li>
         </ul>
 
         <div class="mt-6 mb-2 border-t pt-4 border-surface-200">

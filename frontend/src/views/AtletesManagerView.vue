@@ -174,7 +174,10 @@ const confirmSaveDetails = async () => {
       >
         <Column :header="$t('athletesManager.name')">
           <template #body="{ data }">
-            <span class="font-medium">{{ data.nom }} {{ data.cognoms || '' }}</span>
+            <div class="flex flex-col">
+              <span class="font-medium text-surface-900 leading-normal">{{ data.nom }}</span>
+              <span class="text-xs text-secondary mt-0.5 leading-normal">{{ data.cognoms || '' }}</span>
+            </div>
           </template>
         </Column>
         <Column field="email" :header="$t('athletesManager.email')"></Column>

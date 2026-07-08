@@ -296,6 +296,7 @@ type AtletaSubmissionSummary struct {
 	AtletaID     string      `json:"atleta_id"`
 	SubmissionID *string     `json:"submission_id,omitempty"`
 	Nom          string      `json:"nom"`
+	Cognoms      string      `json:"cognoms"`
 	Email        string      `json:"email"`
 	Actiu        bool        `json:"actiu"`
 	HaRespost    bool        `json:"ha_respost"`
