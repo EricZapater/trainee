@@ -45,3 +45,9 @@ export async function acceptLegalConsent(version: string): Promise<{ message: st
   const { data } = await api.post<{ message: string }>('/legal/consent', { version })
   return data
 }
+
+export async function recoverPassword(email: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/auth/recover-password', { email })
+  return data
+}
+

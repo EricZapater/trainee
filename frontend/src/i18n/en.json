@@ -36,7 +36,13 @@
     "passwordPlaceholder": "Enter password",
     "loginBtn": "Log In",
     "noAccount": "Don't have an account?",
-    "registerLink": "Sign up here"
+    "registerLink": "Sign up here",
+    "forgotPassword": "Forgot password?",
+    "recoveryTitle": "Recover password",
+    "recoverySubtitle": "Enter your email to receive a new password",
+    "sendRecoveryBtn": "Send new password",
+    "backToLogin": "Back to login",
+    "recoverySuccess": "If the email is correct, you will receive a new password in a few minutes."
   },
   "register": {
     "title": "Create an account",

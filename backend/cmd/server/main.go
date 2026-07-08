@@ -96,6 +96,7 @@ func main() {
 	api.POST("/auth/register", h.Register)
 	api.POST("/auth/login", h.Login)
 	api.POST("/auth/magic-login", h.MagicLogin)
+	api.POST("/auth/recover-password", h.RecoverPassword)
 	api.GET("/entrenadors", h.ListEntrenadors)
 
 	// Rutes que requereixen JWT però NO consentiment

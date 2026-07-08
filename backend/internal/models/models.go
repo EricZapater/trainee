@@ -196,6 +196,10 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type RecoverPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
 type AuthResponse struct {
 	Token  string `json:"token"`
 	Usuari Usuari `json:"usuari"`

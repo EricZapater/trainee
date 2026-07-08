@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { recoverPassword as apiRecoverPassword } from '@/api/auth'
 import { useToast } from 'primevue/usetoast'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -14,6 +15,7 @@ const toast = useToast()
 const email = ref('')
 const password = ref('')
 const loading = ref(false)
+const isRecoveryMode = ref(false)
 
 const handleLogin = async () => {
   if (!email.value || !password.value) return
@@ -33,6 +35,31 @@ const handleLogin = async () => {
     loading.value = false
   }
 }
+
+const handleRecoverPassword = async () => {
+  if (!email.value) return
+  
+  loading.value = true
+  try {
+    const res = await apiRecoverPassword(email.value)
+    toast.add({ 
+      severity: 'success', 
+      summary: 'Info', 
+      detail: res.message || 'Correu enviat', 
+      life: 5000 
+    })
+    isRecoveryMode.value = false
+  } catch (err: any) {
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Error', 
+      detail: err.response?.data?.error || 'Error al recuperar la contrasenya', 
+      life: 3000 
+    })
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <template>
@@ -40,10 +67,11 @@ const handleLogin = async () => {
     <div class="auth-card glass-card">
       <div class="auth-header">
         <h1 class="logo-text">{{ $t('app.title') }}</h1>
-        <p class="subtitle">{{ $t('login.subtitle') }}</p>
+        <p class="subtitle">{{ isRecoveryMode ? $t('login.recoverySubtitle') : $t('login.subtitle') }}</p>
       </div>
       
-      <form @submit.prevent="handleLogin" class="auth-form">
+      <!-- Form for Login -->
+      <form v-if="!isRecoveryMode" @submit.prevent="handleLogin" class="auth-form">
         <div class="field">
           <span class="p-input-icon-left w-full">
             <i class="ti ti-mail"></i>
@@ -57,19 +85,50 @@ const handleLogin = async () => {
             <Password v-model="password" :feedback="false" toggleMask :placeholder="$t('login.passwordPlaceholder')" class="w-full" />
           </span>
         </div>
+
+        <div class="forgot-password-row">
+          <a href="#" @click.prevent="isRecoveryMode = true" class="forgot-link">
+            {{ $t('login.forgotPassword') }}
+          </a>
+        </div>
         
         <Button 
           type="submit" 
           :label="$t('login.loginBtn')" 
-          class="w-full mt-4" 
+          class="w-full mt-2" 
           :loading="loading" 
           :disabled="!email || !password"
         />
       </form>
+
+      <!-- Form for Password Recovery -->
+      <form v-else @submit.prevent="handleRecoverPassword" class="auth-form">
+        <div class="field">
+          <span class="p-input-icon-left w-full">
+            <i class="ti ti-mail"></i>
+            <InputText v-model="email" type="email" :placeholder="$t('login.emailPlaceholder')" class="w-full" />
+          </span>
+        </div>
+        
+        <Button 
+          type="submit" 
+          :label="$t('login.sendRecoveryBtn')" 
+          class="w-full mt-2" 
+          :loading="loading" 
+          :disabled="!email"
+        />
+      </form>
       
       <div class="auth-footer">
-        <span class="text-muted">{{ $t('login.noAccount') }}</span>
-        <router-link to="/register" class="link">{{ $t('login.registerLink') }}</router-link>
+        <template v-if="!isRecoveryMode">
+          <span class="text-muted">{{ $t('login.noAccount') }}</span>
+          <router-link to="/register" class="link">{{ $t('login.registerLink') }}</router-link>
+        </template>
+        <template v-else>
+          <a href="#" @click.prevent="isRecoveryMode = false" class="link">
+            {{ $t('login.backToLogin') }}
+          </a>
+        </template>
       </div>
     </div>
   </div>
@@ -157,4 +216,24 @@ const handleLogin = async () => {
 .link:hover {
   text-decoration: underline;
 }
+
+.forgot-password-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -8px;
+}
+
+.forgot-link {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.forgot-link:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
 </style>
+

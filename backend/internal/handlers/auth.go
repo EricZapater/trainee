@@ -228,3 +228,49 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "perfil actualitzat correctament"})
 }
+
+func (h *Handler) RecoverPassword(c *gin.Context) {
+	var req models.RecoverPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := h.Store.GetUsuariByEmail(c.Request.Context(), req.Email)
+	if err != nil {
+		// "si l'email no coincideix amb cap no es fa res"
+		// To avoid email enumeration/leakage, return success
+		c.JSON(http.StatusOK, gin.H{"message": "S'ha enviat un correu de restabliment si l'adreça és registrada."})
+		return
+	}
+
+	if !user.Actiu {
+		c.JSON(http.StatusOK, gin.H{"message": "S'ha enviat un correu de restabliment si l'adreça és registrada."})
+		return
+	}
+
+	newPassword, err := generateRandomPassword(12)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error generant la nova contrasenya"})
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error xifrant la contrasenya"})
+		return
+	}
+
+	if err := h.Store.UpdateUsuariPassword(c.Request.Context(), user.ID, string(hashedPassword)); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error actualitzant la contrasenya"})
+		return
+	}
+
+	// Send email asynchronously
+	go func(toEmail, toNom, pass, idioma string) {
+		_ = h.Mailer.SendPasswordResetNotification(toEmail, toNom, pass, idioma)
+	}(user.Email, user.Nom, newPassword, user.Idioma)
+
+	c.JSON(http.StatusOK, gin.H{"message": "S'ha enviat un correu de restabliment si l'adreça és registrada."})
+}
+

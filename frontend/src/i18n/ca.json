@@ -36,7 +36,13 @@
     "passwordPlaceholder": "Introdueix la contrasenya",
     "loginBtn": "Entrar",
     "noAccount": "No tens compte?",
-    "registerLink": "Registra't aquí"
+    "registerLink": "Registra't aquí",
+    "forgotPassword": "He oblidat la contrasenya",
+    "recoveryTitle": "Recuperar contrasenya",
+    "recoverySubtitle": "Introdueix el teu correu per rebre una nova contrasenya",
+    "sendRecoveryBtn": "Enviar nova contrasenya",
+    "backToLogin": "Tornar a iniciar sessió",
+    "recoverySuccess": "Si el correu és correcte, rebràs una nova contrasenya en uns minuts."
   },
   "register": {
     "title": "Crea un compte",

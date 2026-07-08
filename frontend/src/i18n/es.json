@@ -36,7 +36,13 @@
     "passwordPlaceholder": "Introduce la contraseña",
     "loginBtn": "Entrar",
     "noAccount": "¿No tienes cuenta?",
-    "registerLink": "Regístrate aquí"
+    "registerLink": "Regístrate aquí",
+    "forgotPassword": "He olvidado mi contraseña",
+    "recoveryTitle": "Recuperar contraseña",
+    "recoverySubtitle": "Introduce tu correo para recibir una nueva contraseña",
+    "sendRecoveryBtn": "Enviar nueva contraseña",
+    "backToLogin": "Volver a iniciar sesión",
+    "recoverySuccess": "Si el correo es correcto, recibirás una nueva contraseña en unos minutos."
   },
   "register": {
     "title": "Crea una cuenta",
