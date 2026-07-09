@@ -56,8 +56,8 @@ onMounted(async () => {
             </div>
           </div>
           <div class="date-badge">
-            <span class="day">{{ new Date(competicio.data).getDate() }}</span>
-            <span class="month">{{ new Date(competicio.data).toLocaleString('ca-ES', { month: 'short' }).toUpperCase() }}</span>
+            <span class="day">{{ new Date(competicio.data + 'T00:00:00').getDate() }}</span>
+            <span class="month">{{ new Date(competicio.data + 'T00:00:00').toLocaleString('ca-ES', { month: 'short' }).toUpperCase() }}</span>
           </div>
         </div>
       </div>

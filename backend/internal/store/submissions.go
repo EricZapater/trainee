@@ -303,7 +303,7 @@ func (s *PostgresStore) ToggleSubmissionGestionat(ctx context.Context, submissio
 		 FROM atletes a
 		 JOIN usuaris u ON a.usuari_id = u.id
 		 WHERE ws.id = $2 AND ws.atleta_id = a.id AND a.entrenador_id = $3
-		 RETURNING u.email, u.nom, COALESCE(u.idioma, 'CAT'), ws.week_start`,
+		 RETURNING u.email, u.nom, COALESCE(u.idioma, 'CAT'), TO_CHAR(ws.week_start, 'YYYY-MM-DD')`,
 		gestionat, submissionID, entrenadorID,
 	).Scan(&email, &nom, &idioma, &weekStart)
 	

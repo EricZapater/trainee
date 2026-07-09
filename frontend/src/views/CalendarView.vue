@@ -34,7 +34,7 @@ const toggleDay = (dia: number) => {
 const dies = computed(() => tm('calendar.days') as string[])
 
 const formatDate = (dateStr: string, offsetDays: number = 0) => {
-  const d = new Date(dateStr)
+  const d = new Date(dateStr + 'T00:00:00')
   d.setDate(d.getDate() + offsetDays)
   return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`
 }

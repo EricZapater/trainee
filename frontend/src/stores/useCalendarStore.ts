@@ -9,7 +9,10 @@ function getThisMonday(): string {
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   d.setDate(diff)
-  return d.toISOString().split('T')[0]
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 export const useCalendarStore = defineStore('calendar', () => {
@@ -129,9 +132,12 @@ export const useCalendarStore = defineStore('calendar', () => {
   }
 
   async function navigateWeek(direction: 1 | -1) {
-    const d = new Date(currentWeekStart.value)
+    const d = new Date(currentWeekStart.value + 'T00:00:00')
     d.setDate(d.getDate() + (direction * 7))
-    currentWeekStart.value = d.toISOString().split('T')[0]
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    currentWeekStart.value = `${yyyy}-${mm}-${dd}`
     await loadSubmission()
   }
 

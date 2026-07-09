@@ -56,8 +56,8 @@ onMounted(async () => {
             </div>
           </div>
           <div class="date-badge">
-            <span class="day">{{ new Date(testItem.data_test).getDate() }}</span>
-            <span class="month">{{ new Date(testItem.data_test).toLocaleString('ca-ES', { month: 'short' }).toUpperCase() }}</span>
+            <span class="day">{{ new Date(testItem.data_test + 'T00:00:00').getDate() }}</span>
+            <span class="month">{{ new Date(testItem.data_test + 'T00:00:00').toLocaleString('ca-ES', { month: 'short' }).toUpperCase() }}</span>
           </div>
         </div>
       </div>
@@ -71,7 +71,7 @@ onMounted(async () => {
         <div class="flex gap-3 align-center">
           <i class="ti ti-bell-ringing text-2xl text-warning"></i>
           <div>
-            <h4 v-html="$t('testDetail.scheduledDate', { date: `<strong>${new Date(testItem.data_recordatori).toLocaleDateString('ca-ES')}</strong>` })"></h4>
+            <h4 v-html="$t('testDetail.scheduledDate', { date: `<strong>${new Date(testItem.data_recordatori + 'T00:00:00').toLocaleDateString('ca-ES')}</strong>` })"></h4>
             <p class="text-sm">{{ $t('testDetail.coachNotice') }}</p>
           </div>
         </div>

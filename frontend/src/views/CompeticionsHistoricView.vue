@@ -89,7 +89,7 @@ const filteredCompeticions = computed(() => {
 
     // Filter by date
     if (dateRange.value && dateRange.value.length === 2 && dateRange.value[0] && dateRange.value[1]) {
-      const compDate = new Date(comp.data)
+      const compDate = new Date(comp.data + 'T00:00:00')
       const start = new Date(dateRange.value[0])
       start.setHours(0,0,0,0)
       const end = new Date(dateRange.value[1])

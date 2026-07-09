@@ -178,7 +178,7 @@ const sortedPendents = computed(() => {
                   <h3 class="card-title">{{ t.titol }}</h3>
                   <div class="card-meta">
                     <span class="meta-item"><i class="ti ti-user"></i> {{ t.atleta_nom }}</span>
-                    <span class="meta-item"><i class="ti ti-calendar"></i> {{ new Date(t.data_test).toLocaleDateString('ca-ES') }}</span>
+                    <span class="meta-item"><i class="ti ti-calendar"></i> {{ new Date(t.data_test + 'T00:00:00').toLocaleDateString('ca-ES') }}</span>
                   </div>
                   <p v-if="t.comentaris" class="text-sm text-secondary mt-2 line-clamp-2">{{ t.comentaris }}</p>
                 </div>
@@ -215,10 +215,10 @@ const sortedPendents = computed(() => {
                     <span class="meta-item"><i class="ti ti-user"></i> {{ t.atleta_nom }}</span>
                     <span class="meta-item">
                       <i class="ti ti-calendar-due"></i> 
-                      {{ $t('testsManager.dueDate') }}: {{ new Date(t.data_recordatori!).toLocaleDateString('ca-ES') }}
+                      {{ $t('testsManager.dueDate') }}: {{ new Date(t.data_recordatori! + 'T00:00:00').toLocaleDateString('ca-ES') }}
                     </span>
                   </div>
-                  <p class="text-sm text-secondary mt-2">{{ $t('testsManager.lastTest', { date: new Date(t.data_test).toLocaleDateString('ca-ES') }) }}</p>
+                  <p class="text-sm text-secondary mt-2">{{ $t('testsManager.lastTest', { date: new Date(t.data_test + 'T00:00:00').toLocaleDateString('ca-ES') }) }}</p>
                 </div>
               </div>
               <div class="card-actions flex-column align-end">
