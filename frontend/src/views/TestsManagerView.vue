@@ -37,8 +37,8 @@ const resolentRecordatoriId = ref<string | null>(null)
 const loadData = async () => {
   try {
     const raw = await getAtletes()
-    atletes.value = raw
-      .filter(a => a.actiu)
+    atletes.value = (raw || [])
+      .filter(a => a && a.actiu)
       .map(a => ({
         ...a,
         nom: a.cognoms ? `${a.nom} ${a.cognoms}` : a.nom
@@ -68,20 +68,27 @@ const openCreateModal = (recordatoriId?: string, atletaId?: string, oldTitol?: s
 }
 
 const submitCreate = async () => {
-  if (!form.value.atleta_id || !form.value.titol || !dataTestObj.value) {
+  if (!form.value.atleta_id || !form.value.titol) {
     toast.add({ severity: 'warn', summary: 'Avís', detail: 'Omple els camps obligatoris' })
+    return
+  }
+
+  const testDate = dataTestObj.value
+  if (!testDate) {
+    isSubmitting.value = false
     return
   }
 
   isSubmitting.value = true
   try {
-    const tzOffset = dataTestObj.value.getTimezoneOffset() * 60000
-    const localDateTest = new Date(dataTestObj.value.getTime() - tzOffset).toISOString().split('T')[0]
+    const tzOffset = testDate.getTimezoneOffset() * 60000
+    const localDateTest = new Date(testDate.getTime() - tzOffset).toISOString().split('T')[0]
     
     let localDateRecordatori = ''
-    if (dataRecordatoriObj.value) {
-      const tzOffset2 = dataRecordatoriObj.value.getTimezoneOffset() * 60000
-      localDateRecordatori = new Date(dataRecordatoriObj.value.getTime() - tzOffset2).toISOString().split('T')[0]
+    const recordatoriDate = dataRecordatoriObj.value
+    if (recordatoriDate) {
+      const tzOffset2 = recordatoriDate.getTimezoneOffset() * 60000
+      localDateRecordatori = new Date(recordatoriDate.getTime() - tzOffset2).toISOString().split('T')[0]
     }
 
     await createTest({
@@ -207,21 +214,21 @@ const sortedPendents = computed(() => {
             <p class="text-secondary">{{ $t('testsManager.noRemindersSub') }}</p>
           </div>
           <div v-else class="grid-list">
-            <div v-for="t in testsStore.recordatoris" :key="t.id" class="list-card" :class="{ 'is-urgent': testsStore.isUrgent(t.data_recordatori) }">
+            <div v-for="t in testsStore.recordatoris" :key="t.id" class="list-card" :class="{ 'is-urgent': t.data_recordatori && testsStore.isUrgent(t.data_recordatori) }">
               <div class="card-left">
                 <div class="card-icon warning-icon">
-                  <i :class="testsStore.isUrgent(t.data_recordatori) ? 'ti ti-alert-triangle' : 'ti ti-bell'"></i>
+                  <i :class="t.data_recordatori && testsStore.isUrgent(t.data_recordatori) ? 'ti ti-alert-triangle' : 'ti ti-bell'"></i>
                 </div>
                 <div>
                   <div class="flex align-items-center gap-2">
                     <h3 class="card-title">{{ $t('testsManager.reevaluate') }}: {{ t.titol }}</h3>
-                    <span v-if="testsStore.isUrgent(t.data_recordatori)" class="badge urgent-badge">{{ $t('testsManager.urgent') }}</span>
+                    <span v-if="t.data_recordatori && testsStore.isUrgent(t.data_recordatori)" class="badge urgent-badge">{{ $t('testsManager.urgent') }}</span>
                   </div>
                   <div class="card-meta mt-1">
-                    <span class="meta-item"><i class="ti ti-user"></i> {{ t.atleta_nom }}</span>
-                    <span class="meta-item">
+                    <span class="meta-item"><i class="ti ti-user"></i> {{ t.atleta_nom || '' }}</span>
+                    <span class="meta-item" v-if="t.data_recordatori">
                       <i class="ti ti-calendar-due"></i> 
-                      {{ $t('testsManager.dueDate') }}: {{ new Date(t.data_recordatori! + 'T00:00:00').toLocaleDateString('ca-ES') }}
+                      {{ $t('testsManager.dueDate') }}: {{ new Date(t.data_recordatori + 'T00:00:00').toLocaleDateString('ca-ES') }}
                     </span>
                   </div>
                   <p class="text-sm text-secondary mt-2">{{ $t('testsManager.lastTest', { date: new Date(t.data_test + 'T00:00:00').toLocaleDateString('ca-ES') }) }}</p>
