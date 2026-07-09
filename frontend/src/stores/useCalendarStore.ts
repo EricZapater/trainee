@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getMySubmission, createSubmission } from '@/api/submissions'
 import { listWeekTemplates, createWeekTemplate, deleteWeekTemplate } from '@/api/templates'
+import { useActivitatsStore } from './useActivitatsStore'
 import type { SlotData, Activitat, WeekTemplate } from '@/types'
 
 function getThisMonday(): string {
@@ -89,7 +90,15 @@ export const useCalendarStore = defineStore('calendar', () => {
         }
       }
       
+      const activitatsStore = useActivitatsStore()
+      const activeIds = new Set(activitatsStore.activitats.map(a => a.id))
+
       for (const s of data.slots) {
+        // If the week is open (editable) and the activity is not active, skip loading it
+        if (estat.value !== 'completada' && !activeIds.has(s.activitat_id)) {
+          continue
+        }
+
         addSlotToDay(s.dia, {
           activitat_id: s.activitat_id,
           competicio_id: s.competicio_id,
@@ -188,11 +197,12 @@ export const useCalendarStore = defineStore('calendar', () => {
 
     for (const s of template.slots) {
       const act = activitats.find(a => a.id === s.activitat_id)
+      if (!act || !act.activa) continue
       addSlotToDay(s.dia, {
         activitat_id: s.activitat_id,
-        activitat_nom: act?.nom || '',
-        activitat_icona: act?.icona || '',
-        activitat_color: act?.color || '',
+        activitat_nom: act.nom,
+        activitat_icona: act.icona,
+        activitat_color: act.color,
         durada_hores: s.durada_hores,
         notes: s.notes || ''
       })

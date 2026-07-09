@@ -449,6 +449,17 @@ const handleChangeLanguage = async () => {
           <li><strong>Resposta de l'API:</strong> Corregit un error 500 en marcar setmanes com a gestionades/planificades des del dashboard d'entrenador. L'estat s'actualitzava correctament a la base de dades, però fallava la resposta al frontend per un error d'escaneig de dades.</li>
         </ul>
 
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-activity text-primary"></i> 3. Ocultar activitats inactives al calendari</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Amagar inactives:</strong> En omplir la disponibilitat de la setmana, s'oculten les activitats que l'entrenador ha marcat com a inactives. També es descarten en aplicar una plantilla desada si aquesta contenia alguna activitat que ara està desactivada.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-users text-primary"></i> 4. Control d'atletes inactius a planificació i tests</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Filtre a Planificació:</strong> S'ha afegit un selector a la vista de planificació de l'entrenador per poder filtrar els atletes entre "Actius", "Inactius" o "Tots".</li>
+          <li><strong>Restricció a Tests:</strong> La llista d'atletes i els llistats de tests/recordatoris pendents al panell de tests s'han limitat per mostrar exclusivament els atletes actius.</li>
+        </ul>
+
         <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
           <h3 class="font-bold text-surface-900 flex items-center gap-2">
             <i class="ti ti-rocket text-lg"></i> Versió 1.3.0 (8 Juliol 2026)

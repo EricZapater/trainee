@@ -22,6 +22,13 @@ const selectedPeriod = ref<number>(6) // months
 const loading = ref(false)
 const hideDiscarded = ref(false)
 
+const atletaStatusFilter = ref<'actius' | 'inactius' | 'tots'>('actius')
+const statusFilterOptions = computed(() => [
+  { label: 'Atletes actius', value: 'actius' },
+  { label: 'Atletes inactius', value: 'inactius' },
+  { label: 'Tots els atletes', value: 'tots' }
+])
+
 const periodOptions = computed(() => [
   { label: t('planningManager.months3'), value: 3 },
   { label: t('planningManager.months6'), value: 6 },
@@ -33,11 +40,32 @@ const competicions = ref<Competicio[]>([])
 
 const loadAtletes = async () => {
   try {
-    atletes.value = await getAtletes()
+    const raw = await getAtletes()
+    atletes.value = raw.map(a => ({
+      ...a,
+      nomComplet: a.cognoms ? `${a.nom} ${a.cognoms}` : a.nom
+    }))
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut carregar els atletes', life: 3000 })
   }
 }
+
+const filteredAtletes = computed(() => {
+  if (atletaStatusFilter.value === 'actius') {
+    return atletes.value.filter(a => a.actiu)
+  }
+  if (atletaStatusFilter.value === 'inactius') {
+    return atletes.value.filter(a => !a.actiu)
+  }
+  return atletes.value
+})
+
+watch(filteredAtletes, (newList) => {
+  if (selectedAtletaId.value && !newList.some(a => a.id === selectedAtletaId.value)) {
+    selectedAtletaId.value = null
+    competicions.value = []
+  }
+})
 
 const fetchCompeticions = async () => {
   if (!selectedAtletaId.value) return
@@ -132,11 +160,21 @@ const getBadgeClass = (comp: Competicio) => {
     <div class="filters-card glass-card">
       <div class="filters-row">
         <div class="field">
+          <label>Estat atletes</label>
+          <Select 
+            v-model="atletaStatusFilter" 
+            :options="statusFilterOptions" 
+            optionLabel="label" 
+            optionValue="value" 
+            class="w-full"
+          />
+        </div>
+        <div class="field">
           <label>{{ $t('planningManager.athlete') }}</label>
           <Select 
             v-model="selectedAtletaId" 
-            :options="atletes" 
-            optionLabel="nom" 
+            :options="filteredAtletes" 
+            optionLabel="nomComplet" 
             optionValue="id" 
             :placeholder="$t('planningManager.selectAthlete')" 
             class="w-full"

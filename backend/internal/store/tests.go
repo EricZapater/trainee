@@ -55,7 +55,7 @@ func (s *PostgresStore) ListPendingTestsByEntrenador(ctx context.Context, entren
 		 FROM tests c
 		 JOIN atletes at ON at.id = c.atleta_id
 		 JOIN usuaris a ON a.id = at.usuari_id
-		 WHERE c.entrenador_id = $1 AND c.registrat = false
+		 WHERE c.entrenador_id = $1 AND c.registrat = false AND a.actiu = true
 		 ORDER BY c.data_test ASC`,
 		entrenadorID,
 	)
@@ -81,7 +81,7 @@ func (s *PostgresStore) ListRecordatorisByEntrenador(ctx context.Context, entren
 		 FROM tests c
 		 JOIN atletes at ON at.id = c.atleta_id
 		 JOIN usuaris a ON a.id = at.usuari_id
-		 WHERE c.entrenador_id = $1 AND c.estat_recordatori = 'pendent'
+		 WHERE c.entrenador_id = $1 AND c.estat_recordatori = 'pendent' AND a.actiu = true
 		 ORDER BY c.data_recordatori ASC`,
 		entrenadorID,
 	)

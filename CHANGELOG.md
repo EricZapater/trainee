@@ -18,3 +18,12 @@ All notable changes to this project will be documented in this file.
     - Appended `"T00:00:00"` to date strings before parsing them with `new Date()`, forcing the browser to parse the date in the local timezone.
     - Updated `getThisMonday()` to format the default Monday date using local date components (`getFullYear()`, `getMonth()`, `getDate()`) instead of `.toISOString().split('T')[0]`, which could also shift the date depending on the time of day.
     - Fixed related timezone shift issues in `CompeticioDetailView.vue`, `TestDetailView.vue`, `TestsManagerView.vue`, and the historical date filter in `CompeticionsHistoricView.vue`.
+- **Hide inactive activities in the calendar and templates**: Prevented inactive activities from appearing or being populated when loading submissions or applying templates.
+  - *Resolution*: 
+    - Filtered out inactive activities when loading the athlete's submission in `loadSubmission()`.
+    - Filtered out inactive activities when applying templates in `applyTemplate()`.
+- **Control of inactive athletes in planning and tests**: Filtered and restricted inactive athletes' visibility in planning and tests.
+  - *Resolution*:
+    - Added an active/inactive/all athlete filter dropdown in `PlanningManagerView.vue`.
+    - Restricted the test creation athlete list, pending tests, and test reminders in `TestsManagerView.vue` to only show active athletes (filtering both frontend load and backend SQL queries).
+

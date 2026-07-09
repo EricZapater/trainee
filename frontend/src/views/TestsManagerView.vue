@@ -36,7 +36,13 @@ const resolentRecordatoriId = ref<string | null>(null)
 
 const loadData = async () => {
   try {
-    atletes.value = await getAtletes()
+    const raw = await getAtletes()
+    atletes.value = raw
+      .filter(a => a.actiu)
+      .map(a => ({
+        ...a,
+        nom: a.cognoms ? `${a.nom} ${a.cognoms}` : a.nom
+      }))
     await testsStore.loadData()
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Error carregant les dades' })
