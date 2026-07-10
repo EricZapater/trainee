@@ -26,4 +26,8 @@ All notable changes to this project will be documented in this file.
   - *Resolution*:
     - Added an active/inactive/all athlete filter dropdown in `PlanningManagerView.vue`.
     - Restricted the test creation athlete list, pending tests, and test reminders in `TestsManagerView.vue` to only show active athletes (filtering both frontend load and backend SQL queries).
+- **Email notifications modifications**: Updated the week planned (transferred) email notification template.
+  - *Resolution*:
+    - Changed the button link to point directly to TrainingPeaks (`https://www.trainingpeaks.com`) instead of the Trainee App URL.
+    - Updated the signature/footer to sign as "L'equip d'entrenador trail" instead of "L'equip de Trainee".
 

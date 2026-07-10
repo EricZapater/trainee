@@ -460,6 +460,12 @@ const handleChangeLanguage = async () => {
           <li><strong>Restricció a Tests:</strong> La llista d'atletes i els llistats de tests/recordatoris pendents al panell de tests s'han limitat per mostrar exclusivament els atletes actius.</li>
         </ul>
 
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-mail text-primary"></i> 5. Modificacions al correu de traspàs de setmana</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Enllaç a TrainingPeaks:</strong> El correu que rep l'atleta quan es planifica/traspassa la setmana ara inclou un enllaç directe a TrainingPeaks en lloc del d'aquesta aplicació.</li>
+          <li><strong>Signatura actualitzada:</strong> S'ha canviat el signant del correu perquè consti com a "L'equip d'entrenador trail".</li>
+        </ul>
+
         <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
           <h3 class="font-bold text-surface-900 flex items-center gap-2">
             <i class="ti ti-rocket text-lg"></i> Versió 1.3.0 (8 Juliol 2026)

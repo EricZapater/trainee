@@ -154,9 +154,9 @@ const weekPlannedCATHTML = `
 <body>
     <h2>Hola {{.Nom}},</h2>
     <p>El teu entrenador acaba de planificar els entrenaments per la setmana del <strong>{{.WeekStart}}</strong>.</p>
-    <p>Ja pots entrar a l'aplicació per veure els detalls i preparar-te!</p>
-    <a href="{{.AppURL}}" class="btn">Anar a l'App</a>
-    <p>Salutacions,<br>L'equip de Trainee</p>
+    <p>Ja pots entrar a TrainingPeaks per veure els detalls i preparar-te!</p>
+    <a href="https://www.trainingpeaks.com" class="btn">Anar a TrainingPeaks</a>
+    <p>Salutacions,<br>L'equip d'entrenador trail</p>
     {{if .LogoURL}}<div style="margin-top:30px;"><img src="{{.LogoURL}}" alt="Logo" style="height:40px;"/></div>{{end}}
 </body>
 </html>
@@ -169,9 +169,9 @@ const weekPlannedESPHTML = `
 <body>
     <h2>Hola {{.Nom}},</h2>
     <p>Tu entrenador acaba de planificar los entrenamientos para la semana del <strong>{{.WeekStart}}</strong>.</p>
-    <p>¡Ya puedes entrar a la aplicación para ver los detalles y prepararte!</p>
-    <a href="{{.AppURL}}" class="btn">Ir a la App</a>
-    <p>Saludos,<br>El equipo de Trainee</p>
+    <p>¡Ya puedes entrar a TrainingPeaks para ver los detalles y prepararte!</p>
+    <a href="https://www.trainingpeaks.com" class="btn">Ir a TrainingPeaks</a>
+    <p>Saludos,<br>El equipo de entrenador trail</p>
     {{if .LogoURL}}<div style="margin-top:30px;"><img src="{{.LogoURL}}" alt="Logo" style="height:40px;"/></div>{{end}}
 </body>
 </html>
@@ -184,9 +184,9 @@ const weekPlannedENGHTML = `
 <body>
     <h2>Hello {{.Nom}},</h2>
     <p>Your coach just planned your training for the week of <strong>{{.WeekStart}}</strong>.</p>
-    <p>You can now open the app to see the details and get ready!</p>
-    <a href="{{.AppURL}}" class="btn">Go to App</a>
-    <p>Best regards,<br>The Trainee Team</p>
+    <p>You can now open TrainingPeaks to see the details and get ready!</p>
+    <a href="https://www.trainingpeaks.com" class="btn">Go to TrainingPeaks</a>
+    <p>Best regards,<br>The Entrenador Trail team</p>
     {{if .LogoURL}}<div style="margin-top:30px;"><img src="{{.LogoURL}}" alt="Logo" style="height:40px;"/></div>{{end}}
 </body>
 </html>
