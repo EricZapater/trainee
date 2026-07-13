@@ -63,17 +63,17 @@ const formData = ref({
   tipus: 'bug',
   resum: '',
   descripcio: '',
-  imatge: null as File | null
+  imatges: [] as File[]
 })
 
 const onFileSelect = (event: any) => {
-  if (event.files && event.files.length > 0) {
-    formData.value.imatge = event.files[0]
+  if (event.files) {
+    formData.value.imatges = Array.from(event.files)
   }
 }
 
-const onFileRemove = () => {
-  formData.value.imatge = null
+const onFileRemove = (fileToRemove: File) => {
+  formData.value.imatges = formData.value.imatges.filter(f => f !== fileToRemove)
 }
 
 const submitForm = async () => {
@@ -88,14 +88,14 @@ const submitForm = async () => {
     data.append('tipus', formData.value.tipus)
     data.append('resum', formData.value.resum)
     data.append('descripcio', formData.value.descripcio)
-    if (formData.value.imatge) {
-      data.append('imatge', formData.value.imatge)
-    }
+    formData.value.imatges.forEach((file) => {
+      data.append('imatges', file)
+    })
 
     await createFeedbackTicket(data)
     toast.add({ severity: 'success', summary: 'Creat', detail: 'S\'ha registrat la petició', life: 3000 })
     createDialogVisible.value = false
-    formData.value = { tipus: 'bug', resum: '', descripcio: '', imatge: null }
+    formData.value = { tipus: 'bug', resum: '', descripcio: '', imatges: [] }
     loadTickets()
   } catch (e: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.error || 'No s\'ha pogut crear la petició', life: 3000 })
@@ -118,7 +118,8 @@ const manageLoading = ref(false)
 const manageForm = ref({
   id: '',
   estat: '',
-  resposta: ''
+  resposta: '',
+  imatges: [] as File[]
 })
 
 const openManage = (ticket: FeedbackTicket) => {
@@ -126,19 +127,33 @@ const openManage = (ticket: FeedbackTicket) => {
   manageForm.value = {
     id: ticket.id,
     estat: ticket.estat,
-    resposta: ticket.resposta || ''
+    resposta: ticket.resposta || '',
+    imatges: []
   }
   manageDialogVisible.value = true
+}
+
+const onManageFileSelect = (event: any) => {
+  if (event.files) {
+    manageForm.value.imatges = Array.from(event.files)
+  }
+}
+
+const onManageFileRemove = (fileToRemove: File) => {
+  manageForm.value.imatges = manageForm.value.imatges.filter(f => f !== fileToRemove)
 }
 
 const submitManage = async () => {
   manageLoading.value = true
   try {
-    const payload = {
-      estat: manageForm.value.estat,
-      resposta: manageForm.value.resposta.trim() || undefined
-    }
-    await updateFeedbackTicket(manageForm.value.id, payload)
+    const data = new FormData()
+    data.append('estat', manageForm.value.estat)
+    data.append('resposta', manageForm.value.resposta.trim())
+    manageForm.value.imatges.forEach((file) => {
+      data.append('imatges', file)
+    })
+
+    await updateFeedbackTicket(manageForm.value.id, data)
     toast.add({ severity: 'success', summary: 'Actualitzat', detail: 'S\'ha actualitzat el tiquet correctament', life: 3000 })
     manageDialogVisible.value = false
     loadTickets()
@@ -292,21 +307,23 @@ const formatDate = (val: string) => {
         </div>
 
         <div class="field">
-          <label class="text-sm font-semibold text-surface-700 block mb-2">Captura de pantalla <span class="font-normal text-surface-400">(Opcional, màx 1MB)</span></label>
-          <div v-if="!formData.imatge" class="relative">
-            <FileUpload mode="basic" name="imatge" accept="image/*" :maxFileSize="1048576" customUpload @select="onFileSelect" @clear="onFileRemove" chooseLabel="Pujar imatge" class="w-full [&_.p-button]:w-full [&_.p-button]:bg-surface-50 [&_.p-button]:border-dashed [&_.p-button]:border-2 [&_.p-button]:border-surface-300 [&_.p-button]:text-surface-600 [&_.p-button:hover]:bg-surface-100 [&_.p-button:hover]:border-primary-400 transition-colors" chooseIcon="ti ti-upload" />
+          <label class="text-sm font-semibold text-surface-700 block mb-2">Captures de pantalla <span class="font-normal text-surface-400">(Opcional, màx 1MB cadascuna)</span></label>
+          <div class="relative">
+            <FileUpload mode="basic" name="imatges" accept="image/*" :maxFileSize="1048576" customUpload multiple @select="onFileSelect" chooseLabel="Pujar imatges" class="w-full [&_.p-button]:w-full [&_.p-button]:bg-surface-50 [&_.p-button]:border-dashed [&_.p-button]:border-2 [&_.p-button]:border-surface-300 [&_.p-button]:text-surface-600 [&_.p-button:hover]:bg-surface-100 [&_.p-button:hover]:border-primary-400 transition-colors" chooseIcon="ti ti-upload" />
           </div>
-          <div v-else class="flex items-center justify-between p-3 bg-surface-50 rounded-lg border border-surface-200 shadow-sm animate-fadein">
-            <div class="flex items-center gap-3 overflow-hidden">
-              <div class="w-10 h-10 rounded bg-primary-100 flex items-center justify-center shrink-0 text-primary-600">
-                <i class="ti ti-photo"></i>
+          <div v-if="formData.imatges.length > 0" class="flex flex-col gap-2 mt-3 animate-fadein">
+            <div v-for="(file, idx) in formData.imatges" :key="idx" class="flex items-center justify-between p-3 bg-surface-50 rounded-lg border border-surface-200 shadow-sm">
+              <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-10 h-10 rounded bg-primary-100 flex items-center justify-center shrink-0 text-primary-600">
+                  <i class="ti ti-photo"></i>
+                </div>
+                <div class="flex flex-col truncate">
+                  <span class="text-sm font-medium text-surface-700 truncate">{{ file.name }}</span>
+                  <span class="text-xs text-surface-500">{{ (file.size / 1024).toFixed(1) }} KB</span>
+                </div>
               </div>
-              <div class="flex flex-col truncate">
-                <span class="text-sm font-medium text-surface-700 truncate">{{ formData.imatge.name }}</span>
-                <span class="text-xs text-surface-500">{{ (formData.imatge.size / 1024).toFixed(1) }} KB</span>
-              </div>
+              <Button icon="ti ti-trash" text rounded severity="danger" aria-label="Eliminar imatge" @click="onFileRemove(file)" />
             </div>
-            <Button icon="ti ti-trash" text rounded severity="danger" aria-label="Eliminar imatge" @click="onFileRemove" />
           </div>
         </div>
       </div>
@@ -366,21 +383,23 @@ const formatDate = (val: string) => {
         </div>
 
         <div class="form-field">
-          <label class="field-label">Captura de pantalla <span class="field-optional">(Opcional, màx 1MB)</span></label>
-          <div v-if="!formData.imatge" class="upload-container">
-            <FileUpload mode="basic" name="imatge" accept="image/*" :maxFileSize="1048576" customUpload @select="onFileSelect" @clear="onFileRemove" chooseLabel="Pujar imatge" class="custom-fileupload" chooseIcon="ti ti-upload" />
+          <label class="field-label">Captures de pantalla <span class="field-optional">(Opcional, màx 1MB cadascuna)</span></label>
+          <div class="upload-container">
+            <FileUpload mode="basic" name="imatges" accept="image/*" :maxFileSize="1048576" customUpload multiple @select="onFileSelect" chooseLabel="Pujar imatges" class="custom-fileupload" chooseIcon="ti ti-upload" />
           </div>
-          <div v-else class="file-selected">
-            <div class="file-info">
-              <div class="file-icon">
-                <i class="ti ti-photo"></i>
+          <div v-if="formData.imatges.length > 0" class="files-selected-list mt-3 flex flex-col gap-2">
+            <div v-for="(file, idx) in formData.imatges" :key="idx" class="file-selected">
+              <div class="file-info">
+                <div class="file-icon">
+                  <i class="ti ti-photo"></i>
+                </div>
+                <div class="file-details">
+                  <span class="file-name">{{ file.name }}</span>
+                  <span class="file-size">{{ (file.size / 1024).toFixed(1) }} KB</span>
+                </div>
               </div>
-              <div class="file-details">
-                <span class="file-name">{{ formData.imatge.name }}</span>
-                <span class="file-size">{{ (formData.imatge.size / 1024).toFixed(1) }} KB</span>
-              </div>
+              <Button icon="ti ti-trash" text rounded severity="danger" aria-label="Eliminar imatge" @click="onFileRemove(file)" />
             </div>
-            <Button icon="ti ti-trash" text rounded severity="danger" aria-label="Eliminar imatge" @click="onFileRemove" />
           </div>
         </div>
       </div>
@@ -415,22 +434,43 @@ const formatDate = (val: string) => {
           <p class="drawer-desc">{{ selectedTicket.descripcio }}</p>
         </div>
 
-        <div v-if="selectedTicket.imatge_path">
+        <div v-if="selectedTicket.imatges && selectedTicket.imatges.length > 0">
+          <h4 class="drawer-img-title">Imatges Adjuntes:</h4>
+          <div class="grid grid-cols-2 gap-2 mt-2">
+            <div v-for="(img, idx) in selectedTicket.imatges" :key="idx" class="relative group">
+              <a :href="img" target="_blank" class="drawer-img-link block rounded overflow-hidden border border-surface-200 hover:border-primary-400 transition-colors">
+                <img :src="img" alt="Captura" class="drawer-img w-full h-32 object-cover" />
+              </a>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="selectedTicket.imatge_path">
           <h4 class="drawer-img-title">Imatge Adjunta:</h4>
           <a :href="selectedTicket.imatge_path" target="_blank" class="drawer-img-link">
             <img :src="selectedTicket.imatge_path" alt="Captura" class="drawer-img" />
           </a>
         </div>
 
-        <div v-if="selectedTicket.resposta" class="drawer-desc-box mt-4" style="background-color: var(--primary-50); border-color: var(--primary-200);">
-          <h4 class="drawer-img-title text-primary-700">Resposta de l'equip:</h4>
+        <div v-if="selectedTicket.resposta" class="drawer-desc-box mt-4 p-4 rounded border" style="background-color: var(--primary-50); border-color: var(--primary-200);">
+          <h4 class="drawer-img-title text-primary-700 font-semibold mb-2">Resposta de l'equip:</h4>
           <p class="drawer-desc" style="color: var(--primary-900);">{{ selectedTicket.resposta }}</p>
+          
+          <div v-if="selectedTicket.resposta_imatges && selectedTicket.resposta_imatges.length > 0" class="mt-3">
+            <p class="text-xs font-semibold text-primary-700 mb-2">Imatges adjuntes a la resposta:</p>
+            <div class="grid grid-cols-2 gap-2">
+              <div v-for="(img, idx) in selectedTicket.resposta_imatges" :key="idx" class="relative">
+                <a :href="img" target="_blank" class="drawer-img-link block rounded overflow-hidden border border-primary-200 hover:border-primary-400 transition-colors">
+                  <img :src="img" alt="Captura Resposta" class="drawer-img w-full h-24 object-cover" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </Drawer>
 
     <!-- Manage Dialog -->
-    <Dialog v-model:visible="manageDialogVisible" modal :style="{ width: '500px', maxWidth: '95vw' }" header="Gestionar Tiquet">
+    <Dialog v-model:visible="manageDialogVisible" modal :style="{ width: '550px', maxWidth: '95vw' }" header="Gestionar Tiquet">
       <div class="flex flex-col gap-4 mt-2">
         <div class="field">
           <label class="font-semibold block mb-2">Estat</label>
@@ -440,6 +480,27 @@ const formatDate = (val: string) => {
         <div class="field">
           <label class="font-semibold block mb-2">Resposta (opcional, s'enviarà per email)</label>
           <Textarea v-model="manageForm.resposta" rows="5" class="w-full resize-none" placeholder="Escriu la teva resposta aquí..." />
+        </div>
+
+        <div class="field">
+          <label class="font-semibold block mb-2">Adjuntar captures a la resposta <span class="font-normal text-surface-400">(Opcional, màx 1MB cadascuna)</span></label>
+          <div class="relative">
+            <FileUpload mode="basic" name="imatges" accept="image/*" :maxFileSize="1048576" customUpload multiple @select="onManageFileSelect" chooseLabel="Afegir captures" class="w-full [&_.p-button]:w-full [&_.p-button]:bg-surface-50 [&_.p-button]:border-dashed [&_.p-button]:border-2 [&_.p-button]:border-surface-300 [&_.p-button]:text-surface-600 [&_.p-button:hover]:bg-surface-100 [&_.p-button:hover]:border-primary-400 transition-colors" chooseIcon="ti ti-upload" />
+          </div>
+          <div v-if="manageForm.imatges.length > 0" class="flex flex-col gap-2 mt-3 animate-fadein">
+            <div v-for="(file, idx) in manageForm.imatges" :key="idx" class="flex items-center justify-between p-2 bg-surface-50 rounded border border-surface-200 shadow-sm">
+              <div class="flex items-center gap-3 overflow-hidden">
+                <div class="w-8 h-8 rounded bg-primary-50 flex items-center justify-center shrink-0 text-primary-600">
+                  <i class="ti ti-photo"></i>
+                </div>
+                <div class="flex flex-col truncate">
+                  <span class="text-xs font-medium text-surface-700 truncate">{{ file.name }}</span>
+                  <span class="text-[10px] text-surface-500">{{ (file.size / 1024).toFixed(1) }} KB</span>
+                </div>
+              </div>
+              <Button icon="ti ti-trash" text rounded severity="danger" @click="onManageFileRemove(file)" />
+            </div>
+          </div>
         </div>
       </div>
       <template #footer>

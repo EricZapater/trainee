@@ -11,7 +11,6 @@ import (
 )
 
 func (h *Handler) GetFeedbackTickets(c *gin.Context) {
-	// The store method fetches all, we can filter in memory or extend the query later.
 	tickets, err := h.Store.ListFeedbackTickets(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al carregar les peticions"})
@@ -38,31 +37,55 @@ func (h *Handler) CreateFeedbackTicket(c *gin.Context) {
 		return
 	}
 
-	var imatgePath *string
+	var imatgesUrls []string
+	var firstImatgeURL *string
 
+	// Handle multiple images from "imatges" field
+	form, err := c.MultipartForm()
+	if err == nil {
+		files := form.File["imatges"]
+		for _, fileHeader := range files {
+			if fileHeader.Size > 1048576 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Les imatges no poden superar 1MB cadascuna"})
+				return
+			}
+			ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+			if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" && ext != ".webp" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Format d'imatge no permès"})
+				return
+			}
+			url, err := h.Uploader.UploadFile(c.Request.Context(), fileHeader, "feedback")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al pujar l'arxiu"})
+				return
+			}
+			imatgesUrls = append(imatgesUrls, url)
+		}
+	}
+
+	// Handle single image from "imatge" field for backward compatibility
 	file, header, err := c.Request.FormFile("imatge")
 	if err == nil {
 		defer file.Close()
-
-		// Max 1MB
-		if header.Size > 1024*1024 {
+		if header.Size > 1048576 {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "La imatge no pot superar 1MB"})
 			return
 		}
-
-		// Ensure it's an image
 		ext := strings.ToLower(filepath.Ext(header.Filename))
 		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" && ext != ".webp" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Format d'arxiu no permès"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Format d'imatge no permès"})
 			return
 		}
-
 		url, err := h.Uploader.UploadFile(c.Request.Context(), header, "feedback")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al pujar l'arxiu"})
 			return
 		}
-		imatgePath = &url
+		imatgesUrls = append(imatgesUrls, url)
+	}
+
+	if len(imatgesUrls) > 0 {
+		firstImatgeURL = &imatgesUrls[0]
 	}
 
 	req := models.CreateFeedbackRequest{
@@ -71,13 +94,12 @@ func (h *Handler) CreateFeedbackTicket(c *gin.Context) {
 		Descripcio: descripcio,
 	}
 
-	ticket, err := h.Store.CreateFeedbackTicket(c.Request.Context(), informadorID, req, imatgePath)
+	ticket, err := h.Store.CreateFeedbackTicket(c.Request.Context(), informadorID, req, firstImatgeURL, imatgesUrls)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al crear la petició"})
 		return
 	}
 
-	// Attach author name (which isn't returned directly by CreateFeedbackTicket, but we have userID)
 	usr, _ := h.Store.GetUsuariByID(c.Request.Context(), informadorID)
 	if usr != nil {
 		ticket.InformadorNom = usr.Nom
@@ -99,11 +121,6 @@ func (h *Handler) CreateFeedbackTicket(c *gin.Context) {
 			}
 		}
 
-		imatgeURL := ""
-		if ticket.ImatgePath != nil {
-			imatgeURL = *ticket.ImatgePath
-		}
-
 		for _, coach := range coaches {
 			if coach.Rol == "entrenador" && coach.Actiu {
 				_ = h.Mailer.SendNewFeedbackNotification(
@@ -113,7 +130,7 @@ func (h *Handler) CreateFeedbackTicket(c *gin.Context) {
 					ticket.Tipus,
 					ticket.Resum,
 					ticket.Descripcio,
-					imatgeURL,
+					ticket.Imatges,
 					coach.Idioma,
 				)
 			}
@@ -126,41 +143,79 @@ func (h *Handler) CreateFeedbackTicket(c *gin.Context) {
 func (h *Handler) UpdateFeedbackTicket(c *gin.Context) {
 	id := c.Param("id")
 
-	var req models.UpdateFeedbackRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dades invàlides"})
+	estat := c.PostForm("estat")
+	respostaVal := c.PostForm("resposta")
+
+	if estat == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "L'estat és obligatori"})
 		return
 	}
 
-	// Fetch existing ticket to compare
+	var resposta *string
+	if respostaVal != "" {
+		resposta = &respostaVal
+	}
+
+	// Fetch existing ticket to compare and validate
 	ticket, err := h.Store.GetFeedbackTicketByID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Ticket no trobat"})
 		return
 	}
 
+	var respostaImatges []string
+
+	// Upload response images from form files
+	form, err := c.MultipartForm()
+	hasNewFiles := false
+	if err == nil {
+		files := form.File["imatges"]
+		if len(files) > 0 {
+			hasNewFiles = true
+		}
+		for _, fileHeader := range files {
+			if fileHeader.Size > 1048576 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Les imatges no poden superar 1MB cadascuna"})
+				return
+			}
+			ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+			if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".gif" && ext != ".webp" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Format d'imatge no permès"})
+				return
+			}
+			url, err := h.Uploader.UploadFile(c.Request.Context(), fileHeader, "feedback")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al pujar l'arxiu"})
+				return
+			}
+			respostaImatges = append(respostaImatges, url)
+		}
+	}
+
+	// If no new files were uploaded, keep the old ones
+	if !hasNewFiles {
+		respostaImatges = ticket.RespostaImatges
+	}
+
 	// Update DB
-	if err := h.Store.UpdateFeedbackTicket(c.Request.Context(), id, req.Estat, req.Resposta); err != nil {
+	if err := h.Store.UpdateFeedbackTicket(c.Request.Context(), id, estat, resposta, respostaImatges); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualitzar el ticket"})
 		return
 	}
 
-	// Send email if there's a response and it hasn't been sent before? 
-	// Or maybe just send it every time the admin saves if there's a response or state change.
-	// We'll send it if Resposta is not nil (even if empty, maybe they want to clear it, but let's assume they only type it to reply)
-	// Actually, if the state changes or there's a reply, let's send it.
-	stateChanged := ticket.Estat != req.Estat
-	responseChanged := req.Resposta != nil && (ticket.Resposta == nil || *ticket.Resposta != *req.Resposta)
+	stateChanged := ticket.Estat != estat
+	responseChanged := resposta != nil && (ticket.Resposta == nil || *ticket.Resposta != *resposta)
+	imagesChanged := hasNewFiles && len(respostaImatges) > 0
 
-	if stateChanged || responseChanged {
+	if stateChanged || responseChanged || imagesChanged {
 		user, err := h.Store.GetUsuariByID(c.Request.Context(), ticket.InformadorID)
 		if err == nil && user != nil {
-			resposta := ""
-			if req.Resposta != nil {
-				resposta = *req.Resposta
+			respText := ""
+			if resposta != nil {
+				respText = *resposta
 			}
 			go func() {
-				_ = h.Mailer.SendFeedbackReplyNotification(user.Email, user.Nom, ticket.Resum, resposta, req.Estat, user.Idioma)
+				_ = h.Mailer.SendFeedbackReplyNotification(user.Email, user.Nom, ticket.Resum, respText, estat, user.Idioma, respostaImatges)
 			}()
 		}
 	}

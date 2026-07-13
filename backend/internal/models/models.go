@@ -530,16 +530,18 @@ type UpdateAnunciEstatRequest struct {
 // ============================================================
 
 type FeedbackTicket struct {
-	ID            string    `json:"id"`
-	InformadorID  string    `json:"informador_id"`
-	InformadorNom string    `json:"informador_nom,omitempty"`
-	Tipus         string    `json:"tipus"` // bug, petició
-	Resum         string    `json:"resum"`
-	Descripcio    string    `json:"descripcio"`
-	ImatgePath    *string   `json:"imatge_path,omitempty"`
-	Estat         string    `json:"estat"` // pendent, en curs, desplegat, descartat
-	Resposta      *string   `json:"resposta,omitempty"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID              string    `json:"id"`
+	InformadorID    string    `json:"informador_id"`
+	InformadorNom   string    `json:"informador_nom,omitempty"`
+	Tipus           string    `json:"tipus"` // bug, petició
+	Resum           string    `json:"resum"`
+	Descripcio      string    `json:"descripcio"`
+	ImatgePath      *string   `json:"imatge_path,omitempty"`
+	Imatges         []string  `json:"imatges"`
+	Estat           string    `json:"estat"` // pendent, en curs, desplegat, descartat
+	Resposta        *string   `json:"resposta,omitempty"`
+	RespostaImatges []string  `json:"resposta_imatges"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type CreateFeedbackRequest struct {

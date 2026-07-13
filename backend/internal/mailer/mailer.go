@@ -71,9 +71,9 @@ type Mailer interface {
 	SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error
 	SendNewCompetitionNotification(entrenadorEmail, entrenadorNom, atletaNom, competicioNom, idioma string) error
 	SendPasswordResetNotification(toEmail, toName, newPassword, idioma string) error
-	SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error
+	SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string, respostaImatges []string) error
 	SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error
-	SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio, imatgeURL, idioma string) error
+	SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio string, imatges []string, idioma string) error
 }
 
 type LogMailer struct{}
@@ -98,13 +98,13 @@ func (m *LogMailer) SendPasswordResetNotification(toEmail, toName, newPassword, 
 	return nil
 }
 
-func (m *LogMailer) SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error {
-	log.Printf("[MAILER LOG] Enviant resposta feedback a: %s (%s). Ticket: %s. Nou estat: %s\n", toName, toEmail, resum, estat)
+func (m *LogMailer) SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string, respostaImatges []string) error {
+	log.Printf("[MAILER LOG] Enviant resposta feedback a: %s (%s). Ticket: %s. Nou estat: %s. Imatges: %v\n", toName, toEmail, resum, estat, respostaImatges)
 	return nil
 }
 
-func (m *LogMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio, imatgeURL, idioma string) error {
-	log.Printf("[MAILER LOG] Enviant notificació nou feedback a: %s (%s). Informador: %s. Resum: %s. Imatge: %s. Idioma: %s\n", toName, toEmail, informadorNom, resum, imatgeURL, idioma)
+func (m *LogMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio string, imatges []string, idioma string) error {
+	log.Printf("[MAILER LOG] Enviant notificació nou feedback a: %s (%s). Informador: %s. Resum: %s. Imatges: %v. Idioma: %s\n", toName, toEmail, informadorNom, resum, imatges, idioma)
 	return nil
 }
 
@@ -147,11 +147,12 @@ type passwordResetData struct {
 }
 
 type feedbackReplyData struct {
-	Nom      string
-	Resum    string
-	Resposta string
-	Estat    string
-	LogoURL  string
+	Nom             string
+	Resum           string
+	Resposta        string
+	Estat           string
+	RespostaImatges []string
+	LogoURL         string
 }
 
 type newFeedbackData struct {
@@ -160,7 +161,7 @@ type newFeedbackData struct {
 	Tipus         string
 	Resum         string
 	Descripcio    string
-	ImatgeURL     string
+	Imatges       []string
 	LogoURL       string
 }
 
@@ -461,7 +462,7 @@ func (m *SMTPMailer) SendPasswordResetNotification(toEmail, toName, newPassword,
 	return m.sendRawEmail(toEmail, subject, body.String())
 }
 
-func (m *SMTPMailer) SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error {
+func (m *SMTPMailer) SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string, respostaImatges []string) error {
 	var subject string
 	var tmplHTML string
 
@@ -488,11 +489,12 @@ func (m *SMTPMailer) SendFeedbackReplyNotification(toEmail, toName, resum, respo
 	}
 
 	data := feedbackReplyData{
-		Nom:      toName,
-		Resum:    resum,
-		Resposta: resposta,
-		Estat:    estat,
-		LogoURL:  logoURL,
+		Nom:             toName,
+		Resum:           resum,
+		Resposta:        resposta,
+		Estat:           estat,
+		RespostaImatges: respostaImatges,
+		LogoURL:         logoURL,
 	}
 
 	var body bytes.Buffer
@@ -549,7 +551,7 @@ func (m *SMTPMailer) SendWeekPlannedNotification(toEmail, toName, weekStart, idi
 	return m.sendRawEmail(toEmail, subject, body.String())
 }
 
-func (m *SMTPMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio, imatgeURL, idioma string) error {
+func (m *SMTPMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio string, imatges []string, idioma string) error {
 	var subject string
 	var tmplHTML string
 
@@ -581,7 +583,7 @@ func (m *SMTPMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom,
 		Tipus:         tipus,
 		Resum:         resum,
 		Descripcio:    descripcio,
-		ImatgeURL:     imatgeURL,
+		Imatges:       imatges,
 		LogoURL:       logoURL,
 	}
 

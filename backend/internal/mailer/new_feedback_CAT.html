@@ -20,12 +20,14 @@
             <p><strong>Descripció:</strong></p>
             <p style="white-space: pre-wrap;">{{.Descripcio}}</p>
             
-            {{if .ImatgeURL}}
-            <p><strong>Imatge adjunta:</strong></p>
-            <p><a href="{{.ImatgeURL}}" target="_blank">Veure imatge completa</a></p>
+            {{if .Imatges}}
+            <p><strong>Imatges adjuntes:</strong></p>
+            {{range .Imatges}}
             <div style="margin-top: 10px;">
-                <img src="{{.ImatgeURL}}" alt="Captura de pantalla" style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px;">
+                <a href="{{.}}" target="_blank">Veure imatge completa</a><br/>
+                <img src="{{.}}" alt="Captura de pantalla" style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;">
             </div>
+            {{end}}
             {{end}}
         </div>
         

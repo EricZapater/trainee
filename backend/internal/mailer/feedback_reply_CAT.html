@@ -22,6 +22,18 @@
         </div>
         {{end}}
         
+        {{if .RespostaImatges}}
+        <div style="margin: 20px 0;">
+            <p><strong>Imatges adjuntes a la resposta:</strong></p>
+            {{range .RespostaImatges}}
+            <div style="margin-top: 10px;">
+                <a href="{{.}}" target="_blank">Veure imatge completa</a><br/>
+                <img src="{{.}}" alt="Captura de pantalla" style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px;">
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+        
         <p>Gràcies per ajudar-nos a millorar Trainee.</p>
         
         <p>Atentament,<br>L'equip de Trainee</p>

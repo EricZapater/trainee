@@ -8,8 +8,10 @@ export interface FeedbackTicket {
   resum: string
   descripcio: string
   imatge_path?: string
+  imatges: string[]
   estat: string
   resposta?: string
+  resposta_imatges: string[]
   created_at: string
 }
 
@@ -32,7 +34,11 @@ export const createFeedbackTicket = async (formData: FormData): Promise<Feedback
   return data
 }
 
-export const updateFeedbackTicket = async (id: string, req: UpdateFeedbackRequest): Promise<{message: string}> => {
-  const { data } = await api.patch(`/feedback/${id}`, req)
+export const updateFeedbackTicket = async (id: string, formData: FormData): Promise<{message: string}> => {
+  const { data } = await api.patch(`/feedback/${id}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
   return data
 }

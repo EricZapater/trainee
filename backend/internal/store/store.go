@@ -126,7 +126,7 @@ type Store interface {
 	// Feedback Tickets
 	ListFeedbackTickets(ctx context.Context) ([]models.FeedbackTicket, error)
 	GetFeedbackTicketByID(ctx context.Context, id string) (*models.FeedbackTicket, error)
-	CreateFeedbackTicket(ctx context.Context, informadorID string, req models.CreateFeedbackRequest, imatgePath *string) (*models.FeedbackTicket, error)
-	UpdateFeedbackTicket(ctx context.Context, id string, estat string, resposta *string) error
+	CreateFeedbackTicket(ctx context.Context, informadorID string, req models.CreateFeedbackRequest, imatgePath *string, imatges []string) (*models.FeedbackTicket, error)
+	UpdateFeedbackTicket(ctx context.Context, id string, estat string, resposta *string, respostaImatges []string) error
 }
 
