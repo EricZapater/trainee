@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="{{.LogoURL}}" alt="Trainee Logo" style="max-width: 150px;">
+        </div>
+        
+        <h2>Hola {{.Nom}},</h2>
+        
+        <p>S'ha creat un nou tiquet de feedback/bug a la plataforma.</p>
+        
+        <div style="background-color: #f9f9f9; border-left: 4px solid #6366f1; padding: 15px; margin: 20px 0;">
+            <p><strong>Usuari:</strong> {{.InformadorNom}}</p>
+            <p><strong>Tipus:</strong> {{.Tipus}}</p>
+            <p><strong>Resum:</strong> {{.Resum}}</p>
+            <p><strong>Descripció:</strong></p>
+            <p style="white-space: pre-wrap;">{{.Descripcio}}</p>
+            
+            {{if .ImatgeURL}}
+            <p><strong>Imatge adjunta:</strong></p>
+            <p><a href="{{.ImatgeURL}}" target="_blank">Veure imatge completa</a></p>
+            <div style="margin-top: 10px;">
+                <img src="{{.ImatgeURL}}" alt="Captura de pantalla" style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            {{end}}
+        </div>
+        
+        <p>Pots respondre a aquest tiquet des del panell de control.</p>
+        
+        <p>Atentament,<br>L'equip de Trainee</p>
+    </div>
+</body>
+</html>

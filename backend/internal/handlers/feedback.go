@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -81,6 +82,43 @@ func (h *Handler) CreateFeedbackTicket(c *gin.Context) {
 	if usr != nil {
 		ticket.InformadorNom = usr.Nom
 	}
+
+	// Send email notification to all active coaches in background
+	go func() {
+		ctx := context.Background()
+		coaches, err := h.Store.ListAllUsuaris(ctx)
+		if err != nil {
+			return
+		}
+
+		informadorNom := "Usuari"
+		if usr != nil {
+			informadorNom = usr.Nom
+			if usr.Cognoms != "" {
+				informadorNom += " " + usr.Cognoms
+			}
+		}
+
+		imatgeURL := ""
+		if ticket.ImatgePath != nil {
+			imatgeURL = *ticket.ImatgePath
+		}
+
+		for _, coach := range coaches {
+			if coach.Rol == "entrenador" && coach.Actiu {
+				_ = h.Mailer.SendNewFeedbackNotification(
+					coach.Email,
+					coach.Nom,
+					informadorNom,
+					ticket.Tipus,
+					ticket.Resum,
+					ticket.Descripcio,
+					imatgeURL,
+					coach.Idioma,
+				)
+			}
+		}
+	}()
 
 	c.JSON(http.StatusOK, ticket)
 }

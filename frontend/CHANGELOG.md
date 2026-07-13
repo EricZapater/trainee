@@ -8,6 +8,7 @@ Tots els canvis notables en aquest projecte es documentaran en aquest fitxer.
 
 #### Backend
 - **Integració amb Cloudflare R2**: Migració de les pujades de fitxers d'anuncis i de peticions de feedback a Cloudflare R2 amb fallback automàtic a disc local si no s'especifiquen les credencials.
+- **Notificacions de nous tiquets de feedback**: Enviament asíncron de notificacions per correu electrònic a tots els entrenadors actius en el seu idioma corresponent quan un usuari/atleta crea una petició/bug, mostrant la imatge de R2 de forma inline.
 - **Cognoms de l'atleta a competicions**: S'ha afegit `AtletaCognoms` al struct `Competicio` i s'han actualitzat les consultes SQL de la base de dades per seleccionar `a.cognoms as atleta_cognoms`.
 - **Taula de recordatoris setmanals**: Creada la taula `weekly_submission_reminders` per guardar el nombre d'emails automàtics i manuals enviats per atleta i setmana.
 - **Ruta de recordatoris manuals**: Nou endpoint `POST /entrenador/atletes/:id/remind` per reenviar manualment els correus de recordatori.

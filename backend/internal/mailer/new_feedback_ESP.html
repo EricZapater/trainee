@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="{{.LogoURL}}" alt="Trainee Logo" style="max-width: 150px;">
+        </div>
+        
+        <h2>Hola {{.Nom}},</h2>
+        
+        <p>Se ha creado un nuevo ticket de feedback/bug en la plataforma.</p>
+        
+        <div style="background-color: #f9f9f9; border-left: 4px solid #6366f1; padding: 15px; margin: 20px 0;">
+            <p><strong>Usuario:</strong> {{.InformadorNom}}</p>
+            <p><strong>Tipo:</strong> {{.Tipus}}</p>
+            <p><strong>Resumen:</strong> {{.Resum}}</p>
+            <p><strong>Descripción:</strong></p>
+            <p style="white-space: pre-wrap;">{{.Descripcio}}</p>
+            
+            {{if .ImatgeURL}}
+            <p><strong>Imagen adjunta:</strong></p>
+            <p><a href="{{.ImatgeURL}}" target="_blank">Ver imagen completa</a></p>
+            <div style="margin-top: 10px;">
+                <img src="{{.ImatgeURL}}" alt="Captura de pantalla" style="max-width: 100%; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            {{end}}
+        </div>
+        
+        <p>Puedes responder a este ticket desde el panel de control.</p>
+        
+        <p>Atentamente,<br>El equipo de Trainee</p>
+    </div>
+</body>
+</html>

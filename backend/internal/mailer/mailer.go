@@ -51,6 +51,15 @@ var passwordResetENGHTML string
 //go:embed feedback_reply_CAT.html
 var feedbackReplyCATHTML string
 
+//go:embed new_feedback_CAT.html
+var newFeedbackCATHTML string
+
+//go:embed new_feedback_ESP.html
+var newFeedbackESPHTML string
+
+//go:embed new_feedback_ENG.html
+var newFeedbackENGHTML string
+
 //go:embed feedback_reply_ESP.html
 var feedbackReplyESPHTML string
 
@@ -64,6 +73,7 @@ type Mailer interface {
 	SendPasswordResetNotification(toEmail, toName, newPassword, idioma string) error
 	SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error
 	SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error
+	SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio, imatgeURL, idioma string) error
 }
 
 type LogMailer struct{}
@@ -90,6 +100,11 @@ func (m *LogMailer) SendPasswordResetNotification(toEmail, toName, newPassword, 
 
 func (m *LogMailer) SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string) error {
 	log.Printf("[MAILER LOG] Enviant resposta feedback a: %s (%s). Ticket: %s. Nou estat: %s\n", toName, toEmail, resum, estat)
+	return nil
+}
+
+func (m *LogMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio, imatgeURL, idioma string) error {
+	log.Printf("[MAILER LOG] Enviant notificació nou feedback a: %s (%s). Informador: %s. Resum: %s. Imatge: %s. Idioma: %s\n", toName, toEmail, informadorNom, resum, imatgeURL, idioma)
 	return nil
 }
 
@@ -137,6 +152,16 @@ type feedbackReplyData struct {
 	Resposta string
 	Estat    string
 	LogoURL  string
+}
+
+type newFeedbackData struct {
+	Nom           string
+	InformadorNom string
+	Tipus         string
+	Resum         string
+	Descripcio    string
+	ImatgeURL     string
+	LogoURL       string
 }
 
 type weekPlannedData struct {
@@ -514,6 +539,50 @@ func (m *SMTPMailer) SendWeekPlannedNotification(toEmail, toName, weekStart, idi
 		WeekStart: weekStart,
 		AppURL:    appURL,
 		LogoURL:   logoURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio, imatgeURL, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ENG":
+		subject = "New feedback ticket: " + resum
+		tmplHTML = newFeedbackENGHTML
+	case "CAT":
+		subject = "Nou tiquet de feedback: " + resum
+		tmplHTML = newFeedbackCATHTML
+	default:
+		subject = "Nuevo ticket de feedback: " + resum
+		tmplHTML = newFeedbackESPHTML
+	}
+
+	tmpl, err := template.New("new_feedback").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	logoURL := os.Getenv("MAILER_LOGO_URL")
+	if logoURL == "" {
+		logoURL = "https://trainee.ericzapater.cat/logo.png"
+	}
+
+	data := newFeedbackData{
+		Nom:           toName,
+		InformadorNom: informadorNom,
+		Tipus:         tipus,
+		Resum:         resum,
+		Descripcio:    descripcio,
+		ImatgeURL:     imatgeURL,
+		LogoURL:       logoURL,
 	}
 
 	var body bytes.Buffer
