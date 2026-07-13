@@ -1,15 +1,11 @@
 package handlers
 
 import (
-	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"trainee-backend/internal/models"
 )
 
@@ -60,28 +56,12 @@ func (h *Handler) CreateFeedbackTicket(c *gin.Context) {
 			return
 		}
 
-		newFilename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-		savePath := filepath.Join("uploads", "feedback", newFilename)
-
-		if err := os.MkdirAll(filepath.Join("uploads", "feedback"), 0755); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creant directori"})
-			return
-		}
-
-		out, err := os.Create(savePath)
+		url, err := h.Uploader.UploadFile(c.Request.Context(), header, "feedback")
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error desant l'arxiu"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al pujar l'arxiu"})
 			return
 		}
-		defer out.Close()
-
-		if _, err := io.Copy(out, file); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error copiant l'arxiu"})
-			return
-		}
-
-		dbPath := "/api/" + savePath
-		imatgePath = &dbPath
+		imatgePath = &url
 	}
 
 	req := models.CreateFeedbackRequest{

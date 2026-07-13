@@ -3,12 +3,9 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
-	"time"
 
-	"trainee-backend/internal/models"
 	"github.com/gin-gonic/gin"
+	"trainee-backend/internal/models"
 )
 
 func (h *Handler) ListAnuncis(c *gin.Context) {
@@ -151,12 +148,6 @@ func (h *Handler) UploadAnunciImage(c *gin.Context) {
 		return
 	}
 
-	uploadDir := filepath.Join("uploads", "anuncis")
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
-		return
-	}
-
 	var urls []string
 	for _, file := range files {
 		// Enforce Max Size of 1MB (1048576 bytes)
@@ -165,16 +156,13 @@ func (h *Handler) UploadAnunciImage(c *gin.Context) {
 			return
 		}
 
-		ext := filepath.Ext(file.Filename)
-		filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), file.Filename, ext)
-		savePath := filepath.Join(uploadDir, filename)
-
-		if err := c.SaveUploadedFile(file, savePath); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save file " + file.Filename})
+		url, err := h.Uploader.UploadFile(c.Request.Context(), file, "anuncis")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to upload file %s: %v", file.Filename, err)})
 			return
 		}
 
-		urls = append(urls, "/api/uploads/anuncis/"+filename)
+		urls = append(urls, url)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"urls": urls})

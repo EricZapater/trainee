@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from 'vue'
+import changelogRaw from '../../CHANGELOG.md?raw'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/useAuthStore'
@@ -286,6 +287,77 @@ const handleChangeLanguage = async () => {
     changeLangLoading.value = false
   }
 }
+
+const parsedChangelog = computed(() => {
+  const lines = changelogRaw.split('\n')
+  let html = ''
+  let inList = false
+
+  for (let line of lines) {
+    line = line.trimEnd()
+    
+    if (line.startsWith('# ') || line.startsWith('# Changelog')) {
+      continue
+    }
+    if (line.startsWith('## ')) {
+      if (inList) { html += '</ul>'; inList = false }
+      const isHotfix = line.toLowerCase().includes('hotfix')
+      const icon = isHotfix ? 'ti-tool text-warning' : 'ti-rocket text-primary'
+      html += `<h2 class="text-xl font-bold mt-6 mb-3 text-surface-900 border-b pb-1 flex items-center gap-2"><i class="ti ${icon} text-lg"></i> ${line.substring(3)}</h2>`
+      continue
+    }
+    if (line.startsWith('### ')) {
+      if (inList) { html += '</ul>'; inList = false }
+      html += `<h3 class="text-lg font-bold mt-4 mb-2 text-primary-600">${line.substring(4)}</h3>`
+      continue
+    }
+    if (line.startsWith('#### ')) {
+      if (inList) { html += '</ul>'; inList = false }
+      html += `<h4 class="text-base font-semibold mt-3 mb-1 text-surface-800">${line.substring(5)}</h4>`
+      continue
+    }
+
+    const indentMatch = line.match(/^(\s*)-\s+(.*)$/)
+    if (indentMatch) {
+      if (!inList) {
+        html += '<ul class="list-disc pl-5 space-y-1 my-2">'
+        inList = true
+      }
+      const indent = indentMatch[1].length
+      let content = indentMatch[2]
+      content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      content = content.replace(/\*(.*?)\*/g, '<em>$1</em>')
+      content = content.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-accent font-semibold hover:underline" target="_blank">$1</a>')
+
+      if (indent >= 2) {
+        html += `<li class="ml-4 text-surface-600 text-xs">${content}</li>`
+      } else {
+        html += `<li class="text-surface-700">${content}</li>`
+      }
+      continue
+    }
+
+    if (line.trim() === '') {
+      continue
+    }
+
+    if (inList) {
+      html += '</ul>'
+      inList = false
+    }
+    let content = line
+    content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    content = content.replace(/\*(.*?)\*/g, '<em>$1</em>')
+    content = content.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-accent font-semibold hover:underline" target="_blank">$1</a>')
+    html += `<p class="text-surface-600 my-2">${content}</p>`
+  }
+
+  if (inList) {
+    html += '</ul>'
+  }
+
+  return html
+})
 </script>
 
 <template>
@@ -429,175 +501,8 @@ const handleChangeLanguage = async () => {
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="changelogVisible" :header="`Novetats - ${APP_VERSION}`" modal :style="{ width: '600px', maxWidth: '90vw' }">
-      <div class="flex flex-col gap-4 mt-2 text-surface-800 leading-relaxed text-sm">
-        <div class="bg-primary-50 p-4 rounded-xl border border-primary-100 mb-2">
-          <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
-            <i class="ti ti-rocket text-xl"></i> Versió 1.3.2 (13 Juliol 2026)
-          </h3>
-          <p class="text-primary-800">Afegits els cognoms de l'atleta a les competicions i control/reenviament de recordatoris setmanals al dashboard de l'entrenador.</p>
-        </div>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-user text-primary"></i> 1. Cognoms de l'atleta a competicions</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Nom complet:</strong> Es mostren els cognoms de l'atleta al costat del seu nom a les safates de competicions, històric, filtres i en el detall de la competició.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-mail text-primary"></i> 2. Control de recordatoris al Dashboard</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Recompte i reenviament:</strong> Nova columna de recordatoris que desglossa els recordatoris automàtics (<i class="ti ti-clock"></i>) i manuals (<i class="ti ti-hand-finger"></i>) enviats, amb l'opció de reenviar l'email de recordatori immediatament.</li>
-        </ul>
-
-        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
-          <h3 class="font-bold text-surface-900 flex items-center gap-2">
-            <i class="ti ti-tool text-lg"></i> Versió 1.3.1 (9 Juliol 2026) - Hotfix
-          </h3>
-          <p class="text-surface-600 text-xs mt-1">Correcció d'errors crítics en la sincronització de dates i la gestió de setmanes.</p>
-        </div>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-calendar text-primary"></i> 1. Correcció de fus horari en les dates</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Dates locals:</strong> S'ha solucionat el problema on els usuaris de fora d'Europa (com Sud-amèrica) veien començar la setmana en diumenge en lloc de dilluns a causa del desfase de zona horària amb UTC.</li>
-          <li><strong>Consistència visual:</strong> S'ha unificat la visualització de dates de competicions i tests perquè es mostrin correctament segons la data local seleccionada i no la convertida a UTC.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-check text-primary"></i> 2. Toggle de setmanes gestionades (Backend)</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Resposta de l'API:</strong> Corregit un error 500 en marcar setmanes com a gestionades/planificades des del dashboard d'entrenador. L'estat s'actualitzava correctament a la base de dades, però fallava la resposta al frontend per un error d'escaneig de dades.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-activity text-primary"></i> 3. Ocultar activitats inactives al calendari</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Amagar inactives:</strong> En omplir la disponibilitat de la setmana, s'oculten les activitats que l'entrenador ha marcat com a inactives. També es descarten en aplicar una plantilla desada si aquesta contenia alguna activitat que ara està desactivada.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-users text-primary"></i> 4. Control d'atletes inactius a planificació i tests</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Filtre a Planificació:</strong> S'ha afegit un selector a la vista de planificació de l'entrenador per poder filtrar els atletes entre "Actius", "Inactius" o "Tots".</li>
-          <li><strong>Restricció a Tests:</strong> La llista d'atletes i els llistats de tests/recordatoris pendents al panell de tests s'han limitat per mostrar exclusivament els atletes actius.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-mail text-primary"></i> 5. Modificacions al correu de traspàs de setmana</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Enllaç a TrainingPeaks:</strong> El correu que rep l'atleta quan es planifica/traspassa la setmana ara inclou un enllaç directe a TrainingPeaks en lloc del d'aquesta aplicació.</li>
-          <li><strong>Signatura actualitzada:</strong> S'ha canviat el signant del correu perquè consti com a "L'equip d'entrenador trail".</li>
-        </ul>
-
-        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
-          <h3 class="font-bold text-surface-900 flex items-center gap-2">
-            <i class="ti ti-rocket text-lg"></i> Versió 1.3.0 (8 Juliol 2026)
-          </h3>
-          <p class="text-surface-600 text-xs mt-1">Recuperació de contrasenya, plantilles de setmana, edició d'atletes, exportació Excel i millora visual del dashboard d'entrenadors.</p>
-        </div>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-key text-primary"></i> 1. Recuperació de Contrasenya</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Recuperació al login:</strong> S'ha afegit un enllaç per restablir la contrasenya mitjançant correu electrònic en cas d'oblit.</li>
-          <li><strong>Seguretat contra enumeració:</strong> El servidor respon el mateix text d'èxit de forma idèntica si l'email no coincideix amb cap compte actiu.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-bookmark text-primary"></i> 2. Plantilles de Setmana</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Setmanes tipus:</strong> Els atletes poden desar configuracions setmanals de disponibilitat com a plantilles personalitzades.</li>
-          <li><strong>Selector ràpid:</strong> Permet aplicar les plantilles desades a la setmana activa d'un sol clic o seguir configurant-la manualment.</li>
-          <li><strong>Gestió inline:</strong> Opció per esborrar les plantilles desades des de la vista de Calendari.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-user-edit text-primary"></i> 3. Gestió d'Atletes (Entrenadors)</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Edició de dades:</strong> Els entrenadors ara poden editar el nom i cognoms dels seus atletes directament des de la secció de Gestió d'Atletes.</li>
-          <li><strong>Sincronització:</strong> Els canvis s'envoixen de fons per sincronitzar-se de forma immediata amb la base de contactes de Brevo.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-palette text-primary"></i> 4. Millores Visuals al Dashboard</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Colors d'estat de setmana:</strong> Les files es ressalten en color verdós clar quan l'atleta marca la setmana com a completada, i en un to blau visible un cop l'entrenador les ha marcat com a traspassades.</li>
-          <li><strong>Logo a les plantilles de correu:</strong> S'ha ajustat la capçalera dels emails de recordatori perquè s'adapti correctament a l'interior del cercle de fons blanc, evitant retalls o deformacions.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-file-spreadsheet text-primary"></i> 5. Exportació a Excel (Formularis)</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Exportació de respostes:</strong> S'ha afegit un botó per descarregar les respostes dels formularis en format Excel/CSV compatible.</li>
-          <li><strong>Taula de selecció:</strong> Permet triar exactament quins candidats/atletes incloure a l'informe descarregat.</li>
-          <li><strong>Estructura neta:</strong> Genera una fila per atleta amb les seves respostes detallades per columnes segons les preguntes.</li>
-        </ul>
-
-        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
-          <h3 class="font-bold text-surface-900 flex items-center gap-2">
-            <i class="ti ti-clock text-lg"></i> Versió 1.2.0 (7 Juliol 2026)
-          </h3>
-          <p class="text-surface-600 text-xs mt-1">Sincronització amb Brevo, feedback i millores al panell d'entrenadors i atletes.</p>
-        </div>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-mail text-primary"></i> 1. Integració amb Brevo</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Sincronització automàtica:</strong> S'ha vinculat la base de dades d'usuaris amb la plataforma d'email màrqueting Brevo de manera automàtica.</li>
-          <li><strong>Gestió des de l'admin:</strong> S'ha afegit una columna al tauler d'administrador per veure l'estat de la sincronització de cada usuari i la possibilitat de forçar-ne una manualment en cas d'error.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-user text-primary"></i> 2. Nou camp Cognoms</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Registre i Perfil:</strong> Els usuaris ara poden (i se'ls demana) introduir els seus cognoms durant el registre i l'edició del perfil.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-messages text-primary"></i> 3. Gestió de Feedback i Petició</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Estat i Resposta:</strong> Ara es pot contestar a les peticions dels usuaris i canviar el seu estat.</li>
-          <li><strong>Notificació per Email:</strong> L'usuari rep un correu electrònic automàtic quan se li contesta el tiquet de feedback.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-chart-bar text-primary"></i> 4. Millores al Dashboard (Entrenadors)</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Atletes Actius/Inactius:</strong> Per defecte s'oculten els atletes inactius i s'ha afegit un filtre per poder-los mostrar.</li>
-          <li><strong>Estats de Planificació:</strong> S'ha afegit un filtre per veure quins atletes estan planificats i quins no, i la fila queda ombrejada quan s'ha marcat com a planificat.</li>
-          <li><strong>Notificacions automàtiques:</strong> En marcar la setmana com a planificada, l'atleta rep un correu electrònic avisant-lo.</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-calendar text-primary"></i> 5. Calendari i Disponibilitat (Atletes)</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Copiar Dies:</strong> S'ha afegit un botó per poder copiar les hores i activitats marcades d'un dia a la resta de dies de la setmana d'una sola vegada.</li>
-        </ul>
-
-        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
-          <h3 class="font-bold text-surface-900 flex items-center gap-2">
-            <i class="ti ti-clock text-lg"></i> Versió 1.1.1 (1 Juliol 2026)
-          </h3>
-          <p class="text-surface-600 text-xs mt-1">Petites correccions i millores d'estabilitat.</p>
-        </div>
-
-        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
-          <h3 class="font-bold text-surface-900 flex items-center gap-2">
-            <i class="ti ti-clock text-lg"></i> Versió 1.1.0 (30 Juny 2026)
-          </h3>
-          <p class="text-surface-600 text-xs mt-1">S'ha implementat el compliment normatiu del RGPD juntament amb múltiples millores a l'edició de formularis i navegació.</p>
-        </div>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-shield-check text-primary"></i> 1. Privacitat i RGPD</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li>Acceptació obligatòria de la Política de Privacitat per a tots els usuaris.</li>
-          <li>Registre segur del consentiment, incloent l'adreça IP i versió de la política acceptada.</li>
-          <li>Nova pantalla visual per a la informació legal (Primera Capa).</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-file-description text-primary"></i> 2. Formularis (Form Builder)</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li><strong>Formularis globals:</strong> Ara els formularis són independents de l'entrenador.</li>
-          <li><strong>Drag & Drop:</strong> Les preguntes del formulari es poden reordenar arrossegant i deixant anar (arrossega la icona de punts).</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-layout-dashboard text-primary"></i> 3. Tauler i Vistes</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li>Els textos llargs als camps de notes ara es mostren completament en multilínia.</li>
-          <li>Cerca per nom i paginació afegida al llistat d'atletes.</li>
-          <li>Graella d'activitats redistribuïda a 2 columnes.</li>
-          <li>Filtre afegit a la vista de Planificació per ocultar les competicions descartades.</li>
-          <li>Filtre de setmanes ordenat de forma cronològica (de més antiga a més nova).</li>
-        </ul>
-
-        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-compass text-primary"></i> 4. Navegació</h4>
-        <ul class="list-disc pl-5 space-y-1 text-surface-700">
-          <li>Reestructuració de la barra superior agrupant la navegació en Atletes, Planificació i Configuració.</li>
-        </ul>
+    <Dialog v-model:visible="changelogVisible" :header="`Novetats - ${APP_VERSION}`" modal :style="{ width: '650px', maxWidth: '90vw' }">
+      <div class="flex flex-col gap-1 mt-2 text-surface-800 leading-relaxed text-sm max-h-[70vh] overflow-y-auto pr-2" v-html="parsedChangelog">
       </div>
       <template #footer>
         <Button label="Tancar" icon="ti ti-x" @click="changelogVisible = false" autofocus />

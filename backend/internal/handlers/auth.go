@@ -10,16 +10,18 @@ import (
 	"trainee-backend/internal/mailer"
 	"trainee-backend/internal/models"
 	"trainee-backend/internal/store"
+	"trainee-backend/internal/uploader"
 )
 
 type Handler struct {
 	Store     store.Store
 	Mailer    mailer.Mailer
 	JWTSecret string
+	Uploader  *uploader.Uploader
 }
 
-func NewHandler(s store.Store, m mailer.Mailer, jwtSecret string) *Handler {
-	return &Handler{Store: s, Mailer: m, JWTSecret: jwtSecret}
+func NewHandler(s store.Store, m mailer.Mailer, jwtSecret string, u *uploader.Uploader) *Handler {
+	return &Handler{Store: s, Mailer: m, JWTSecret: jwtSecret, Uploader: u}
 }
 
 func (h *Handler) Register(c *gin.Context) {

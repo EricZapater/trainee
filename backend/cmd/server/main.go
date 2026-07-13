@@ -18,6 +18,7 @@ import (
 	"trainee-backend/internal/mailer"
 	"trainee-backend/internal/middleware"
 	"trainee-backend/internal/store"
+	"trainee-backend/internal/uploader"
 	"trainee-backend/migrations"
 )
 
@@ -76,7 +77,12 @@ func main() {
 		defer jm.Stop()
 	}
 
-	h := handlers.NewHandler(s, mailService, cfg.JWTSecret)
+	fileUploader, err := uploader.NewUploader()
+	if err != nil {
+		log.Fatalf("Error inicialitzant l'uploader: %v", err)
+	}
+
+	h := handlers.NewHandler(s, mailService, cfg.JWTSecret, fileUploader)
 	systemLogsHandler := handlers.NewSystemLogsHandler(s)
 	settingsHandler := handlers.NewSettingsHandler(s, jm)
 	adminHandler := handlers.NewAdminHandler(s, mailService, cfg.JWTSecret)
