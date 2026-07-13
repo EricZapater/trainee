@@ -117,6 +117,8 @@ export interface AtletaSubmissionSummary {
   estat: string
   notes_setmana?: string
   gestionat: boolean
+  reminders_auto: number
+  reminders_manual: number
   slots: SlotEntry[]
 }
 
@@ -186,6 +188,7 @@ export interface Competicio {
   estat: 'activa' | 'descartada'
   created_at: string
   atleta_nom?: string
+  atleta_cognoms?: string
 }
 
 export interface CreateCompeticioRequest {

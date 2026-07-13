@@ -62,6 +62,9 @@ func GenerateReminders(s store.Store, m mailer.Mailer, jwtSecret string) error {
 				log.Printf("[CRON-REMINDER] Error enviant recordatori a %s: %v", a.Email, err)
 			} else {
 				count++
+				if err := s.IncrementAutoReminder(ctx, a.ID, weekStart); err != nil {
+					log.Printf("[CRON-REMINDER] Error incrementant recordatori auto per atleta %s: %v", a.ID, err)
+				}
 			}
 		}
 	}

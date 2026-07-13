@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-07-13
+
+### Added
+
+#### Backend
+- **Athlete last names in competitions**: Added `AtletaCognoms` to `Competicio` struct and updated database store queries (`GetCompeticioByID`, `ListPendingCompeticionsByEntrenador`, `ListHistoricCompeticionsByEntrenador`, `ListAllCompeticionsByAtletaAndEntrenador`) to select `a.cognoms as atleta_cognoms` from the `usuaris` table.
+- **Reminders tracking database schema**: Created `weekly_submission_reminders` database table to persist the count of automatic and manual reminders sent per athlete and week.
+- **Manual week reminder resend endpoint**: Added `POST /entrenador/atletes/:id/remind` endpoint allowing coaches to manually trigger week planning email reminders.
+- **Reminders increment logic**: Integrated automated count tracking in `GenerateReminders` job and manual tracking in `SendManualReminder` handler.
+
+#### Frontend
+- **Athlete last names on competitions screens**: Displayed athlete's last name next to their first name in `CompeticionsManagerView.vue` (pending competitions), `CompeticionsHistoricView.vue` (historical table, search filter, and detail modal), and `CompeticioDetailView.vue`.
+- **Reminders stats and resending on dashboard**: Added a "Recordatoris" column on the coach's dashboard table displaying automatic (clock icon) and manual (pointing hand icon) reminders, alongside a button to trigger a manual reminder email on the fly.
+
 ## [1.0.1] - 2026-07-09
 
 ### Hotfix

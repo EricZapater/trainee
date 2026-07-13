@@ -107,7 +107,8 @@ type Competicio struct {
 	Estat        string    `json:"estat"` // activa, descartada
 	CreatedAt    time.Time `json:"created_at"`
 
-	AtletaNom *string `json:"atleta_nom,omitempty"`
+	AtletaNom     *string `json:"atleta_nom,omitempty"`
+	AtletaCognoms *string `json:"atleta_cognoms,omitempty"`
 }
 
 type CreateCompeticioRequest struct {
@@ -302,8 +303,10 @@ type AtletaSubmissionSummary struct {
 	HaRespost    bool        `json:"ha_respost"`
 	Estat        string      `json:"estat"`
 	NotesSetmana *string     `json:"notes_setmana"`
-	Gestionat    bool        `json:"gestionat"`
-	Slots        []SlotEntry `json:"slots"`
+	Gestionat       bool        `json:"gestionat"`
+	RemindersAuto   int         `json:"reminders_auto"`
+	RemindersManual int         `json:"reminders_manual"`
+	Slots           []SlotEntry `json:"slots"`
 }
 
 type ToggleSubmissionGestionatRequest struct {

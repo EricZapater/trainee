@@ -91,3 +91,7 @@ export async function toggleSubmissionGestionat(submissionId: string, gestionat:
 export async function updateAtletaDetails(id: string, payload: { nom: string; cognoms: string }): Promise<void> {
   await api.patch(`/entrenador/atletes/${id}`, payload)
 }
+
+export async function sendManualReminder(atletaId: string, weekStart: string): Promise<void> {
+  await api.post(`/entrenador/atletes/${atletaId}/remind?week=${weekStart}`)
+}

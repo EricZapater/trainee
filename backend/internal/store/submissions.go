@@ -202,6 +202,16 @@ func (s *PostgresStore) GetSubmissionsByEntrenadorAndWeek(ctx context.Context, e
 			return nil, err
 		}
 
+		var remindersAuto, remindersManual int
+		_ = s.pool.QueryRow(ctx,
+			`SELECT reminders_auto, reminders_manual FROM weekly_submission_reminders
+			 WHERE atleta_id = $1 AND week_start = $2::date`,
+			atleta.ID, weekStart,
+		).Scan(&remindersAuto, &remindersManual)
+
+		summary.RemindersAuto = remindersAuto
+		summary.RemindersManual = remindersManual
+
 		resp.Atletes = append(resp.Atletes, summary)
 	}
 

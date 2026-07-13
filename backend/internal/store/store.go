@@ -64,6 +64,10 @@ type Store interface {
 	ToggleSubmissionGestionat(ctx context.Context, submissionID string, entrenadorID string, gestionat bool) (*models.ToggleSubmissionGestionatResult, error)
 	GetInformeAtleta(ctx context.Context, atletaID string, start, end string) (*models.InformeResponse, error)
 
+	// Reminders
+	IncrementAutoReminder(ctx context.Context, atletaID string, weekStart string) error
+	IncrementManualReminder(ctx context.Context, atletaID string, weekStart string) error
+
 	// Competicions
 	CreateCompeticio(ctx context.Context, atletaID, entrenadorID string, req models.CreateCompeticioRequest) (*models.Competicio, error)
 	GetCompeticioByID(ctx context.Context, id string) (*models.Competicio, error)

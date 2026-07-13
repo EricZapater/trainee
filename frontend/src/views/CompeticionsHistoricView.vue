@@ -71,7 +71,7 @@ const filteredCompeticions = computed(() => {
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase()
       const matchNom = comp.nom.toLowerCase().includes(query)
-      const matchAtleta = comp.atleta_nom?.toLowerCase().includes(query)
+      const matchAtleta = comp.atleta_nom?.toLowerCase().includes(query) || comp.atleta_cognoms?.toLowerCase().includes(query)
       if (!matchNom && !matchAtleta) return false
     }
 
@@ -190,7 +190,7 @@ const openDetails = (comp: Competicio) => {
           <template #body="slotProps">
             <div class="flex align-center gap-2">
               <i class="ti ti-user text-secondary"></i>
-              {{ slotProps.data.atleta_nom }}
+              {{ slotProps.data.atleta_nom }}{{ slotProps.data.atleta_cognoms ? ' ' + slotProps.data.atleta_cognoms : '' }}
             </div>
           </template>
         </Column>
@@ -232,7 +232,7 @@ const openDetails = (comp: Competicio) => {
             <Tag :severity="getEstatLabel(selectedComp).severity as any" :value="getEstatLabel(selectedComp).label" />
           </div>
           <div class="text-secondary flex align-center gap-2 mb-1">
-            <i class="ti ti-user"></i> {{ selectedComp.atleta_nom }}
+            <i class="ti ti-user"></i> {{ selectedComp.atleta_nom }}{{ selectedComp.atleta_cognoms ? ' ' + selectedComp.atleta_cognoms : '' }}
           </div>
           <div class="text-secondary flex align-center gap-2">
             <i class="ti ti-calendar"></i> {{ selectedComp.data }}

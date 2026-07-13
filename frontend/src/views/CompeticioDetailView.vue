@@ -52,7 +52,7 @@ onMounted(async () => {
                 <i :class="competicio.registrat ? 'ti ti-check' : 'ti ti-clock'"></i>
                 {{ competicio.registrat ? $t('competitionDetail.planned') : $t('competitionDetail.pendingReview') }}
               </span>
-              <span class="badge atleta-badge"><i class="ti ti-user"></i> {{ competicio.atleta_nom || 'Atleta' }}</span>
+              <span class="badge atleta-badge"><i class="ti ti-user"></i> {{ competicio.atleta_nom ? competicio.atleta_nom + (competicio.atleta_cognoms ? ' ' + competicio.atleta_cognoms : '') : 'Atleta' }}</span>
             </div>
           </div>
           <div class="date-badge">

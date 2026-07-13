@@ -50,13 +50,13 @@ func (s *PostgresStore) ListCompeticionsByAtleta(ctx context.Context, atletaID s
 func (s *PostgresStore) GetCompeticioByID(ctx context.Context, id string) (*models.Competicio, error) {
 	var c models.Competicio
 	err := s.pool.QueryRow(ctx,
-		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom
+		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom, a.cognoms as atleta_cognoms
 		 FROM competicions c
 		 JOIN atletes at ON at.id = c.atleta_id
 		 JOIN usuaris a ON a.id = at.usuari_id
 		 WHERE c.id = $1`,
 		id,
-	).Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom)
+	).Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom, &c.AtletaCognoms)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (s *PostgresStore) GetCompeticioByID(ctx context.Context, id string) (*mode
 
 func (s *PostgresStore) ListPendingCompeticionsByEntrenador(ctx context.Context, entrenadorID string) ([]models.Competicio, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom
+		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom, a.cognoms as atleta_cognoms
 		 FROM competicions c
 		 JOIN atletes at ON at.id = c.atleta_id
 		 JOIN usuaris a ON a.id = at.usuari_id
@@ -81,7 +81,7 @@ func (s *PostgresStore) ListPendingCompeticionsByEntrenador(ctx context.Context,
 	var result []models.Competicio
 	for rows.Next() {
 		var c models.Competicio
-		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom); err != nil {
+		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom, &c.AtletaCognoms); err != nil {
 			return nil, err
 		}
 		result = append(result, c)
@@ -91,7 +91,7 @@ func (s *PostgresStore) ListPendingCompeticionsByEntrenador(ctx context.Context,
 
 func (s *PostgresStore) ListHistoricCompeticionsByEntrenador(ctx context.Context, entrenadorID string) ([]models.Competicio, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom
+		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom, a.cognoms as atleta_cognoms
 		 FROM competicions c
 		 JOIN atletes at ON at.id = c.atleta_id
 		 JOIN usuaris a ON a.id = at.usuari_id
@@ -107,7 +107,7 @@ func (s *PostgresStore) ListHistoricCompeticionsByEntrenador(ctx context.Context
 	var result []models.Competicio
 	for rows.Next() {
 		var c models.Competicio
-		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom); err != nil {
+		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom, &c.AtletaCognoms); err != nil {
 			return nil, err
 		}
 		result = append(result, c)
@@ -117,7 +117,7 @@ func (s *PostgresStore) ListHistoricCompeticionsByEntrenador(ctx context.Context
 
 func (s *PostgresStore) ListAllCompeticionsByAtletaAndEntrenador(ctx context.Context, atletaID, entrenadorID string) ([]models.Competicio, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom
+		`SELECT c.id, c.atleta_id, c.entrenador_id, c.nom, TO_CHAR(c.data, 'YYYY-MM-DD'), c.tipus, c.kms, c.desnivell, c.enllac, c.track_gpx_path, c.comentaris, c.registrat, c.estat, c.created_at, a.nom as atleta_nom, a.cognoms as atleta_cognoms
 		 FROM competicions c
 		 JOIN atletes at ON at.id = c.atleta_id
 		 JOIN usuaris a ON a.id = at.usuari_id
@@ -133,7 +133,7 @@ func (s *PostgresStore) ListAllCompeticionsByAtletaAndEntrenador(ctx context.Con
 	var result []models.Competicio
 	for rows.Next() {
 		var c models.Competicio
-		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom); err != nil {
+		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Nom, &c.Data, &c.Tipus, &c.Kms, &c.Desnivell, &c.Enllac, &c.TrackGpxPath, &c.Comentaris, &c.Registrat, &c.Estat, &c.CreatedAt, &c.AtletaNom, &c.AtletaCognoms); err != nil {
 			return nil, err
 		}
 		result = append(result, c)

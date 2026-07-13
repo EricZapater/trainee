@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"trainee-backend/internal/auth"
 	"trainee-backend/internal/models"
 )
+
 
 func (h *Handler) GetEntrenadorSubmissions(c *gin.Context) {
 	weekStart := c.Query("week")
@@ -303,6 +305,68 @@ func (h *Handler) UpdateAtletaDetails(ctx *gin.Context) {
 
 	// Trigger Brevo synchronization with the new details
 	h.Store.ForceBrevoSync(ctx.Request.Context(), targetAtleta.UsuariID)
+
+	ctx.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *Handler) SendManualReminder(ctx *gin.Context) {
+	usuariID := ctx.GetString("user_id")
+	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
+		return
+	}
+
+	atletaID := ctx.Param("id")
+	weekStart := ctx.Query("week")
+	if weekStart == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Paràmetre 'week' requerit (format YYYY-MM-DD)"})
+		return
+	}
+
+	// Verify athlete belongs to this coach
+	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error validant permisos"})
+		return
+	}
+
+	var targetAtleta *models.Atleta
+	for _, a := range atletes {
+		if a.ID == atletaID {
+			targetAtleta = &a
+			break
+		}
+	}
+	if targetAtleta == nil {
+		ctx.JSON(http.StatusForbidden, gin.H{"error": "No tens permís per enviar recordatoris a aquest atleta"})
+		return
+	}
+
+	if targetAtleta.Email == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "L'atleta no té cap adreça de correu electrònic configurada"})
+		return
+	}
+
+	// Generate magic link token
+	magicToken, err := auth.GenerateMagicLinkToken(targetAtleta.UsuariID, h.JWTSecret)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error generant el token de recordatori"})
+		return
+	}
+
+	// Send reminder email
+	err = h.Mailer.SendReminder(targetAtleta.Email, targetAtleta.Nom, magicToken, weekStart, targetAtleta.Idioma)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error enviant el correu electrònic de recordatori"})
+		return
+	}
+
+	// Increment manual reminder count
+	err = h.Store.IncrementManualReminder(ctx.Request.Context(), atletaID, weekStart)
+	if err != nil {
+		log.Printf("Error incrementant recordatori manual per atleta %s: %v", atletaID, err)
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }

@@ -166,6 +166,7 @@ func main() {
 		entrenadorRoutes.PATCH("/atletes/:id/status", h.ToggleAtletaStatus)
 		entrenadorRoutes.GET("/atletes/:id/history", h.GetAtletaStatusHistory)
 		entrenadorRoutes.PATCH("/atletes/:id/reasignar", h.ReasignarAtleta)
+		entrenadorRoutes.POST("/atletes/:id/remind", h.SendManualReminder)
 		
 		entrenadorRoutes.POST("/tests", h.CreateTest)
 		entrenadorRoutes.GET("/tests/pendents", h.ListPendingTestsByEntrenador)

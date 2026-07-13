@@ -25,7 +25,7 @@ const compStore = useCompeticionsStore()
 const testsStore = useTestsStore()
 const isMenuOpen = ref(false)
 const changelogVisible = ref(false)
-const APP_VERSION = 'v1.3.1'
+const APP_VERSION = 'v1.3.2'
 
 const isAdminImpersonating = ref(false)
 const pendingAnuncisCount = ref(0)
@@ -433,9 +433,26 @@ const handleChangeLanguage = async () => {
       <div class="flex flex-col gap-4 mt-2 text-surface-800 leading-relaxed text-sm">
         <div class="bg-primary-50 p-4 rounded-xl border border-primary-100 mb-2">
           <h3 class="font-bold text-primary-900 mb-2 flex items-center gap-2">
-            <i class="ti ti-tool text-xl"></i> Versió 1.3.1 (9 Juliol 2026) - Hotfix
+            <i class="ti ti-rocket text-xl"></i> Versió 1.3.2 (13 Juliol 2026)
           </h3>
-          <p class="text-primary-800">Correcció d'errors crítics en la sincronització de dates i la gestió de setmanes.</p>
+          <p class="text-primary-800">Afegits els cognoms de l'atleta a les competicions i control/reenviament de recordatoris setmanals al dashboard de l'entrenador.</p>
+        </div>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-user text-primary"></i> 1. Cognoms de l'atleta a competicions</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Nom complet:</strong> Es mostren els cognoms de l'atleta al costat del seu nom a les safates de competicions, històric, filtres i en el detall de la competició.</li>
+        </ul>
+
+        <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-mail text-primary"></i> 2. Control de recordatoris al Dashboard</h4>
+        <ul class="list-disc pl-5 space-y-1 text-surface-700">
+          <li><strong>Recompte i reenviament:</strong> Nova columna de recordatoris que desglossa els recordatoris automàtics (<i class="ti ti-clock"></i>) i manuals (<i class="ti ti-hand-finger"></i>) enviats, amb l'opció de reenviar l'email de recordatori immediatament.</li>
+        </ul>
+
+        <div class="mt-6 mb-2 border-t pt-4 border-surface-200">
+          <h3 class="font-bold text-surface-900 flex items-center gap-2">
+            <i class="ti ti-tool text-lg"></i> Versió 1.3.1 (9 Juliol 2026) - Hotfix
+          </h3>
+          <p class="text-surface-600 text-xs mt-1">Correcció d'errors crítics en la sincronització de dates i la gestió de setmanes.</p>
         </div>
 
         <h4 class="font-bold text-surface-900 mt-2 border-b pb-1"><i class="ti ti-calendar text-primary"></i> 1. Correcció de fus horari en les dates</h4>

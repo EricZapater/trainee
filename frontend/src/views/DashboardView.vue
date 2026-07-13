@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getEntrenadorWeeks, getEntrenadorSubmissions, toggleSubmissionGestionat } from '@/api/entrenador'
+import { getEntrenadorWeeks, getEntrenadorSubmissions, toggleSubmissionGestionat, sendManualReminder } from '@/api/entrenador'
 import { useToast } from 'primevue/usetoast'
 import type { ManagedWeekWithCount, EntrenadorSubmissionsResponse, AtletaSubmissionSummary } from '@/types'
 import Select from 'primevue/select'
@@ -141,6 +141,27 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut actualitzar l\'estat', life: 3000 })
   }
 }
+
+const sendingReminderId = ref<string | null>(null)
+
+const handleSendReminder = async (atleta: AtletaSubmissionSummary) => {
+  if (!selectedWeek.value) return
+  sendingReminderId.value = atleta.atleta_id
+  try {
+    await sendManualReminder(atleta.atleta_id, selectedWeek.value)
+    toast.add({ severity: 'success', summary: 'Recordatori enviat', detail: `S'ha enviat un correu de recordatori a ${atleta.nom}.`, life: 3000 })
+    await loadSubmissions()
+  } catch (e: any) {
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Error', 
+      detail: e.response?.data?.error || 'No s\'ha pogut enviar el recordatori', 
+      life: 3000 
+    })
+  } finally {
+    sendingReminderId.value = null
+  }
+}
 </script>
 
 <template>
@@ -232,6 +253,7 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
               <th>{{ $t('dashboard.days.6') }}</th>
               <th>{{ $t('dashboard.days.7') }}</th>
               <th class="col-notes" style="width: 300px;">Notes</th>
+              <th class="col-reminders" style="width: 140px; text-align: center;">Recordatoris</th>
               <th class="col-gestionat" style="width: 80px;">Gestionat</th>
             </tr>
           </thead>
@@ -283,6 +305,32 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
                   {{ atleta.notes_setmana || '-' }}
                 </div>
               </td>
+              <td class="col-reminders text-center" @click.stop>
+                <div class="flex items-center justify-center gap-3">
+                  <div class="reminders-count flex items-center gap-2 text-xs">
+                    <span v-tooltip.top="'Recordatoris automàtics'" class="flex items-center gap-0.5 text-secondary">
+                      <i class="ti ti-clock"></i>
+                      {{ atleta.reminders_auto }}
+                    </span>
+                    <span class="text-muted">/</span>
+                    <span v-tooltip.top="'Recordatoris manuals'" class="flex items-center gap-0.5 text-secondary">
+                      <i class="ti ti-hand-finger"></i>
+                      {{ atleta.reminders_manual }}
+                    </span>
+                  </div>
+                  <Button 
+                    v-if="!atleta.gestionat && atleta.estat !== 'completada'"
+                    icon="ti ti-send" 
+                    severity="secondary" 
+                    text 
+                    rounded
+                    size="small"
+                    :loading="sendingReminderId === atleta.atleta_id"
+                    v-tooltip.top="'Enviar recordatori manual'"
+                    @click="handleSendReminder(atleta)" 
+                  />
+                </div>
+              </td>
               <td class="col-gestionat text-center" @click.stop>
                 <Checkbox 
                   v-if="atleta.submission_id"
@@ -294,7 +342,7 @@ const handleGestionatChange = async (atleta: AtletaSubmissionSummary) => {
               </td>
             </tr>
             <tr v-if="filteredAtletes.length === 0">
-              <td colspan="10" class="text-center py-4 text-muted">
+              <td colspan="11" class="text-center py-4 text-muted">
                 <span v-if="submissionsData.atletes.length === 0">{{ $t('dashboard.noAthletes') }}</span>
                 <span v-else>{{ $t('dashboard.allResponded') }}</span>
               </td>

@@ -93,7 +93,7 @@ const handleTraspassar = async (comp: Competicio) => {
         <div class="comp-info">
           <div class="comp-title">
             <h3>{{ comp.nom }}</h3>
-            <span class="atleta-name"><i class="ti ti-user"></i> {{ comp.atleta_nom }}</span>
+            <span class="atleta-name"><i class="ti ti-user"></i> {{ comp.atleta_nom }}{{ comp.atleta_cognoms ? ' ' + comp.atleta_cognoms : '' }}</span>
           </div>
           <div class="comp-details text-secondary mt-2">
             <span><i class="ti ti-calendar"></i> {{ comp.data }}</span>
