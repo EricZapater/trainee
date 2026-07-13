@@ -8,6 +8,7 @@ Tots els canvis notables en aquest projecte es documentaran en aquest fitxer.
 
 #### Backend
 - **Integració amb Cloudflare R2**: Migració de les pujades de fitxers d'anuncis i de peticions de feedback a Cloudflare R2 amb fallback automàtic a disc local si no s'especifiquen les credencials.
+- **Pujada de tracks de competició a R2**: Integració de la pujada de tracks de curses (.gpx) a Cloudflare R2 mitjançant l'uploader unificat.
 - **Múltiples imatges a peticions i respostes**: Suport per registrar múltiples captures a peticions de feedback i en les seves respostes. Nova migració per a columnes `imatges` i `resposta_imatges` (arrays de text), i actualització dels handlers de pujada.
 - **Notificacions de nous tiquets de feedback**: Enviament asíncron de notificacions per correu electrònic a tots els entrenadors actius en el seu idioma corresponent quan un usuari/atleta crea una petició/bug, mostrant la imatge de R2 de forma inline.
 - **Cognoms de l'atleta a competicions**: S'ha afegit `AtletaCognoms` al struct `Competicio` i s'han actualitzat les consultes SQL de la base de dades per seleccionar `a.cognoms as atleta_cognoms`.
@@ -16,6 +17,7 @@ Tots els canvis notables en aquest projecte es documentaran en aquest fitxer.
 - **Registre i comptadors de recordatoris**: Comptadors incrementats en enviar correus tant pel cron com per la ruta manual.
 
 #### Frontend
+- **Descàrrega de tracks per a l'entrenador**: S'ha afegit un botó de descàrrega de track (.gpx) a la fitxa de competicions entrants i a la modal de detalls de l'històric de competicions de l'entrenador, incloent-hi una icona indicadora al llistat de l'històric.
 - **Gestió de múltiples imatges de feedback**: Selecció i eliminació de múltiples captures de pantalla en crear un tiquet o respondre-hi, i presentació d'aquests fitxers com a galeria de fotos al calaix de detall.
 - **Cognoms de l'atleta a competicions**: Visualització de cognoms de l'atleta al costat del seu nom a `CompeticionsManagerView.vue`, `CompeticionsHistoricView.vue` i `CompeticioDetailView.vue`.
 - **Mètriques i reenviament al Dashboard**: Nova columna "Recordatoris" al dashboard d'entrenador amb comptadors de recordatoris automàtics (rellotge ⏰) i manuals (mà 👆), amb botó per reenviar a l'instant.

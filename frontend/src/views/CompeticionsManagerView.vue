@@ -101,11 +101,16 @@ const handleTraspassar = async (comp: Competicio) => {
             <span v-if="comp.kms"><i class="ti ti-route"></i> {{ comp.kms }} km</span>
             <span v-if="comp.desnivell"><i class="ti ti-mountain"></i> {{ comp.desnivell }} m+</span>
           </div>
-          <div class="comp-comments mt-2" v-if="comp.comentaris || comp.enllac">
+          <div class="comp-comments mt-2" v-if="comp.comentaris || comp.enllac || comp.track_gpx_path">
             <p v-if="comp.comentaris" class="text-sm">"{{ comp.comentaris }}"</p>
-            <a v-if="comp.enllac" :href="comp.enllac" target="_blank" class="text-accent text-sm flex align-center gap-1">
-              <i class="ti ti-link"></i> {{ $t('competitionsManager.link') }}
-            </a>
+            <div class="flex flex-wrap gap-3">
+              <a v-if="comp.enllac" :href="comp.enllac" target="_blank" class="text-accent text-sm flex align-center gap-1">
+                <i class="ti ti-link"></i> {{ $t('competitionsManager.link') }}
+              </a>
+              <a v-if="comp.track_gpx_path" :href="comp.track_gpx_path" download class="text-primary-600 text-sm flex align-center gap-1 hover:underline">
+                <i class="ti ti-route text-lg"></i> Track (GPX)
+              </a>
+            </div>
           </div>
         </div>
         <div class="comp-actions">

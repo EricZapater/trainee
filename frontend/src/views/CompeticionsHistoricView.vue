@@ -184,6 +184,9 @@ const openDetails = (comp: Competicio) => {
         <Column field="nom" header="Competició" sortable>
           <template #body="slotProps">
             <span class="font-bold">{{ slotProps.data.nom }}</span>
+            <span v-if="slotProps.data.track_gpx_path" class="ml-2 inline-flex items-center text-xs text-primary-500" title="Conté track GPX">
+              <i class="ti ti-route text-lg"></i>
+            </span>
           </template>
         </Column>
         <Column field="atleta_nom" header="Atleta" sortable>
@@ -264,6 +267,12 @@ const openDetails = (comp: Competicio) => {
             <span class="detail-label">Enllaç web</span>
             <a :href="selectedComp.enllac" target="_blank" class="text-primary hover-underline flex align-center gap-1 mt-1">
               Obrir link <i class="ti ti-external-link"></i>
+            </a>
+          </div>
+          <div class="detail-box" v-if="selectedComp.track_gpx_path">
+            <span class="detail-label">Ruta de cursa (Track)</span>
+            <a :href="selectedComp.track_gpx_path" download class="text-accent hover-underline flex align-center gap-1 mt-1 font-bold">
+              Descarregar GPX <i class="ti ti-download"></i>
             </a>
           </div>
         </div>

@@ -2,12 +2,10 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 
 	"trainee-backend/internal/models"
 )
@@ -40,18 +38,12 @@ func (h *Handler) CreateCompeticio(c *gin.Context) {
 			return
 		}
 
-		// Crear nom de fitxer únic
-		filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-		savePath := filepath.Join("uploads", "gpx", filename)
-
-		// Desar el fitxer
-		if err := c.SaveUploadedFile(file, savePath); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha pogut desar el fitxer gpx"})
+		url, err := h.Uploader.UploadFile(c.Request.Context(), file, "gpx")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error al pujar el fitxer gpx"})
 			return
 		}
-
-		reqPath := "/api/uploads/gpx/" + filename
-		req.TrackGpxPath = &reqPath
+		req.TrackGpxPath = &url
 	} else if err != http.ErrMissingFile {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "error en el fitxer adjunt"})
 		return
@@ -110,16 +102,12 @@ func (h *Handler) UpdateCompeticio(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "només s'accepten fitxers .gpx"})
 			return
 		}
-		filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-		savePath := filepath.Join("uploads", "gpx", filename)
-
-		if err := c.SaveUploadedFile(file, savePath); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha pogut desar el fitxer gpx"})
+		url, err := h.Uploader.UploadFile(c.Request.Context(), file, "gpx")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error al pujar el fitxer gpx"})
 			return
 		}
-
-		reqPath := "/api/uploads/gpx/" + filename
-		req.TrackGpxPath = &reqPath
+		req.TrackGpxPath = &url
 	} else if err != http.ErrMissingFile {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "error en el fitxer adjunt"})
 		return
