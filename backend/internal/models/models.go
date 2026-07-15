@@ -401,6 +401,7 @@ type Form struct {
 	ID           string    `json:"id"`
 	Titol        string    `json:"titol"`
 	Descripcio   *string   `json:"descripcio"`
+	Imatges      []string  `json:"imatges"`
 	Actiu        bool      `json:"actiu"`
 	CreatedAt    time.Time `json:"created_at"`
 }
@@ -413,6 +414,7 @@ type FormQuestion struct {
 	Opcions    *string   `json:"opcions"` // JSON string for select options
 	Obligatori bool      `json:"obligatori"`
 	Ordre      int       `json:"ordre"`
+	Imatges    []string  `json:"imatges"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -437,23 +439,26 @@ type FormAnswer struct {
 // Request Models
 
 type CreateFormRequest struct {
-	Titol      string `json:"titol" binding:"required"`
-	Descripcio string `json:"descripcio"`
-	Actiu      bool   `json:"actiu"`
+	Titol      string   `json:"titol" binding:"required"`
+	Descripcio string   `json:"descripcio"`
+	Imatges    []string `json:"imatges"`
+	Actiu      bool     `json:"actiu"`
 }
 
 type UpdateFormRequest struct {
-	Titol      string `json:"titol" binding:"required"`
-	Descripcio string `json:"descripcio"`
-	Actiu      bool   `json:"actiu"`
+	Titol      string   `json:"titol" binding:"required"`
+	Descripcio string   `json:"descripcio"`
+	Imatges    []string `json:"imatges"`
+	Actiu      bool     `json:"actiu"`
 }
 
 type CreateFormQuestionRequest struct {
-	Pregunta   string  `json:"pregunta" binding:"required"`
-	Tipus      string  `json:"tipus" binding:"required"`
-	Opcions    *string `json:"opcions"`
-	Obligatori bool    `json:"obligatori"`
-	Ordre      int     `json:"ordre" binding:"required"`
+	Pregunta   string   `json:"pregunta" binding:"required"`
+	Tipus      string   `json:"tipus" binding:"required"`
+	Opcions    *string  `json:"opcions"`
+	Obligatori bool     `json:"obligatori"`
+	Ordre      int      `json:"ordre" binding:"required"`
+	Imatges    []string `json:"imatges"`
 }
 
 type ReorderFormQuestionRequest struct {

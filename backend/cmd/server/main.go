@@ -188,6 +188,7 @@ func main() {
 
 		entrenadorRoutes.GET("/forms", h.ListForms)
 		entrenadorRoutes.POST("/forms", h.CreateForm)
+		entrenadorRoutes.POST("/forms/upload", h.UploadFormImage)
 		entrenadorRoutes.GET("/forms/:id", h.GetFormDetails)
 		entrenadorRoutes.PUT("/forms/:id", h.UpdateForm)
 		entrenadorRoutes.DELETE("/forms/:id", h.DeleteForm)

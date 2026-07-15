@@ -5,6 +5,7 @@ export interface Form {
   id: string
   titol: string
   descripcio: string | null
+  imatges: string[]
   actiu: boolean
   created_at: string
 }
@@ -17,6 +18,7 @@ export interface FormQuestion {
   opcions: string | null
   obligatori: boolean
   ordre: number
+  imatges: string[]
   created_at: string
 }
 
@@ -53,8 +55,8 @@ export const listForms = async (): Promise<FormWithQuestions[]> => {
   return data
 }
 
-export const createForm = async (titol: string, descripcio: string | null, actiu: boolean): Promise<Form> => {
-  const { data } = await apiClient.post('/entrenador/forms', { titol, descripcio, actiu })
+export const createForm = async (titol: string, descripcio: string | null, actiu: boolean, imatges?: string[]): Promise<Form> => {
+  const { data } = await apiClient.post('/entrenador/forms', { titol, descripcio, actiu, imatges: imatges || [] })
   return data
 }
 
@@ -63,7 +65,7 @@ export const getFormDetails = async (id: string): Promise<FormWithQuestions> => 
   return data
 }
 
-export const updateForm = async (id: string, payload: { titol: string; descripcio: string | null; actiu: boolean }): Promise<void> => {
+export const updateForm = async (id: string, payload: { titol: string; descripcio: string | null; actiu: boolean; imatges?: string[] }): Promise<void> => {
   await apiClient.put(`/entrenador/forms/${id}`, payload)
 }
 
@@ -80,7 +82,7 @@ export const cloneForm = async (id: string): Promise<{ id: string; message: stri
 
 export const addFormQuestion = async (
   formId: string, 
-  payload: { pregunta: string; tipus: string; opcions: string | null; obligatori: boolean; ordre: number }
+  payload: { pregunta: string; tipus: string; opcions: string | null; obligatori: boolean; ordre: number; imatges?: string[] }
 ): Promise<FormQuestion> => {
   const { data } = await apiClient.post(`/entrenador/forms/${formId}/questions`, payload)
   return data
@@ -89,7 +91,7 @@ export const addFormQuestion = async (
 export const updateFormQuestion = async (
   formId: string, 
   questionId: string, 
-  payload: { pregunta: string; tipus: string; opcions: string | null; obligatori: boolean; ordre: number }
+  payload: { pregunta: string; tipus: string; opcions: string | null; obligatori: boolean; ordre: number; imatges?: string[] }
 ): Promise<void> => {
   await apiClient.put(`/entrenador/forms/${formId}/questions/${questionId}`, payload)
 }
@@ -128,4 +130,17 @@ export const submitFormResponse = async (
 ): Promise<{ message: string }> => {
   const { data } = await apiClient.post(`/public/forms/${id}/submit`, payload)
   return data
+}
+
+export const uploadFormImages = async (files: File[]): Promise<string[]> => {
+  const formData = new FormData()
+  files.forEach(file => {
+    formData.append('images', file)
+  })
+  const { data } = await apiClient.post<{urls: string[]}>('/entrenador/forms/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+  return data.urls
 }

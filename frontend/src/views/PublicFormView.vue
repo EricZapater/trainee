@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPublicForm, submitFormResponse, type FormWithQuestions } from '@/api/forms'
 import Button from 'primevue/button'
@@ -7,6 +7,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import InputSwitch from 'primevue/inputswitch'
+import Dialog from 'primevue/dialog'
 
 const route = useRoute()
 const formId = route.params.id as string
@@ -27,6 +28,18 @@ const candidat = ref({
 
 // Answers mapping: { [questionId]: value }
 const answers = ref<Record<string, any>>({})
+
+const activeImage = ref<string | null>(null)
+const openImageModal = (url: string) => {
+  activeImage.value = url
+}
+
+const isImageModalOpen = computed({
+  get: () => !!activeImage.value,
+  set: (val) => {
+    if (!val) activeImage.value = null
+  }
+})
 
 const loadForm = async () => {
   try {
@@ -130,6 +143,15 @@ const handleSubmit = async () => {
         </div>
       </div>
 
+      <!-- Form Images (Multiple Images) -->
+      <div v-if="form.imatges && form.imatges.length > 0" class="glass-card mb-6 p-6">
+        <div class="flex flex-wrap gap-4 justify-center">
+          <div v-for="img in form.imatges" :key="img" class="relative group cursor-pointer overflow-hidden rounded-lg border border-surface-200 w-full sm:w-48 h-32 shadow-sm">
+            <img :src="img" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" @click="openImageModal(img)" />
+          </div>
+        </div>
+      </div>
+
       <div class="glass-card mb-6 p-8">
         <h3 class="text-xl font-bold mb-4 border-b pb-2">Dades de contacte</h3>
         <div class="flex flex-col gap-4">
@@ -157,6 +179,13 @@ const handleSubmit = async () => {
               {{ idx + 1 }}. {{ q.pregunta }} <span v-if="q.obligatori" class="text-danger">*</span>
             </label>
             
+            <!-- Question Images -->
+            <div v-if="q.imatges && q.imatges.length > 0" class="flex flex-wrap gap-3 mb-4">
+              <div v-for="img in q.imatges" :key="img" class="relative group cursor-pointer overflow-hidden rounded-lg border border-surface-200 w-24 h-24 sm:w-32 sm:h-32 shadow-sm">
+                <img :src="img" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" @click="openImageModal(img)" />
+              </div>
+            </div>
+            
             <InputText v-if="q.tipus === 'text'" v-model="answers[q.id]" class="w-full" />
             
             <Textarea v-else-if="q.tipus === 'textarea'" v-model="answers[q.id]" class="w-full" rows="3" />
@@ -177,6 +206,14 @@ const handleSubmit = async () => {
         <Button label="Enviar Formulari" icon="ti ti-send" size="large" class="w-full sm:w-auto px-8 py-3 text-lg" @click="handleSubmit" :loading="submitting" />
       </div>
     </div>
+
+    <!-- Lightbox Modal -->
+    <Dialog v-model:visible="isImageModalOpen" modal dismissableMask :closable="false" class="p-0 overflow-hidden" style="border: none; background: transparent; box-shadow: none;">
+      <div class="relative flex justify-center items-center">
+        <img :src="activeImage!" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
+        <Button icon="ti ti-x" class="absolute top-4 right-4 p-button-rounded p-button-secondary bg-black/50 border-none text-white hover:bg-black/80" @click="activeImage = null" />
+      </div>
+    </Dialog>
   </div>
 </template>
 

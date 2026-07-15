@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -249,3 +250,38 @@ func (h *Handler) SubmitFormResponse(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Formulari enviat correctament!"})
 }
+
+// UploadFormImage - Pujada de múltiples imatges per a formularis i preguntes
+func (h *Handler) UploadFormImage(c *gin.Context) {
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No files uploaded"})
+		return
+	}
+
+	files := form.File["images"]
+	if len(files) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No images provided"})
+		return
+	}
+
+	var urls []string
+	for _, file := range files {
+		// Enforce Max Size of 1MB (1048576 bytes)
+		if file.Size > 1048576 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("File %s exceeds the 1MB limit", file.Filename)})
+			return
+		}
+
+		url, err := h.Uploader.UploadFile(c.Request.Context(), file, "forms")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to upload file %s: %v", file.Filename, err)})
+			return
+		}
+
+		urls = append(urls, url)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"urls": urls})
+}
+

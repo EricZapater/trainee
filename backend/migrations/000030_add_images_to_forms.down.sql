@@ -1,0 +1,2 @@
+ALTER TABLE forms DROP COLUMN IF EXISTS imatges;
+ALTER TABLE form_questions DROP COLUMN IF EXISTS imatges;

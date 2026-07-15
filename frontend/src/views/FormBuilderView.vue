@@ -6,7 +6,7 @@ import { useToast } from 'primevue/usetoast'
 import { 
   getFormDetails, updateForm, cloneForm, 
   addFormQuestion, updateFormQuestion, deleteFormQuestion, reorderFormQuestions,
-  type FormWithQuestions, type FormQuestion
+  uploadFormImages, type FormWithQuestions, type FormQuestion
 } from '@/api/forms'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -23,6 +23,8 @@ const { t } = useI18n()
 const formId = route.params.id as string
 const form = ref<FormWithQuestions | null>(null)
 const loading = ref(true)
+const formUploadLoading = ref(false)
+const qUploadLoading = ref(false)
 
 const isReadOnly = computed(() => !!form.value && form.value.responses_count > 0)
 
@@ -48,6 +50,7 @@ const handleUpdateForm = async () => {
     await updateForm(form.value.id, {
       titol: form.value.titol,
       descripcio: form.value.descripcio,
+      imatges: form.value.imatges || [],
       actiu: form.value.actiu
     })
     toast.add({ severity: 'success', summary: 'Guardat', detail: 'Informació actualitzada', life: 3000 })
@@ -87,7 +90,8 @@ const openNewQuestion = () => {
     tipus: 'text',
     opcions: '',
     obligatori: true,
-    ordre: form.value!.questions.length + 1
+    ordre: form.value!.questions.length + 1,
+    imatges: []
   }
   qModalVisible.value = true
 }
@@ -95,7 +99,7 @@ const openNewQuestion = () => {
 const openEditQuestion = (q: FormQuestion) => {
   if (isReadOnly.value) return
   qModalTitle.value = t('forms.edit')
-  qPayload.value = { ...q }
+  qPayload.value = { ...q, imatges: q.imatges ? [...q.imatges] : [] }
   qModalVisible.value = true
 }
 
@@ -107,7 +111,8 @@ const saveQuestion = async () => {
       tipus: qPayload.value.tipus,
       opcions: qPayload.value.opcions || null,
       obligatori: !!qPayload.value.obligatori,
-      ordre: qPayload.value.ordre || 1
+      ordre: qPayload.value.ordre || 1,
+      imatges: qPayload.value.imatges || []
     }
     if (qPayload.value.id) {
       await updateFormQuestion(formId, qPayload.value.id, p)
@@ -120,6 +125,60 @@ const saveQuestion = async () => {
   } catch (e: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: e.response?.data?.error || 'Error', life: 3000 })
   }
+}
+
+const onFormFileChange = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  if (!target.files || !form.value) return
+  const files = Array.from(target.files).filter(f => f.size <= 1048576)
+  if (files.length === 0) return
+  
+  formUploadLoading.value = true
+  try {
+    const urls = await uploadFormImages(files)
+    if (!form.value.imatges) {
+      form.value.imatges = []
+    }
+    form.value.imatges.push(...urls)
+    toast.add({ severity: 'success', summary: 'Èxit', detail: 'Imatges carregades', life: 3000 })
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut pujar les imatges', life: 3000 })
+  } finally {
+    formUploadLoading.value = false
+    target.value = ''
+  }
+}
+
+const removeFormImage = (index: number) => {
+  if (isReadOnly.value || !form.value) return
+  form.value.imatges.splice(index, 1)
+}
+
+const onQuestionFileChange = async (e: Event) => {
+  const target = e.target as HTMLInputElement
+  if (!target.files) return
+  const files = Array.from(target.files).filter(f => f.size <= 1048576)
+  if (files.length === 0) return
+  
+  qUploadLoading.value = true
+  try {
+    const urls = await uploadFormImages(files)
+    if (!qPayload.value.imatges) {
+      qPayload.value.imatges = []
+    }
+    qPayload.value.imatges.push(...urls)
+    toast.add({ severity: 'success', summary: 'Èxit', detail: 'Imatges carregades', life: 3000 })
+  } catch (err) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut pujar les imatges', life: 3000 })
+  } finally {
+    qUploadLoading.value = false
+    target.value = ''
+  }
+}
+
+const removeQuestionImage = (index: number) => {
+  if (!qPayload.value.imatges) return
+  qPayload.value.imatges.splice(index, 1)
 }
 
 const deleteQuestion = async (qid: string) => {
@@ -212,6 +271,23 @@ const onDrop = async (e: DragEvent, dropIndex: number) => {
             <label>{{ $t('forms.formDescription') }}</label>
             <Textarea v-model="form.descripcio" rows="2" class="w-full" />
           </div>
+          <div class="field mt-3">
+            <label class="font-semibold text-secondary">Imatges del Formulari (Màx 1MB cadascuna)</label>
+            <div class="flex flex-col gap-3">
+              <div v-if="form.imatges && form.imatges.length > 0" class="flex flex-wrap gap-3 p-3 bg-surface-50 rounded-lg border border-surface-200">
+                <div v-for="(img, idx) in form.imatges" :key="img" class="relative group w-20 h-20 rounded border overflow-hidden">
+                  <img :src="img" class="w-full h-full object-cover" />
+                  <button type="button" @click="removeFormImage(idx)" :disabled="isReadOnly" class="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full w-6 h-6 flex align-center justify-center border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="ti ti-x text-xs"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="flex align-center gap-3">
+                <input type="file" @change="onFormFileChange" accept="image/*" multiple :disabled="isReadOnly" class="p-inputtext flex-1 p-2 disabled:opacity-50" />
+                <i v-if="formUploadLoading" class="ti ti-loader ti-spin text-xl text-primary"></i>
+              </div>
+            </div>
+          </div>
           <div class="field flex align-center gap-3">
             <InputSwitch v-model="form.actiu" inputId="actiu-switch-edit" />
             <label for="actiu-switch-edit" class="mb-0">{{ $t('forms.active') }} (Visibilitat pública)</label>
@@ -256,6 +332,9 @@ const onDrop = async (e: DragEvent, dropIndex: number) => {
                 <h4 class="font-medium text-lg">{{ q.pregunta }}</h4>
                 <span class="badge bg-secondary text-xs opacity-75">{{ qTypes.find(t => t.value === q.tipus)?.label || q.tipus }}</span>
               </div>
+              <div v-if="q.imatges && q.imatges.length > 0" class="flex flex-wrap gap-2 my-2">
+                <img v-for="img in q.imatges" :key="img" :src="img" class="w-12 h-12 object-cover rounded border" />
+              </div>
               <p v-if="q.opcions" class="text-sm text-secondary">Opcions: {{ q.opcions }}</p>
             </div>
 
@@ -279,6 +358,23 @@ const onDrop = async (e: DragEvent, dropIndex: number) => {
         <div class="field">
           <label>{{ $t('forms.type') }} *</label>
           <Select v-model="qPayload.tipus" :options="qTypes" optionLabel="label" optionValue="value" class="w-full" />
+        </div>
+        <div class="field">
+          <label>Imatges de la Pregunta (Màx 1MB cadascuna)</label>
+          <div class="flex flex-col gap-3">
+            <div v-if="qPayload.imatges && qPayload.imatges.length > 0" class="flex flex-wrap gap-2 p-2 bg-surface-50 rounded border">
+              <div v-for="(img, idx) in qPayload.imatges" :key="img" class="relative group w-16 h-16 rounded border overflow-hidden">
+                <img :src="img" class="w-full h-full object-cover" />
+                <button type="button" @click="removeQuestionImage(idx)" class="absolute top-0.5 right-0.5 bg-black/70 hover:bg-black/90 text-white rounded-full w-5 h-5 flex align-center justify-center border-none cursor-pointer">
+                  <i class="ti ti-x text-[10px]"></i>
+                </button>
+              </div>
+            </div>
+            <div class="flex align-center gap-3">
+              <input type="file" @change="onQuestionFileChange" accept="image/*" multiple class="p-inputtext flex-1 p-2" />
+              <i v-if="qUploadLoading" class="ti ti-loader ti-spin text-xl text-primary"></i>
+            </div>
+          </div>
         </div>
         <div v-if="qPayload.tipus === 'select'" class="field">
           <label>{{ $t('forms.options') }} *</label>
