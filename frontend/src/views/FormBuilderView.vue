@@ -141,6 +141,9 @@ const onFormFileChange = async (e: Event) => {
     }
     form.value.imatges.push(...urls)
     toast.add({ severity: 'success', summary: 'Èxit', detail: 'Imatges carregades', life: 3000 })
+    
+    // Auto-save form general details immediately
+    await handleUpdateForm()
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut pujar les imatges', life: 3000 })
   } finally {
@@ -149,9 +152,12 @@ const onFormFileChange = async (e: Event) => {
   }
 }
 
-const removeFormImage = (index: number) => {
+const removeFormImage = async (index: number) => {
   if (isReadOnly.value || !form.value) return
   form.value.imatges.splice(index, 1)
+  
+  // Auto-save form general details immediately
+  await handleUpdateForm()
 }
 
 const onQuestionFileChange = async (e: Event) => {
@@ -274,10 +280,10 @@ const onDrop = async (e: DragEvent, dropIndex: number) => {
           <div class="field mt-3">
             <label class="font-semibold text-secondary">Imatges del Formulari (Màx 1MB cadascuna)</label>
             <div class="flex flex-col gap-3">
-              <div v-if="form.imatges && form.imatges.length > 0" class="flex flex-wrap gap-3 p-3 bg-surface-50 rounded-lg border border-surface-200">
-                <div v-for="(img, idx) in form.imatges" :key="img" class="relative group w-20 h-20 rounded border overflow-hidden">
-                  <img :src="img" class="w-full h-full object-cover" />
-                  <button type="button" @click="removeFormImage(idx)" :disabled="isReadOnly" class="absolute top-1 right-1 bg-black/70 hover:bg-black/90 text-white rounded-full w-6 h-6 flex align-center justify-center border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+              <div v-if="form.imatges && form.imatges.length > 0" class="image-thumbnail-grid p-3 bg-surface-50 rounded-lg border border-surface-200">
+                <div v-for="(img, idx) in form.imatges" :key="img" class="image-thumbnail-item">
+                  <img :src="img" class="image-thumbnail-img" />
+                  <button type="button" @click="removeFormImage(idx)" :disabled="isReadOnly" class="image-delete-btn">
                     <i class="ti ti-x text-xs"></i>
                   </button>
                 </div>
@@ -332,8 +338,8 @@ const onDrop = async (e: DragEvent, dropIndex: number) => {
                 <h4 class="font-medium text-lg">{{ q.pregunta }}</h4>
                 <span class="badge bg-secondary text-xs opacity-75">{{ qTypes.find(t => t.value === q.tipus)?.label || q.tipus }}</span>
               </div>
-              <div v-if="q.imatges && q.imatges.length > 0" class="flex flex-wrap gap-2 my-2">
-                <img v-for="img in q.imatges" :key="img" :src="img" class="w-12 h-12 object-cover rounded border" />
+              <div v-if="q.imatges && q.imatges.length > 0" class="question-list-thumbnails">
+                <img v-for="img in q.imatges" :key="img" :src="img" class="question-list-thumb" />
               </div>
               <p v-if="q.opcions" class="text-sm text-secondary">Opcions: {{ q.opcions }}</p>
             </div>
@@ -362,11 +368,11 @@ const onDrop = async (e: DragEvent, dropIndex: number) => {
         <div class="field">
           <label>Imatges de la Pregunta (Màx 1MB cadascuna)</label>
           <div class="flex flex-col gap-3">
-            <div v-if="qPayload.imatges && qPayload.imatges.length > 0" class="flex flex-wrap gap-2 p-2 bg-surface-50 rounded border">
-              <div v-for="(img, idx) in qPayload.imatges" :key="img" class="relative group w-16 h-16 rounded border overflow-hidden">
-                <img :src="img" class="w-full h-full object-cover" />
-                <button type="button" @click="removeQuestionImage(idx)" class="absolute top-0.5 right-0.5 bg-black/70 hover:bg-black/90 text-white rounded-full w-5 h-5 flex align-center justify-center border-none cursor-pointer">
-                  <i class="ti ti-x text-[10px]"></i>
+            <div v-if="qPayload.imatges && qPayload.imatges.length > 0" class="image-thumbnail-grid p-2 bg-surface-50 rounded border">
+              <div v-for="(img, idx) in qPayload.imatges" :key="img" class="image-thumbnail-item">
+                <img :src="img" class="image-thumbnail-img" />
+                <button type="button" @click="removeQuestionImage(idx)" class="image-delete-btn">
+                  <i class="ti ti-x text-xs"></i>
                 </button>
               </div>
             </div>
@@ -478,5 +484,63 @@ const onDrop = async (e: DragEvent, dropIndex: number) => {
   color: var(--text-secondary);
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+.image-thumbnail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.image-thumbnail-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.image-thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.image-delete-btn:hover {
+  background: rgba(220, 38, 38, 0.9);
+}
+
+.question-list-thumbnails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.question-list-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--border);
 }
 </style>

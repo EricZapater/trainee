@@ -145,9 +145,9 @@ const handleSubmit = async () => {
 
       <!-- Form Images (Multiple Images) -->
       <div v-if="form.imatges && form.imatges.length > 0" class="glass-card mb-6 p-6">
-        <div class="flex flex-wrap gap-4 justify-center">
-          <div v-for="img in form.imatges" :key="img" class="relative group cursor-pointer overflow-hidden rounded-lg border border-surface-200 w-full sm:w-48 h-32 shadow-sm">
-            <img :src="img" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" @click="openImageModal(img)" />
+        <div class="form-images-gallery">
+          <div v-for="img in form.imatges" :key="img" class="form-image-container">
+            <img :src="img" class="form-image-preview" @click="openImageModal(img)" />
           </div>
         </div>
       </div>
@@ -180,9 +180,9 @@ const handleSubmit = async () => {
             </label>
             
             <!-- Question Images -->
-            <div v-if="q.imatges && q.imatges.length > 0" class="flex flex-wrap gap-3 mb-4">
-              <div v-for="img in q.imatges" :key="img" class="relative group cursor-pointer overflow-hidden rounded-lg border border-surface-200 w-24 h-24 sm:w-32 sm:h-32 shadow-sm">
-                <img :src="img" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" @click="openImageModal(img)" />
+            <div v-if="q.imatges && q.imatges.length > 0" class="question-images-gallery">
+              <div v-for="img in q.imatges" :key="img" class="question-image-container">
+                <img :src="img" class="question-image-preview" @click="openImageModal(img)" />
               </div>
             </div>
             
@@ -233,6 +233,66 @@ const handleSubmit = async () => {
   padding: 16px;
   border-radius: 8px;
   border: 1px solid var(--border);
+}
+
+/* Gallery Styles */
+.form-images-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.form-image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 16/9;
+  cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.form-image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.form-image-container:hover .form-image-preview {
+  transform: scale(1.05);
+}
+
+.question-images-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.question-image-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  width: 120px;
+  height: 120px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.question-image-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.question-image-container:hover .question-image-preview {
+  transform: scale(1.05);
 }
 
 /* Local utilities */
