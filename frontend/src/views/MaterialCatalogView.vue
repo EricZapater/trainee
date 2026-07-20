@@ -182,13 +182,29 @@ const getEstatLabel = (estat: string) => {
   }
 }
 
+const failedImages = ref<Set<string>>(new Set())
+
 const formatImageUrl = (url: string) => {
   if (!url) return ''
-  return url
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url
+  }
+  return url.startsWith('/') ? url : `/${url}`
 }
 
-const onImgError = (e: Event) => {
-  console.warn('Error carregant imatge', e)
+const onImgError = (urlOrEvent: any) => {
+  if (typeof urlOrEvent === 'string') {
+    failedImages.value.add(urlOrEvent)
+  } else if (urlOrEvent?.target?.src) {
+    failedImages.value.add(urlOrEvent.target.src)
+  }
+}
+
+const getProductImage = (p: MaterialProducte) => {
+  if (!p.imatges || p.imatges.length === 0) return null
+  const first = p.imatges[0]
+  if (failedImages.value.has(first) || failedImages.value.has(formatImageUrl(first))) return null
+  return formatImageUrl(first)
 }
 
 const formatDate = (dateStr: string) => {
@@ -238,11 +254,11 @@ const formatDate = (dateStr: string) => {
         <div v-for="p in productes" :key="p.id" class="product-card">
           <div class="product-image-container">
             <img 
-              v-if="p.imatges && p.imatges.length > 0" 
-              :src="formatImageUrl(p.imatges[0])" 
+              v-if="getProductImage(p)" 
+              :src="getProductImage(p)!" 
               :alt="p.nom" 
               class="product-image"
-              @error="onImgError"
+              @error="onImgError(p.imatges[0])"
             />
 
             <div v-else class="product-image-placeholder">
@@ -282,10 +298,11 @@ const formatDate = (dateStr: string) => {
                   :max="99" 
                   showButtons 
                   buttonLayout="horizontal" 
-                  class="w-full"
+                  class="quantity-input"
                   :disabled="!settings.enabled"
                 />
               </div>
+
 
               <!-- Notes opcionals -->
               <div class="form-field">
@@ -620,12 +637,17 @@ const formatDate = (dateStr: string) => {
   letter-spacing: 0.05em;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 0.25rem;
+.quantity-input {
+  width: 140px;
+}
+
+.quantity-input :deep(.p-inputnumber-input) {
+  width: 50px;
+  text-align: center;
 }
 
 .w-full {
   width: 100%;
 }
 </style>
+
