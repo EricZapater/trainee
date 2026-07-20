@@ -128,5 +128,21 @@ type Store interface {
 	GetFeedbackTicketByID(ctx context.Context, id string) (*models.FeedbackTicket, error)
 	CreateFeedbackTicket(ctx context.Context, informadorID string, req models.CreateFeedbackRequest, imatgePath *string, imatges []string) (*models.FeedbackTicket, error)
 	UpdateFeedbackTicket(ctx context.Context, id string, estat string, resposta *string, respostaImatges []string) error
+
+	// Material Catàleg i Comandes
+	GetMaterialProductes(ctx context.Context, onlyActive bool) ([]models.MaterialProducte, error)
+	GetMaterialProducteByID(ctx context.Context, id string) (*models.MaterialProducte, error)
+	CreateMaterialProducte(ctx context.Context, req models.CreateMaterialProducteRequest) (*models.MaterialProducte, error)
+	UpdateMaterialProducte(ctx context.Context, id string, req models.UpdateMaterialProducteRequest) (*models.MaterialProducte, error)
+	DeleteMaterialProducte(ctx context.Context, id string) error
+	GetMaterialSettings(ctx context.Context) (*models.MaterialComandesSettings, error)
+	UpdateMaterialSettings(ctx context.Context, enabled bool) error
+	CreateMaterialComandes(ctx context.Context, atletaID string, items []models.CreateMaterialComandaItem) ([]models.MaterialComanda, error)
+	GetMaterialComandes(ctx context.Context, atletaID string, startDate string, endDate string, estat string) ([]models.MaterialComandaWithDetails, error)
+	GetMaterialComandaByID(ctx context.Context, id string) (*models.MaterialComandaWithDetails, error)
+	UpdateMaterialComanda(ctx context.Context, id string, req models.UpdateMaterialComandaRequest) (*models.MaterialComanda, error)
+	DeleteMaterialComanda(ctx context.Context, id string) error
+	BulkUpdateMaterialComandesState(ctx context.Context, comandaIDs []string, nouEstat string) error
 }
+
 

@@ -175,8 +175,21 @@ const router = createRouter({
       name: 'manual',
       component: () => import('@/views/ManualView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/material',
+      name: 'material_catalog',
+      component: () => import('@/views/MaterialCatalogView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/material-manager',
+      name: 'material_manager',
+      component: () => import('@/views/MaterialManagerView.vue'),
+      meta: { requiresAuth: true, role: 'entrenador' }
     }
   ]
+
 
 })
 

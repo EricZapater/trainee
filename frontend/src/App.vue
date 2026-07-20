@@ -185,6 +185,11 @@ const configMenuItems = computed(() => [
     command: () => router.push('/activitats')
   },
   {
+    label: 'Catàleg i Comandes',
+    icon: 'ti ti-box',
+    command: () => router.push('/material-manager')
+  },
+  {
     label: t('nav.settings'),
     icon: 'ti ti-settings',
     command: () => router.push('/entrenador/configuracio')
@@ -390,6 +395,7 @@ const parsedChangelog = computed(() => {
           <template v-if="authStore.isAtleta">
             <router-link to="/calendar" class="nav-link">{{ $t('nav.calendar') }}</router-link>
             <router-link to="/competicions/atleta" class="nav-link">{{ $t('nav.competitions') }}</router-link>
+            <router-link to="/material" class="nav-link">Material</router-link>
             <router-link to="/informe" class="nav-link">{{ $t('nav.myHistory') }}</router-link>
           </template>
           <template v-if="authStore.isEntrenador">

@@ -273,4 +273,47 @@ export interface CreateTemplateRequest {
   slots: TemplateSlot[]
 }
 
+export interface MaterialProducte {
+  id: string
+  nom: string
+  descripcio: string
+  talles: string[]
+  requereix_talla: boolean
+  imatges: string[]
+  preu: number
+  actiu: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface MaterialComanda {
+  id: string
+  atleta_id: string
+  producte_id: string
+  talla: string
+  quantitat: number
+  preu_unitari: number
+  preu_total: number
+  estat: 'pendent' | 'bloquejada' | 'pagada' | 'servida'
+  notes: string
+  created_at: string
+  updated_at: string
+  atleta_nom?: string
+  atleta_cognoms?: string
+  atleta_email?: string
+  producte_nom?: string
+}
+
+export interface MaterialSettings {
+  enabled: boolean
+}
+
+export interface CreateMaterialComandaItem {
+  producte_id: string
+  talla: string
+  quantitat: number
+  notes?: string
+}
+
+
 

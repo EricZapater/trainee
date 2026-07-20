@@ -598,4 +598,91 @@ type UpdateAtletaDetailsRequest struct {
 	Cognoms string `json:"cognoms" binding:"required"`
 }
 
+// ============================================================
+// Material Catalog & Orders Models
+// ============================================================
+
+type MaterialProducte struct {
+	ID             string    `json:"id"`
+	Nom            string    `json:"nom"`
+	Descripcio     string    `json:"descripcio"`
+	Talles         []string  `json:"talles"`
+	RequereixTalla bool      `json:"requereix_talla"`
+	Imatges        []string  `json:"imatges"`
+	Preu           float64   `json:"preu"`
+	Actiu          bool      `json:"actiu"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type CreateMaterialProducteRequest struct {
+	Nom            string   `json:"nom" binding:"required"`
+	Descripcio     string   `json:"descripcio"`
+	Talles         []string `json:"talles"`
+	RequereixTalla bool     `json:"requereix_talla"`
+	Imatges        []string `json:"imatges"`
+	Preu           float64  `json:"preu"`
+	Actiu          bool     `json:"actiu"`
+}
+
+type UpdateMaterialProducteRequest struct {
+	Nom            string   `json:"nom" binding:"required"`
+	Descripcio     string   `json:"descripcio"`
+	Talles         []string `json:"talles"`
+	RequereixTalla bool     `json:"requereix_talla"`
+	Imatges        []string `json:"imatges"`
+	Preu           float64  `json:"preu"`
+	Actiu          bool     `json:"actiu"`
+}
+
+type MaterialComanda struct {
+	ID          string    `json:"id"`
+	AtletaID    string    `json:"atleta_id"`
+	ProducteID  string    `json:"producte_id"`
+	Talla       string    `json:"talla"`
+	Quantitat   int       `json:"quantitat"`
+	PreuUnitari float64   `json:"preu_unitari"`
+	PreuTotal   float64   `json:"preu_total"`
+	Estat       string    `json:"estat"` // 'pendent', 'bloquejada', 'pagada', 'servida'
+	Notes       string    `json:"notes"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type MaterialComandaWithDetails struct {
+	MaterialComanda
+	AtletaNom     string `json:"atleta_nom"`
+	AtletaCognoms string `json:"atleta_cognoms"`
+	AtletaEmail   string `json:"atleta_email"`
+	ProducteNom   string `json:"producte_nom"`
+}
+
+type CreateMaterialComandaItem struct {
+	ProducteID string `json:"producte_id" binding:"required"`
+	Talla      string `json:"talla"`
+	Quantitat  int    `json:"quantitat" binding:"required,gt=0"`
+	Notes      string `json:"notes"`
+}
+
+type CreateMaterialComandesRequest struct {
+	Items []CreateMaterialComandaItem `json:"items" binding:"required,min=1"`
+}
+
+type UpdateMaterialComandaRequest struct {
+	Talla     string  `json:"talla"`
+	Quantitat int     `json:"quantitat" binding:"required,gt=0"`
+	Estat     *string `json:"estat"`
+	Notes     string  `json:"notes"`
+}
+
+type BulkUpdateComandesStateRequest struct {
+	ComandaIDs []string `json:"comanda_ids" binding:"required"`
+	NouEstat   string   `json:"nou_estat" binding:"required,oneof=pendent bloquejada pagada servida"`
+}
+
+type MaterialComandesSettings struct {
+	Enabled bool `json:"enabled"`
+}
+
+
 

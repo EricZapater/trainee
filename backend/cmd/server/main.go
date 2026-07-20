@@ -142,7 +142,16 @@ func main() {
 
 		authenticated.POST("/submissions", h.CreateSubmission)
 		authenticated.GET("/submissions/me", h.GetMySubmission)
+
+		// Material Catàleg i Comandes (Autenticats)
+		authenticated.GET("/material/productes", h.ListMaterialProductes)
+		authenticated.GET("/material/settings", h.GetMaterialSettings)
+		authenticated.GET("/material/comandes", h.ListMaterialComandes)
+		authenticated.POST("/material/comandes", h.CreateMaterialComandes)
+		authenticated.PUT("/material/comandes/:id", h.UpdateMaterialComanda)
+		authenticated.DELETE("/material/comandes/:id", h.DeleteMaterialComanda)
 	}
+
 
 	adminAndEntrenador := authenticated.Group("")
 	adminAndEntrenador.Use(middleware.RequireRole("entrenador"))
@@ -205,7 +214,17 @@ func main() {
 		// Settings
 		entrenadorRoutes.GET("/settings/cron", settingsHandler.GetCronSettings)
 		entrenadorRoutes.PUT("/settings/cron", settingsHandler.UpdateCronSettings)
+
+		// Material Catàleg i Comandes (Entrenador)
+		entrenadorRoutes.POST("/material/productes", h.CreateMaterialProducte)
+		entrenadorRoutes.PUT("/material/productes/:id", h.UpdateMaterialProducte)
+		entrenadorRoutes.DELETE("/material/productes/:id", h.DeleteMaterialProducte)
+		entrenadorRoutes.POST("/material/upload-image", h.UploadMaterialImage)
+		entrenadorRoutes.PUT("/material/settings", h.UpdateMaterialSettings)
+		entrenadorRoutes.PUT("/material/comandes/bulk-status", h.BulkUpdateComandesState)
+		entrenadorRoutes.GET("/material/comandes/export", h.ExportMaterialComandesCSV)
 	}
+
 
 	adminRoutes := api.Group("/admin")
 	adminRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireConsent(s, "v1.0"), middleware.RequireRole("admin"))
