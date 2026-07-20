@@ -152,6 +152,25 @@ const openEditProductDialog = (p: MaterialProducte) => {
   productDialogVisible.value = true
 }
 
+const newImageUrl = ref('')
+
+const formatImageUrl = (url: string) => {
+  if (!url) return ''
+  return url
+}
+
+const handleAddUrlImage = () => {
+  const url = newImageUrl.value.trim()
+  if (!url) return
+  productForm.value.imatges.push(url)
+  newImageUrl.value = ''
+  toast.add({ severity: 'success', summary: 'Imatge afegida', detail: 'S\'ha afegit la URL de la imatge', life: 2500 })
+}
+
+const onImgError = (e: Event) => {
+  console.warn('Error carregant imatge', e)
+}
+
 const handleImageUpload = async (e: Event) => {
   const target = e.target as HTMLInputElement
   if (!target.files || target.files.length === 0) return
@@ -173,6 +192,7 @@ const handleImageUpload = async (e: Event) => {
 const removeProductImage = (index: number) => {
   productForm.value.imatges.splice(index, 1)
 }
+
 
 const handleSaveProduct = async () => {
   if (!productForm.value.nom.trim()) {
@@ -513,7 +533,7 @@ const formatDate = (dateStr: string) => {
       <div v-else class="catalog-grid">
         <div v-for="p in productes" :key="p.id" class="catalog-card" :class="{ disabled: !p.actiu }">
           <div class="card-image-wrap">
-            <img v-if="p.imatges && p.imatges.length > 0" :src="p.imatges[0]" :alt="p.nom" class="card-img" />
+            <img v-if="p.imatges && p.imatges.length > 0" :src="formatImageUrl(p.imatges[0])" :alt="p.nom" class="card-img" @error="onImgError" />
             <div v-else class="card-img-placeholder">
               <i class="pi pi-image"></i>
             </div>
@@ -554,7 +574,7 @@ const formatDate = (dateStr: string) => {
       :header="editingProduct ? 'Editar Producte' : 'Nou Producte de Material'" 
       :modal="true" 
       class="product-dialog"
-      :style="{ width: '500px' }"
+      :style="{ width: '540px' }"
     >
       <div class="dialog-form">
         <div class="form-item">
@@ -591,27 +611,49 @@ const formatDate = (dateStr: string) => {
           <InputText v-model="productForm.tallesStr" placeholder="Ex: XS, S, M, L, XL, XXL" class="w-full" />
         </div>
 
-        <!-- Pujada d'imatges -->
+        <!-- Gestió d'imatges -->
         <div class="form-item">
           <label>Imatges del producte</label>
+
+          <!-- Previsualització d'imatges afegides -->
           <div class="image-previews" v-if="productForm.imatges.length > 0">
             <div v-for="(img, idx) in productForm.imatges" :key="idx" class="img-preview-item">
-              <img :src="img" alt="Preview" />
-              <button type="button" class="remove-img-btn" @click="removeProductImage(idx)">
+              <img :src="formatImageUrl(img)" alt="Preview" @error="onImgError" />
+              <button type="button" class="remove-img-btn" @click="removeProductImage(idx)" title="Eliminar imatge">
                 <i class="pi pi-times"></i>
               </button>
             </div>
           </div>
 
-          <div class="upload-btn-wrap">
-            <input type="file" accept="image/*" id="productImgUpload" class="hidden-input" @change="handleImageUpload" />
-            <label for="productImgUpload" class="upload-label">
-              <i class="pi" :class="uploadingImage ? 'pi-spin pi-spinner' : 'pi-upload'"></i>
-              <span>{{ uploadingImage ? 'Pujant...' : 'Afegir Imatge' }}</span>
-            </label>
+          <!-- Opcions per afegir imatge -->
+          <div class="image-input-methods">
+            <div class="upload-btn-wrap">
+              <input type="file" accept="image/*" id="productImgUpload" class="hidden-input" @change="handleImageUpload" />
+              <label for="productImgUpload" class="upload-label">
+                <i class="pi" :class="uploadingImage ? 'pi-spin pi-spinner' : 'pi-upload'"></i>
+                <span>{{ uploadingImage ? 'Pujant...' : 'Pujar Fitxer' }}</span>
+              </label>
+            </div>
+
+            <div class="url-input-wrap">
+              <InputText 
+                v-model="newImageUrl" 
+                placeholder="O enganxa la URL d'una imatge (https://...)" 
+                class="flex-1 p-inputtext-sm"
+                @keyup.enter="handleAddUrlImage" 
+              />
+              <Button 
+                label="Afegir URL" 
+                icon="pi pi-plus" 
+                class="p-button-sm p-button-outlined" 
+                :disabled="!newImageUrl.trim()"
+                @click="handleAddUrlImage" 
+              />
+            </div>
           </div>
         </div>
       </div>
+
 
       <template #footer>
         <Button label="Cancel·lar" class="p-button-text" @click="productDialogVisible = false" />
@@ -962,18 +1004,19 @@ const formatDate = (dateStr: string) => {
 
 .image-previews {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-wrap: wrap;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .img-preview-item {
   position: relative;
-  width: 70px;
-  height: 70px;
+  width: 90px;
+  height: 90px;
   border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .img-preview-item img {
@@ -981,6 +1024,20 @@ const formatDate = (dateStr: string) => {
   height: 100%;
   object-fit: cover;
 }
+
+.image-input-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.url-input-wrap {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 
 .remove-img-btn {
   position: absolute;

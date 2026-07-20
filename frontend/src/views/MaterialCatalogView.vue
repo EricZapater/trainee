@@ -182,6 +182,15 @@ const getEstatLabel = (estat: string) => {
   }
 }
 
+const formatImageUrl = (url: string) => {
+  if (!url) return ''
+  return url
+}
+
+const onImgError = (e: Event) => {
+  console.warn('Error carregant imatge', e)
+}
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -230,10 +239,12 @@ const formatDate = (dateStr: string) => {
           <div class="product-image-container">
             <img 
               v-if="p.imatges && p.imatges.length > 0" 
-              :src="p.imatges[0]" 
+              :src="formatImageUrl(p.imatges[0])" 
               :alt="p.nom" 
               class="product-image"
+              @error="onImgError"
             />
+
             <div v-else class="product-image-placeholder">
               <i class="pi pi-shopping-bag"></i>
             </div>
