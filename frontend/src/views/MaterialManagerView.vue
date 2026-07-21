@@ -634,7 +634,16 @@ const formatDate = (dateStr: string) => {
           <!-- Previsualització d'imatges afegides -->
           <div class="image-previews" v-if="productForm.imatges.length > 0">
             <div v-for="(img, idx) in productForm.imatges" :key="idx" class="img-preview-item">
-              <img :src="formatImageUrl(img)" alt="Preview" @error="onImgError" />
+              <img 
+                v-if="!failedImages.has(img) && !failedImages.has(formatImageUrl(img))"
+                :src="formatImageUrl(img)" 
+                alt="Preview" 
+                @error="onImgError(img)" 
+              />
+              <div v-else class="preview-broken-fallback">
+                <i class="pi pi-exclamation-triangle text-amber-500"></i>
+                <span class="text-xs text-gray-400">URL no vàlida</span>
+              </div>
               <button type="button" class="remove-img-btn" @click="removeProductImage(idx)" title="Eliminar imatge">
                 <i class="pi pi-times"></i>
               </button>
@@ -1040,6 +1049,19 @@ const formatDate = (dateStr: string) => {
   height: 100%;
   object-fit: cover;
 }
+
+.preview-broken-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  text-align: center;
+  background: rgba(239, 68, 68, 0.1);
+}
+
 
 .image-input-methods {
   display: flex;

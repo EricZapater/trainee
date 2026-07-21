@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -31,8 +32,9 @@ func NewUploader() (*Uploader, error) {
 	bucketName := os.Getenv("R2_BUCKET_NAME")
 	publicURL := os.Getenv("R2_PUBLIC_URL")
 
-	if accessKeyID == "" || secretAccessKey == "" || accountID == "" || bucketName == "" {
+	if accessKeyID == "" || secretAccessKey == "" || accountID == "" || bucketName == "" || publicURL == "" {
 		// Fallback to local storage
+		log.Println("Avis: R2 no configurat completament. S'utilitzara l'emmagatzematge local ./uploads.")
 		return &Uploader{useR2: false}, nil
 	}
 
@@ -43,7 +45,8 @@ func NewUploader() (*Uploader, error) {
 		config.WithRegion("auto"),
 	)
 	if err != nil {
-		return nil, err
+		log.Printf("Avis: Error carregant configuracio R2 (%v). S'utilitzara fallback local.", err)
+		return &Uploader{useR2: false}, nil
 	}
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
@@ -61,7 +64,7 @@ func NewUploader() (*Uploader, error) {
 func (u *Uploader) UploadFile(ctx context.Context, fileHeader *multipart.FileHeader, folder string) (string, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error obrint fitxer pujat: %w", err)
 	}
 	defer file.Close()
 
@@ -69,25 +72,48 @@ func (u *Uploader) UploadFile(ctx context.Context, fileHeader *multipart.FileHea
 	newFilename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), uuid.New().String(), ext)
 	key := fmt.Sprintf("%s/%s", folder, newFilename)
 
-	if !u.useR2 {
-		// Fallback local storage
-		localFolder := filepath.Join("uploads", folder)
-		if err := os.MkdirAll(localFolder, 0755); err != nil {
-			return "", err
-		}
-		localPath := filepath.Join(localFolder, newFilename)
-		out, err := os.Create(localPath)
-		if err != nil {
-			return "", err
-		}
-		defer out.Close()
-		if _, err := io.Copy(out, file); err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("/api/uploads/%s/%s", folder, newFilename), nil
+	// Desament local com a copia / fallback
+	localFolder := filepath.Join("uploads", folder)
+	if err := os.MkdirAll(localFolder, 0755); err != nil {
+		return "", fmt.Errorf("error creant directori local: %w", err)
 	}
 
-	// Upload to R2
+	localPath := filepath.Join(localFolder, newFilename)
+	out, err := os.Create(localPath)
+	if err != nil {
+		return "", fmt.Errorf("error creant fitxer local: %w", err)
+	}
+
+	if _, err := io.Copy(out, file); err != nil {
+		out.Close()
+		return "", fmt.Errorf("error copiant fitxer localment: %w", err)
+	}
+	out.Close()
+
+	localURL := fmt.Sprintf("/api/uploads/%s/%s", folder, newFilename)
+
+	if !u.useR2 {
+		return localURL, nil
+	}
+
+	// Reposicionar el punter del fitxer per a la pujada a R2
+	if seeker, ok := file.(io.Seeker); ok {
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			log.Printf("Avis: No s'ha pogut fer seek al fitxer per R2 (%v). S'usa URL local: %s", err, localURL)
+			return localURL, nil
+		}
+	} else {
+		// Reobrir fitxer si no admet Seek
+		file.Close()
+		reopened, err := fileHeader.Open()
+		if err != nil {
+			return localURL, nil
+		}
+		defer reopened.Close()
+		file = reopened
+	}
+
+	// Pujada a Cloudflare R2
 	_, err = u.s3Client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(u.bucketName),
 		Key:         aws.String(key),
@@ -95,9 +121,11 @@ func (u *Uploader) UploadFile(ctx context.Context, fileHeader *multipart.FileHea
 		ContentType: aws.String(fileHeader.Header.Get("Content-Type")),
 	})
 	if err != nil {
-		return "", err
+		log.Printf("Avis: Error pujant a Cloudflare R2 (%v). Retornant URL local %s", err, localURL)
+		return localURL, nil
 	}
 
 	publicURLClean := strings.TrimSuffix(u.publicURL, "/")
 	return fmt.Sprintf("%s/%s", publicURLClean, key), nil
 }
+
