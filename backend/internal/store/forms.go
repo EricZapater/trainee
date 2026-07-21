@@ -329,7 +329,7 @@ func (s *PostgresStore) GetFormResponses(ctx context.Context, formID string) ([]
 	}
 
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, form_id, nom_candidat, email_candidat, telefon_candidat, estat, created_at
+		SELECT id, form_id, nom_candidat, email_candidat, telefon_candidat, estat, COALESCE(is_interesting, false), comentari, created_at
 		FROM form_responses
 		WHERE form_id = $1
 		ORDER BY created_at DESC
@@ -342,7 +342,7 @@ func (s *PostgresStore) GetFormResponses(ctx context.Context, formID string) ([]
 	var responses []models.FormResponseWithAnswers
 	for rows.Next() {
 		var r models.FormResponseWithAnswers
-		if err := rows.Scan(&r.ID, &r.FormID, &r.NomCandidat, &r.EmailCandidat, &r.TelefonCandidat, &r.Estat, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.FormID, &r.NomCandidat, &r.EmailCandidat, &r.TelefonCandidat, &r.Estat, &r.IsInteresting, &r.Comentari, &r.CreatedAt); err != nil {
 			return nil, err
 		}
 		responses = append(responses, r)
@@ -351,8 +351,9 @@ func (s *PostgresStore) GetFormResponses(ctx context.Context, formID string) ([]
 
 	for i, r := range responses {
 		ansRows, err := s.pool.Query(ctx, `
-			SELECT id, response_id, question_id, valor, created_at 
+			SELECT id, response_id, question_id, valor, COALESCE(is_interesting, false), comentari, created_at 
 			FROM form_answers WHERE response_id = $1
+			ORDER BY created_at ASC
 		`, r.ID)
 		if err != nil {
 			return nil, err
@@ -360,7 +361,7 @@ func (s *PostgresStore) GetFormResponses(ctx context.Context, formID string) ([]
 		var answers []models.FormAnswer
 		for ansRows.Next() {
 			var a models.FormAnswer
-			if err := ansRows.Scan(&a.ID, &a.ResponseID, &a.QuestionID, &a.Valor, &a.CreatedAt); err != nil {
+			if err := ansRows.Scan(&a.ID, &a.ResponseID, &a.QuestionID, &a.Valor, &a.IsInteresting, &a.Comentari, &a.CreatedAt); err != nil {
 				ansRows.Close()
 				return nil, err
 			}
@@ -390,6 +391,44 @@ func (s *PostgresStore) UpdateResponseStatus(ctx context.Context, responseID, es
 	}
 	if cmd.RowsAffected() == 0 {
 		return errors.New("not found or forbidden")
+	}
+	return nil
+}
+
+func (s *PostgresStore) UpdateFormResponseDetails(ctx context.Context, responseID string, req models.UpdateFormResponseRequest) error {
+	if req.Estat != nil {
+		_, err := s.pool.Exec(ctx, `UPDATE form_responses SET estat = $1 WHERE id = $2`, *req.Estat, responseID)
+		if err != nil {
+			return err
+		}
+	}
+	if req.IsInteresting != nil {
+		_, err := s.pool.Exec(ctx, `UPDATE form_responses SET is_interesting = $1 WHERE id = $2`, *req.IsInteresting, responseID)
+		if err != nil {
+			return err
+		}
+	}
+	if req.Comentari != nil {
+		_, err := s.pool.Exec(ctx, `UPDATE form_responses SET comentari = $1 WHERE id = $2`, *req.Comentari, responseID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *PostgresStore) UpdateFormAnswer(ctx context.Context, answerID string, req models.UpdateFormAnswerRequest) error {
+	if req.IsInteresting != nil {
+		_, err := s.pool.Exec(ctx, `UPDATE form_answers SET is_interesting = $1 WHERE id = $2`, *req.IsInteresting, answerID)
+		if err != nil {
+			return err
+		}
+	}
+	if req.Comentari != nil {
+		_, err := s.pool.Exec(ctx, `UPDATE form_answers SET comentari = $1 WHERE id = $2`, *req.Comentari, answerID)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -3,12 +3,22 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
-import { getFormResponses, updateResponseStatus, getFormDetails, type FormResponseWithAnswers, type FormWithQuestions } from '@/api/forms'
+import { 
+  getFormResponses, 
+  updateResponseStatus, 
+  updateFormResponseDetails, 
+  updateFormAnswer, 
+  getFormDetails, 
+  type FormResponseWithAnswers, 
+  type FormWithQuestions,
+  type FormAnswer
+} from '@/api/forms'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
 import DatePicker from 'primevue/datepicker'
 import Checkbox from 'primevue/checkbox'
+import Textarea from 'primevue/textarea'
 
 const route = useRoute()
 const router = useRouter()
@@ -57,12 +67,94 @@ const changeStatus = async (responseId: string, estat: string) => {
   }
 }
 
+// Global response interesting toggle
+const toggleResponseInteresting = async (r: FormResponseWithAnswers) => {
+  const newValue = !r.is_interesting
+  try {
+    await updateFormResponseDetails(r.id, { is_interesting: newValue })
+    r.is_interesting = newValue
+    toast.add({ 
+      severity: 'success', 
+      summary: newValue ? 'Destacat' : 'Desmarcat', 
+      detail: newValue ? 'Formulari marcat com a interessant' : 'Formulari desmarcat', 
+      life: 2500 
+    })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut actualitzar', life: 3000 })
+  }
+}
+
+// Global response comment save
+const editingResponseComment = ref<string>('')
+const isSavingResponseComment = ref(false)
+
+const saveResponseComment = async (r: FormResponseWithAnswers) => {
+  isSavingResponseComment.value = true
+  try {
+    await updateFormResponseDetails(r.id, { comentari: editingResponseComment.value })
+    r.comentari = editingResponseComment.value
+    toast.add({ severity: 'success', summary: 'Comentari desat', detail: 'S\'ha guardat el comentari global', life: 2500 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut guardar el comentari', life: 3000 })
+  } finally {
+    isSavingResponseComment.value = false
+  }
+}
+
+// Answer level interesting toggle
+const toggleAnswerInteresting = async (ans: FormAnswer) => {
+  const newValue = !ans.is_interesting
+  try {
+    await updateFormAnswer(ans.id, { is_interesting: newValue })
+    ans.is_interesting = newValue
+    toast.add({ 
+      severity: 'success', 
+      summary: newValue ? 'Resposta destacada' : 'Desmarcada', 
+      detail: newValue ? 'Resposta meca com a interessant' : 'Resposta desmarcada', 
+      life: 2500 
+    })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut actualitzar', life: 3000 })
+  }
+}
+
+// Answer level comment save
+const editingAnswerComments = ref<Record<string, string>>({})
+const savingAnswerId = ref<string | null>(null)
+
+const saveAnswerComment = async (ans: FormAnswer) => {
+  const val = editingAnswerComments.value[ans.id] ?? ans.comentari ?? ''
+  savingAnswerId.value = ans.id
+  try {
+    await updateFormAnswer(ans.id, { comentari: val })
+    ans.comentari = val
+    toast.add({ severity: 'success', summary: 'Comentari desat', detail: 'S\'ha guardat el comentari de la resposta', life: 2500 })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut guardar el comentari', life: 3000 })
+  } finally {
+    savingAnswerId.value = null
+  }
+}
+
 const selectedResponse = ref<FormResponseWithAnswers | null>(null)
 const viewModalVisible = ref(false)
 
 const viewAnswers = (r: FormResponseWithAnswers) => {
   selectedResponse.value = r
+  editingResponseComment.value = r.comentari || ''
+  editingAnswerComments.value = {}
+  r.answers.forEach(a => {
+    editingAnswerComments.value[a.id] = a.comentari || ''
+  })
   viewModalVisible.value = true
+}
+
+const hasInteresting = (r: FormResponseWithAnswers) => {
+  return r.is_interesting || r.answers.some(a => a.is_interesting)
+}
+
+const hasComment = (r: FormResponseWithAnswers) => {
+  return !!r.comentari || r.answers.some(a => !!a.comentari)
 }
 
 const getStatusBadge = (status: string) => {
@@ -151,13 +243,19 @@ const exportToExcel = () => {
     'Telèfon',
     'Data de Resposta',
     'Estat',
+    'Interessant',
+    'Comentari Entrenador',
     ...questions.map(q => q.pregunta)
   ]
 
   const rows = selectedResponsesToExport.value.map(res => {
     const candidateAnswers = questions.map(q => {
       const ans = res.answers.find(a => a.question_id === q.id)
-      return ans ? ans.valor || '' : ''
+      if (!ans) return ''
+      let text = ans.valor || ''
+      if (ans.is_interesting) text += ' [★ Interessant]'
+      if (ans.comentari) text += ` (Nota: ${ans.comentari})`
+      return text
     })
 
     return [
@@ -166,6 +264,8 @@ const exportToExcel = () => {
       res.telefon_candidat || '',
       new Date(res.created_at).toLocaleDateString(),
       res.estat || '',
+      res.is_interesting ? 'Sí' : 'No',
+      res.comentari || '',
       ...candidateAnswers
     ]
   })
@@ -236,14 +336,45 @@ const exportToExcel = () => {
       </div>
 
       <div v-else class="responses-grid">
-        <div v-for="res in filteredResponses" :key="res.id" class="glass-card flex flex-col gap-3">
+        <div 
+          v-for="res in filteredResponses" 
+          :key="res.id" 
+          class="glass-card flex flex-col gap-3 relative transition-all"
+          :class="{ 'border-amber-400/80 shadow-amber-500/10 shadow-lg': hasInteresting(res) }"
+        >
           <div class="flex justify-between align-start">
             <div>
-              <h3 class="font-bold text-lg mb-1">{{ res.nom_candidat }}</h3>
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="font-bold text-lg m-0">{{ res.nom_candidat }}</h3>
+                <Button 
+                  :icon="res.is_interesting ? 'ti ti-star-filled' : 'ti ti-star'" 
+                  text 
+                  rounded 
+                  size="small" 
+                  :class="res.is_interesting ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'"
+                  :title="res.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
+                  @click.stop="toggleResponseInteresting(res)"
+                />
+              </div>
               <p class="text-sm text-secondary"><i class="ti ti-mail mr-1"></i> {{ res.email_candidat }}</p>
               <p v-if="res.telefon_candidat" class="text-sm text-secondary"><i class="ti ti-phone mr-1"></i> {{ res.telefon_candidat }}</p>
             </div>
-            <span class="badge" :class="getStatusBadge(res.estat)">{{ res.estat.toUpperCase() }}</span>
+            <div class="flex flex-col items-end gap-1">
+              <span class="badge" :class="getStatusBadge(res.estat)">{{ res.estat.toUpperCase() }}</span>
+              <div class="flex gap-1 mt-1">
+                <span v-if="hasInteresting(res)" class="text-xs bg-amber-500/20 text-amber-500 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <i class="ti ti-star-filled text-xs"></i> {{ $t('forms.hasInteresting') }}
+                </span>
+                <span v-if="hasComment(res)" class="text-xs bg-blue-500/20 text-blue-500 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <i class="ti ti-message text-xs"></i> {{ $t('forms.hasComment') }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="res.comentari" class="bg-surface border border-blue-500/30 rounded p-2.5 text-xs text-secondary flex items-start gap-2">
+            <i class="ti ti-notes text-blue-400 text-sm mt-0.5"></i>
+            <span class="whitespace-pre-wrap flex-1">{{ res.comentari }}</span>
           </div>
 
           <div class="text-sm text-secondary mt-2">
@@ -269,23 +400,113 @@ const exportToExcel = () => {
       </div>
     </div>
 
-    <Dialog v-model:visible="viewModalVisible" header="Detall de respostes" modal :style="{ width: '600px' }">
+    <!-- Modal detail -->
+    <Dialog v-model:visible="viewModalVisible" header="Detall de respostes" modal :style="{ width: '680px', maxWidth: '95vw' }">
       <div v-if="selectedResponse" class="flex flex-col gap-4 mt-2">
-        <div class="bg-surface border rounded p-4 mb-4">
-          <h3 class="font-bold mb-2">{{ selectedResponse.nom_candidat }}</h3>
-          <p><i class="ti ti-mail mr-1"></i> {{ selectedResponse.email_candidat }}</p>
-          <p v-if="selectedResponse.telefon_candidat"><i class="ti ti-phone mr-1"></i> {{ selectedResponse.telefon_candidat }}</p>
+        <div class="bg-surface border rounded p-4 mb-2 relative">
+          <div class="flex items-start justify-between gap-4 mb-2">
+            <div>
+              <h3 class="font-bold text-lg mb-1 flex items-center gap-2">
+                {{ selectedResponse.nom_candidat }}
+                <Button 
+                  :icon="selectedResponse.is_interesting ? 'ti ti-star-filled text-amber-400' : 'ti ti-star text-gray-400'" 
+                  text 
+                  rounded 
+                  size="small" 
+                  :title="selectedResponse.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
+                  @click="toggleResponseInteresting(selectedResponse)"
+                />
+              </h3>
+              <p class="text-sm"><i class="ti ti-mail mr-1"></i> {{ selectedResponse.email_candidat }}</p>
+              <p v-if="selectedResponse.telefon_candidat" class="text-sm"><i class="ti ti-phone mr-1"></i> {{ selectedResponse.telefon_candidat }}</p>
+            </div>
+            <span class="badge" :class="getStatusBadge(selectedResponse.estat)">{{ selectedResponse.estat.toUpperCase() }}</span>
+          </div>
+
+          <!-- Coach Global Note -->
+          <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <label class="text-xs font-semibold text-secondary flex items-center gap-1 mb-1">
+              <i class="ti ti-notes"></i> {{ $t('forms.coachComment') }} (Global del candidat):
+            </label>
+            <div class="flex flex-col gap-2">
+              <Textarea 
+                v-model="editingResponseComment" 
+                rows="2" 
+                autoResize 
+                :placeholder="$t('forms.commentPlaceholder')" 
+                class="w-full text-sm"
+              />
+              <div class="flex justify-end">
+                <Button 
+                  label="Guardar nota global" 
+                  icon="ti ti-check" 
+                  size="small" 
+                  severity="secondary" 
+                  :loading="isSavingResponseComment"
+                  @click="saveResponseComment(selectedResponse)" 
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <h4 class="font-bold mb-2 border-b pb-2">Respostes del formulari</h4>
+        <h4 class="font-bold mb-2 border-b pb-2 flex items-center justify-between">
+          <span>Respostes del formulari</span>
+          <span class="text-xs font-normal text-secondary">{{ selectedResponse.answers.length }} preguntes contestades</span>
+        </h4>
         
         <div v-if="selectedResponse.answers.length === 0" class="text-secondary text-sm">
           No ha contestat cap pregunta extra.
         </div>
 
-        <div v-for="(answer, idx) in selectedResponse.answers" :key="answer.id" class="mb-4">
-          <div class="text-sm text-secondary font-medium mb-1">{{ getQuestionText(answer.question_id) }}</div>
-          <div class="bg-surface p-3 rounded border whitespace-pre-wrap">{{ answer.valor || '-' }}</div>
+        <div 
+          v-for="answer in selectedResponse.answers" 
+          :key="answer.id" 
+          class="mb-4 p-3.5 rounded border transition-colors"
+          :class="answer.is_interesting ? 'bg-amber-500/5 border-amber-400/80 dark:border-amber-500/60' : 'bg-surface border-gray-200 dark:border-gray-700'"
+        >
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <div class="text-sm text-secondary font-medium flex-1">
+              {{ getQuestionText(answer.question_id) }}
+            </div>
+            <Button 
+              :icon="answer.is_interesting ? 'ti ti-star-filled text-amber-400' : 'ti ti-star text-gray-400'" 
+              text 
+              rounded 
+              size="small" 
+              :title="answer.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
+              @click="toggleAnswerInteresting(answer)"
+            />
+          </div>
+
+          <div class="p-3 rounded bg-background border text-sm whitespace-pre-wrap mb-3 font-mono text-gray-800 dark:text-gray-200">
+            {{ answer.valor || '-' }}
+          </div>
+
+          <!-- Answer Coach Comment -->
+          <div class="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
+            <label class="text-xs font-medium text-secondary flex items-center gap-1 mb-1">
+              <i class="ti ti-message"></i> Comentari de l'entrenador sobre aquesta resposta:
+            </label>
+            <div class="flex gap-2 items-center">
+              <Textarea 
+                v-model="editingAnswerComments[answer.id]" 
+                rows="1" 
+                autoResize 
+                :placeholder="$t('forms.commentPlaceholder')" 
+                class="w-full text-xs"
+              />
+              <Button 
+                icon="ti ti-check" 
+                size="small" 
+                severity="secondary" 
+                outlined 
+                :loading="savingAnswerId === answer.id"
+                title="Guardar comentari"
+                @click="saveAnswerComment(answer)" 
+              />
+            </div>
+          </div>
         </div>
       </div>
     </Dialog>
@@ -357,21 +578,33 @@ const exportToExcel = () => {
 .flex { display: flex; }
 .flex-col { flex-direction: column; }
 .flex-1 { flex: 1; }
+.gap-1 { gap: 4px; }
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
 .align-center { align-items: center; }
 .align-start { align-items: flex-start; }
 .justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
 .mb-1 { margin-bottom: 4px; }
 .mb-2 { margin-bottom: 8px; }
 .mb-3 { margin-bottom: 12px; }
 .mb-4 { margin-bottom: 16px; }
 .mb-6 { margin-bottom: 24px; }
+.mt-0\.5 { margin-top: 2px; }
+.mt-1 { margin-top: 4px; }
 .mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
 .mt-auto { margin-top: auto; }
+.m-0 { margin: 0; }
+.p-2 { padding: 8px; }
+.p-2\.5 { padding: 10px; }
 .p-3 { padding: 12px; }
+.p-3\.5 { padding: 14px; }
 .p-4 { padding: 16px; }
+.px-2 { padding-left: 8px; padding-right: 8px; }
+.py-0\.5 { padding-top: 2px; padding-bottom: 2px; }
+.pt-2 { padding-top: 8px; }
 .pt-3 { padding-top: 12px; }
 .py-8 { padding-top: 32px; padding-bottom: 32px; }
 .text-center { text-align: center; }
@@ -387,14 +620,21 @@ const exportToExcel = () => {
 .bg-danger { background-color: var(--accent-danger); }
 .bg-secondary { background-color: var(--text-secondary); }
 .font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
 .font-medium { font-weight: 500; }
+.font-normal { font-weight: 400; }
+.font-mono { font-family: monospace; }
 .border { border: 1px solid var(--border); }
 .border-b { border-bottom: 1px solid var(--border); }
 .border-t { border-top: 1px solid var(--border); }
 .rounded { border-radius: var(--radius-sm); }
+.rounded-full { border-radius: 9999px; }
 .whitespace-pre-wrap { white-space: pre-wrap; }
 .opacity-50 { opacity: 0.5; }
 .w-full { width: 100%; }
+.relative { position: relative; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
 
 .field {
   display: flex;

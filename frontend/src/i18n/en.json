@@ -374,6 +374,14 @@
     "statusPending": "Pending",
     "statusContacted": "Contacted",
     "statusAccepted": "Accepted",
-    "statusRejected": "Discarded"
+    "statusRejected": "Discarded",
+    "markInteresting": "Mark as interesting",
+    "unmarkInteresting": "Unmark interesting",
+    "interesting": "Interesting",
+    "coachComment": "Coach comment",
+    "commentPlaceholder": "Add a note or comment...",
+    "saveComment": "Save comment",
+    "hasInteresting": "Starred",
+    "hasComment": "Has comment"
   }
 }

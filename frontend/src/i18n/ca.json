@@ -374,6 +374,14 @@
     "statusPending": "Pendent",
     "statusContacted": "Contactat",
     "statusAccepted": "Acceptat",
-    "statusRejected": "Descartat"
+    "statusRejected": "Descartat",
+    "markInteresting": "Marcar com a interessant",
+    "unmarkInteresting": "Desmarcar d'interessant",
+    "interesting": "Interessant",
+    "coachComment": "Comentari de l'entrenador",
+    "commentPlaceholder": "Afegeix una nota o comentari...",
+    "saveComment": "Guardar comentari",
+    "hasInteresting": "Destacat",
+    "hasComment": "Amb comentari"
   }
 }

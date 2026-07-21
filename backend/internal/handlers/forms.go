@@ -232,6 +232,44 @@ func (h *Handler) UpdateResponseStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Estat actualitzat"})
 }
 
+// UpdateFormResponseDetails - Actualitza estat, is_interesting i/o comentari de la resposta global
+func (h *Handler) UpdateFormResponseDetails(c *gin.Context) {
+	responseID := c.Param("responseId")
+
+	var req models.UpdateFormResponseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.Store.UpdateFormResponseDetails(c.Request.Context(), responseID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Resposta actualitzada"})
+}
+
+// UpdateFormAnswer - Actualitza is_interesting i/o comentari d'una resposta concreta a una pregunta
+func (h *Handler) UpdateFormAnswer(c *gin.Context) {
+	answerID := c.Param("answerId")
+
+	var req models.UpdateFormAnswerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.Store.UpdateFormAnswer(c.Request.Context(), answerID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Resposta a la pregunta actualitzada"})
+}
+
 // SubmitFormResponse - L'endpoint públic on s'envien les respostes
 func (h *Handler) SubmitFormResponse(c *gin.Context) {
 	id := c.Param("id") // form_id

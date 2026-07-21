@@ -105,6 +105,8 @@ type Store interface {
 
 	GetFormResponses(ctx context.Context, formID string) ([]models.FormResponseWithAnswers, error)
 	UpdateResponseStatus(ctx context.Context, responseID string, estat string) error
+	UpdateFormResponseDetails(ctx context.Context, responseID string, req models.UpdateFormResponseRequest) error
+	UpdateFormAnswer(ctx context.Context, answerID string, req models.UpdateFormAnswerRequest) error
 	SubmitFormResponse(ctx context.Context, formID string, req models.SubmitFormResponseRequest) error
 
 	// System Logs

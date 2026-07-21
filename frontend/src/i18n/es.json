@@ -374,6 +374,14 @@
     "statusPending": "Pendiente",
     "statusContacted": "Contactado",
     "statusAccepted": "Aceptado",
-    "statusRejected": "Descartado"
+    "statusRejected": "Descartado",
+    "markInteresting": "Marcar como interesante",
+    "unmarkInteresting": "Desmarcar de interesante",
+    "interesting": "Interesante",
+    "coachComment": "Comentario del entrenador",
+    "commentPlaceholder": "Añade una nota o comentario...",
+    "saveComment": "Guardar comentario",
+    "hasInteresting": "Destacado",
+    "hasComment": "Con comentario"
   }
 }

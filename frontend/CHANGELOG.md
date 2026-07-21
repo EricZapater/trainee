@@ -2,6 +2,36 @@
 
 Tots els canvis notables en aquest projecte es documentaran en aquest fitxer.
 
+## [1.3.3] - 2026-07-21
+
+### Afegit
+
+#### Backend
+- **Catàleg i Comandes de Material**:
+  - Nova migració de base de dades `000031_create_material_catalog_and_orders.up.sql` que crea les taules `material_productes` (nom, descripció, talles, flag `requereix_talla`, imatges, preu, estat `actiu`) i `material_comandes` (`atleta_id`, `producte_id`, `talla`, `quantitat`, `preu_unitari`, `preu_total`, `estat` [`pendent`, `bloquejada`, `pagada`, `servida`] i `notes`).
+  - Afegida la configuració global `material_comandes_enabled` a `system_settings` per obrir/tancar les comandes.
+  - Nous endpoints API Gin per a la gestió de productes, comandes d'atletes, canvis d'estat en massa, pujada d'imatges i exportació en format CSV/Excel.
+  - Millores a `uploader.go` amb generació automàtica de còpia local (`/api/uploads/...`) i fallback si les credencials o el domini públic de Cloudflare R2 no estan actius.
+- **Respostes interessants i comentaris d'entrenador als formularis**:
+  - Nova migració de base de dades `000032_add_interessant_and_comentaris_to_forms` que afegeix les columnes `is_interesting` (booleà) i `comentari` (text) a les taules `form_responses` i `form_answers`.
+  - Actualitzats els models i store de Go per gestionar l'estat de destacat i els comentaris interns privats de l'entrenador.
+  - Nous endpoints HTTP `PUT /api/entrenador/responses/:responseId` i `PUT /api/entrenador/answers/:answerId`.
+
+#### Frontend
+- **Mòdul de Material per als Atletes (`MaterialCatalogView.vue`)**:
+  - Nova ruta `/material` per consultar el catàleg actiu, triar talles i quantitat compacta (`140px`), afegir notes i enviar comandes de múltiples productes.
+  - Taula de l'històrial de comandes de l'atleta amb badges d'estat i opció d'editar/cancel·lar comandes pendents quan les comandes estan obertes.
+- **Mòdul de Gestió de Material per als Entrenadors (`MaterialManagerView.vue`)**:
+  - Nova ruta `/material-manager` amb **Commutador Global ON/OFF** per obrir/tancar la finestra de comandes a tots els atletes.
+  - *Gestió del Catàleg*: Formulari modal per crear/editar productes amb opció de pujar fitxer o afegir per URL directa, definició de talles i commutador de *"Requereix Talla"*.
+  - *Gestió de Comandes*: Filtres per dates i estats, resum de mètriques (total comandes, unitats, import total), acció massiva *"Bloquejar Pendents"*, selector d'estats a la taula i **botó d'exportació a Excel (CSV)** desglossat línia per línia.
+- **Marcador d'interessant i comentaris d'entrenador als formularis**:
+  - *Vista general de respostes*: Botons d'estrella per marcar/desmarcar candidats com a interessants, insígnies indicadores visuals (`Destacat` / `Amb comentari`) i previsualització del comentari privat.
+  - *Modal de detall de respostes*: Suport per afegir un comentari i marcar com a interessant tant el candidat complet com cada una de les preguntes individuals contestades, amb ressaltat visual en daurat.
+  - *Exportació a Excel/CSV*: Inclou l'estat d'interessant i els comentaris privats de l'entrenador a l'informe descarregat.
+  - *Traduccions*: Afegides les claus de traducció en català, castellà i anglès (`ca.json`, `es.json`, `en.json`).
+
+
 ## [1.3.2] - 2026-07-13
 
 ### Afegit

@@ -210,6 +210,8 @@ func main() {
 
 		entrenadorRoutes.GET("/forms/:id/responses", h.GetFormResponses)
 		entrenadorRoutes.PUT("/responses/:responseId/status", h.UpdateResponseStatus)
+		entrenadorRoutes.PUT("/responses/:responseId", h.UpdateFormResponseDetails)
+		entrenadorRoutes.PUT("/answers/:answerId", h.UpdateFormAnswer)
 
 		// Settings
 		entrenadorRoutes.GET("/settings/cron", settingsHandler.GetCronSettings)

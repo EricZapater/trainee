@@ -32,6 +32,8 @@ export interface FormAnswer {
   response_id: string
   question_id: string
   valor: string | null
+  is_interesting?: boolean
+  comentari?: string | null
   created_at: string
 }
 
@@ -42,6 +44,8 @@ export interface FormResponse {
   email_candidat: string
   telefon_candidat: string | null
   estat: 'pendent' | 'contactat' | 'descartat' | 'acceptat'
+  is_interesting?: boolean
+  comentari?: string | null
   created_at: string
 }
 
@@ -111,6 +115,20 @@ export const getFormResponses = async (formId: string): Promise<FormResponseWith
 
 export const updateResponseStatus = async (responseId: string, estat: string): Promise<void> => {
   await apiClient.put(`/entrenador/responses/${responseId}/status`, { estat })
+}
+
+export const updateFormResponseDetails = async (
+  responseId: string,
+  payload: { estat?: string; is_interesting?: boolean; comentari?: string | null }
+): Promise<void> => {
+  await apiClient.put(`/entrenador/responses/${responseId}`, payload)
+}
+
+export const updateFormAnswer = async (
+  answerId: string,
+  payload: { is_interesting?: boolean; comentari?: string | null }
+): Promise<void> => {
+  await apiClient.put(`/entrenador/answers/${answerId}`, payload)
 }
 
 // Public Endpoints

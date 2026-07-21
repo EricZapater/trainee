@@ -425,15 +425,19 @@ type FormResponse struct {
 	EmailCandidat   string    `json:"email_candidat"`
 	TelefonCandidat *string   `json:"telefon_candidat"`
 	Estat           string    `json:"estat"` // pendent, contactat, descartat, acceptat
+	IsInteresting   bool      `json:"is_interesting"`
+	Comentari       *string   `json:"comentari"`
 	CreatedAt       time.Time `json:"created_at"`
 }
 
 type FormAnswer struct {
-	ID         string    `json:"id"`
-	ResponseID string    `json:"response_id"`
-	QuestionID string    `json:"question_id"`
-	Valor      *string   `json:"valor"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID            string    `json:"id"`
+	ResponseID    string    `json:"response_id"`
+	QuestionID    string    `json:"question_id"`
+	Valor         *string   `json:"valor"`
+	IsInteresting bool      `json:"is_interesting"`
+	Comentari     *string   `json:"comentari"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // Request Models
@@ -480,6 +484,17 @@ type SubmitFormAnswerRequest struct {
 
 type UpdateFormResponseStatusRequest struct {
 	Estat string `json:"estat" binding:"required,oneof=pendent contactat descartat acceptat"`
+}
+
+type UpdateFormResponseRequest struct {
+	Estat         *string `json:"estat"`
+	IsInteresting *bool   `json:"is_interesting"`
+	Comentari     *string `json:"comentari"`
+}
+
+type UpdateFormAnswerRequest struct {
+	IsInteresting *bool   `json:"is_interesting"`
+	Comentari     *string `json:"comentari"`
 }
 
 // Extended response structures
