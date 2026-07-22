@@ -340,7 +340,7 @@ const exportToExcel = () => {
           v-for="res in filteredResponses" 
           :key="res.id" 
           class="glass-card flex flex-col gap-3 relative transition-all"
-          :class="{ 'border-amber-400/80 shadow-amber-500/10 shadow-lg': hasInteresting(res) }"
+          :class="{ 'card-highlighted': hasInteresting(res) }"
         >
           <div class="flex justify-between align-start">
             <div>
@@ -351,7 +351,7 @@ const exportToExcel = () => {
                   text 
                   rounded 
                   size="small" 
-                  :class="res.is_interesting ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'"
+                  :class="res.is_interesting ? 'text-gold' : 'text-gray'"
                   :title="res.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
                   @click.stop="toggleResponseInteresting(res)"
                 />
@@ -409,7 +409,7 @@ const exportToExcel = () => {
       <div v-if="selectedResponse" class="flex flex-col gap-4 mt-2">
         <div 
           class="bg-surface border rounded p-4 mb-2 relative transition-colors"
-          :class="selectedResponse.is_interesting ? 'border-amber-400/80 shadow-amber-500/10 shadow-md' : 'border-gray-200 dark:border-gray-700'"
+          :class="selectedResponse.is_interesting ? 'card-highlighted' : 'border'"
         >
           <div class="flex items-start justify-between gap-4 mb-2">
             <div>
@@ -420,7 +420,7 @@ const exportToExcel = () => {
                   text 
                   rounded 
                   size="small" 
-                  :class="selectedResponse.is_interesting ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'"
+                  :class="selectedResponse.is_interesting ? 'text-gold' : 'text-gray'"
                   :title="selectedResponse.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
                   @click="toggleResponseInteresting(selectedResponse)"
                 />
@@ -472,7 +472,7 @@ const exportToExcel = () => {
           v-for="answer in selectedResponse.answers" 
           :key="answer.id" 
           class="mb-4 p-3.5 rounded border transition-colors"
-          :class="answer.is_interesting ? 'bg-amber-500/5 border-amber-400/80 dark:border-amber-500/60' : 'bg-surface border-gray-200 dark:border-gray-700'"
+          :class="answer.is_interesting ? 'comment-highlighted' : 'bg-surface border'"
         >
           <div class="flex items-start justify-between gap-2 mb-2">
             <div class="text-sm text-secondary font-medium flex-1">
@@ -483,7 +483,7 @@ const exportToExcel = () => {
               text 
               rounded 
               size="small" 
-              :class="answer.is_interesting ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'"
+              :class="answer.is_interesting ? 'text-gold' : 'text-gray'"
               :title="answer.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
               @click="toggleAnswerInteresting(answer)"
             />
@@ -657,4 +657,36 @@ const exportToExcel = () => {
   font-size: 0.9rem;
   font-weight: 500;
 }
+
+/* Regles personalitzades per destacar elements interessants */
+.card-highlighted {
+  border-color: #f59e0b !important;
+  box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.15), 0 4px 6px -4px rgba(245, 158, 11, 0.15) !important;
+}
+
+.comment-highlighted {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  background-color: rgba(245, 158, 11, 0.06) !important;
+}
+
+.text-gold {
+  color: #f59e0b !important;
+}
+
+.text-blue {
+  color: #3b82f6 !important;
+}
+
+.border-blue {
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.text-gray {
+  color: #9ca3af !important;
+}
+
+.text-gray:hover {
+  color: #f59e0b !important;
+}
 </style>
+
