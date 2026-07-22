@@ -372,8 +372,12 @@ const exportToExcel = () => {
             </div>
           </div>
 
-          <div v-if="res.comentari" class="bg-surface border border-blue-500/30 rounded p-2.5 text-xs text-secondary flex items-start gap-2">
-            <i class="ti ti-notes text-blue-400 text-sm mt-0.5"></i>
+          <div 
+            v-if="res.comentari" 
+            class="bg-surface border rounded p-2.5 text-xs text-secondary flex items-start gap-2 transition-colors"
+            :class="hasInteresting(res) ? 'border-amber-500/40 bg-amber-500/5' : 'border-blue-500/30'"
+          >
+            <i class="ti ti-notes text-sm mt-0.5" :class="hasInteresting(res) ? 'text-amber-500' : 'text-blue-400'"></i>
             <span class="whitespace-pre-wrap flex-1">{{ res.comentari }}</span>
           </div>
 
@@ -403,16 +407,20 @@ const exportToExcel = () => {
     <!-- Modal detail -->
     <Dialog v-model:visible="viewModalVisible" header="Detall de respostes" modal :style="{ width: '680px', maxWidth: '95vw' }">
       <div v-if="selectedResponse" class="flex flex-col gap-4 mt-2">
-        <div class="bg-surface border rounded p-4 mb-2 relative">
+        <div 
+          class="bg-surface border rounded p-4 mb-2 relative transition-colors"
+          :class="selectedResponse.is_interesting ? 'border-amber-400/80 shadow-amber-500/10 shadow-md' : 'border-gray-200 dark:border-gray-700'"
+        >
           <div class="flex items-start justify-between gap-4 mb-2">
             <div>
               <h3 class="font-bold text-lg mb-1 flex items-center gap-2">
                 {{ selectedResponse.nom_candidat }}
                 <Button 
-                  :icon="selectedResponse.is_interesting ? 'ti ti-star-filled text-amber-400' : 'ti ti-star text-gray-400'" 
+                  :icon="selectedResponse.is_interesting ? 'ti ti-star-filled' : 'ti ti-star'" 
                   text 
                   rounded 
                   size="small" 
+                  :class="selectedResponse.is_interesting ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'"
                   :title="selectedResponse.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
                   @click="toggleResponseInteresting(selectedResponse)"
                 />
@@ -422,6 +430,7 @@ const exportToExcel = () => {
             </div>
             <span class="badge" :class="getStatusBadge(selectedResponse.estat)">{{ selectedResponse.estat.toUpperCase() }}</span>
           </div>
+
 
           <!-- Coach Global Note -->
           <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
@@ -470,10 +479,11 @@ const exportToExcel = () => {
               {{ getQuestionText(answer.question_id) }}
             </div>
             <Button 
-              :icon="answer.is_interesting ? 'ti ti-star-filled text-amber-400' : 'ti ti-star text-gray-400'" 
+              :icon="answer.is_interesting ? 'ti ti-star-filled' : 'ti ti-star'" 
               text 
               rounded 
               size="small" 
+              :class="answer.is_interesting ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'"
               :title="answer.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
               @click="toggleAnswerInteresting(answer)"
             />
