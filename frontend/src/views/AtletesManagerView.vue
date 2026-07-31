@@ -12,8 +12,10 @@ import Dialog from 'primevue/dialog'
 import Tag from 'primevue/tag'
 import Dropdown from 'primevue/dropdown'
 import InputText from 'primevue/inputtext'
+import { usePaginationPreference } from '@/composables/usePaginationPreference'
 
 const toast = useToast()
+const { pageSize, setPageSize } = usePaginationPreference()
 const { t } = useI18n()
 const atletes = ref<{ id: string; nom: string; cognoms: string; email: string; actiu: boolean }[]>([])
 const loading = ref(false)
@@ -169,8 +171,9 @@ const confirmSaveDetails = async () => {
         responsiveLayout="scroll" 
         :emptyMessage="$t('athletesManager.emptyState')"
         paginator 
-        :rows="10" 
-        :rowsPerPageOptions="[10, 25, 50]"
+        :rows="pageSize" 
+        :rowsPerPageOptions="[10, 20, 50]"
+        @page="(e: any) => setPageSize(e.rows)"
       >
         <Column :header="$t('athletesManager.name')">
           <template #body="{ data }">

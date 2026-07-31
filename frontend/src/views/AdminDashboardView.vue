@@ -12,11 +12,13 @@ import Tag from 'primevue/tag'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import ConfirmDialog from 'primevue/confirmdialog'
+import { usePaginationPreference } from '@/composables/usePaginationPreference'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const toast = useToast()
 const confirm = useConfirm()
+const { pageSize, setPageSize } = usePaginationPreference()
 
 const usuaris = ref<AdminUser[]>([])
 const loading = ref(true)
@@ -220,8 +222,9 @@ onMounted(() => {
         responsiveLayout="scroll"
         class="custom-table"
         :paginator="true"
-        :rows="20"
+        :rows="pageSize"
         :rowsPerPageOptions="[10, 20, 50]"
+        @page="(e: any) => setPageSize(e.rows)"
         :globalFilterFields="['nom', 'cognoms', 'email']"
         stripedRows
       >

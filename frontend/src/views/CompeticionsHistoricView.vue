@@ -12,8 +12,10 @@ import Tag from 'primevue/tag'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import InputText from 'primevue/inputtext'
+import { usePaginationPreference } from '@/composables/usePaginationPreference'
 
 const toast = useToast()
+const { pageSize, setPageSize } = usePaginationPreference()
 
 const competicions = ref<Competicio[]>([])
 const loading = ref(false)
@@ -166,8 +168,9 @@ const openDetails = (comp: Competicio) => {
         :value="filteredCompeticions" 
         :loading="loading"
         paginator 
-        :rows="10" 
+        :rows="pageSize" 
         :rowsPerPageOptions="[10, 20, 50]"
+        @page="(e: any) => setPageSize(e.rows)"
         tableStyle="min-width: 50rem"
         stripedRows
         hoverableRows

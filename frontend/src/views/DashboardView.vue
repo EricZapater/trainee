@@ -10,6 +10,7 @@ import Button from 'primevue/button'
 import Paginator from 'primevue/paginator'
 import Checkbox from 'primevue/checkbox'
 import AthleteDrawer from '@/components/AthleteDrawer.vue'
+import { usePaginationPreference } from '@/composables/usePaginationPreference'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -25,7 +26,7 @@ const drawerVisible = ref(false)
 const selectedAthlete = ref<AtletaSubmissionSummary | null>(null)
 
 const first = ref(0)
-const rows = ref(10)
+const { pageSize: rows, setPageSize } = usePaginationPreference()
 const showOnlyPending = ref(false)
 const showInactive = ref(false)
 
@@ -71,7 +72,9 @@ const loadSubmissions = async () => {
 
 const onPage = (event: any) => {
   first.value = event.first
-  rows.value = event.rows
+  if (event.rows !== rows.value) {
+    setPageSize(event.rows)
+  }
 }
 
 onMounted(() => {

@@ -5,8 +5,11 @@ import { useToast } from 'primevue/usetoast'
 import InputSwitch from 'primevue/inputswitch'
 import MultiSelect from 'primevue/multiselect'
 import Button from 'primevue/button'
+import Select from 'primevue/select'
+import { usePaginationPreference } from '@/composables/usePaginationPreference'
 
 const toast = useToast()
+const { pageSize, setPageSize } = usePaginationPreference()
 const loading = ref(true)
 const saving = ref(false)
 
@@ -124,6 +127,34 @@ onMounted(() => {
               display="chip" 
               placeholder="Selecciona els dies" 
               class="w-full" 
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Display Preferences -->
+      <div class="glass-card setting-card">
+        <div class="setting-header">
+          <div>
+            <h3>Preferències de Visualització</h3>
+            <p class="text-sm text-muted">Configura el nombre d'elements per pàgina per defecte a les taules.</p>
+          </div>
+        </div>
+
+        <div class="setting-body">
+          <div class="field">
+            <label>Elements per pàgina per defecte</label>
+            <Select 
+              :modelValue="pageSize" 
+              :options="[
+                { label: '10 elements per pàgina', value: 10 },
+                { label: '20 elements per pàgina', value: 20 },
+                { label: '50 elements per pàgina', value: 50 }
+              ]" 
+              optionLabel="label" 
+              optionValue="value" 
+              class="w-full" 
+              @update:modelValue="(val: number) => setPageSize(val)"
             />
           </div>
         </div>

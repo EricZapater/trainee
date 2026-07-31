@@ -13,8 +13,10 @@ import Dropdown from 'primevue/dropdown'
 import FileUpload from 'primevue/fileupload'
 import Tag from 'primevue/tag'
 import { FilterMatchMode } from '@primevue/core/api'
+import { usePaginationPreference } from '@/composables/usePaginationPreference'
 
 const toast = useToast()
+const { pageSize, setPageSize } = usePaginationPreference()
 
 const tickets = ref<FeedbackTicket[]>([])
 const loading = ref(true)
@@ -202,8 +204,9 @@ const formatDate = (val: string) => {
         v-model:filters="filters" 
         filterDisplay="row" 
         paginator 
-        :rows="10" 
+        :rows="pageSize" 
         :rowsPerPageOptions="[10, 20, 50]" 
+        @page="(e: any) => setPageSize(e.rows)"
         stripedRows 
         hoverableRows
         class="w-full"

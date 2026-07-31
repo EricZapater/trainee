@@ -34,6 +34,14 @@ Tots els canvis notables en aquest projecte es documentaran en aquest fitxer.
   - Indicadors visuals en forma de badges per identificar l'entrenador assignat (*"El teu formulari"*, *"Entrenador: Nom"* o *"Sense assignar"*) i l'atleta vinculat.
   - Botons d'acció directes *"Assignar-me'l"* i *"Desassignar-me'l"* tant a les targetes de resum com al diàleg modal de detall.
   - Nou filtre a la barra d'eines per veure *"Totes les respostes"*, *"Els meus formularis"* o *"Sense assignar"*.
+- **Vista en Taula de Respostes de Formularis (`FormResponsesView.vue`)**:
+  - Reemplaçada la graella de targetes per una taula estil dashboard (`.responses-table`) responsiva i paginada.
+  - Inclou columnes per al Candidat (amb ⭐ estrella per destacar), Contacte, Atleta Vinculat, Entrenador Assignat (+ botó *"Assignar-me'l"* / *"Desassignar-me'l"*), Data, Estat (`Select` inline), Notes (preview) i Accions (*"Veure"* detall).
+- **Preferència de Paginació Global (`usePaginationPreference.ts`)**:
+  - Nou composable que emmagatzema la preferència de l'usuari (10, 20 o 50 elements per pàgina) a `localStorage` (`trainee_page_size`).
+  - S'actualitza automàticament cada vegada que l'usuari canvia la mida de pàgina des de qualsevol taula paginada.
+  - Aplicat com a valor per defecte a totes les taules paginades de l'aplicació (`DashboardView`, `FormResponsesView`, `AtletesManagerView`, `CompeticionsHistoricView`, `FeedbackTicketsView`, `AdminDashboardView`).
+  - Nova secció **"Preferències de Visualització"** a `SettingsView.vue` per configurar la mida de pàgina per defecte.
 
 ## [1.3.3] - 2026-07-21
 

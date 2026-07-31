@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
@@ -21,6 +21,8 @@ import Dialog from 'primevue/dialog'
 import DatePicker from 'primevue/datepicker'
 import Checkbox from 'primevue/checkbox'
 import Textarea from 'primevue/textarea'
+import Paginator from 'primevue/paginator'
+import { usePaginationPreference } from '@/composables/usePaginationPreference'
 
 const route = useRoute()
 const router = useRouter()
@@ -201,6 +203,20 @@ const getQuestionText = (qId: string) => {
 
 const dateRange = ref<Date[]>([])
 
+const first = ref(0)
+const { pageSize, setPageSize } = usePaginationPreference()
+
+const onPageChange = (event: any) => {
+  first.value = event.first
+  if (event.rows !== pageSize.value) {
+    setPageSize(event.rows)
+  }
+}
+
+watch([dateRange, assignFilter], () => {
+  first.value = 0
+})
+
 const filteredResponses = computed(() => {
   let list = responses.value
 
@@ -230,6 +246,10 @@ const filteredResponses = computed(() => {
     }
     return true
   })
+})
+
+const paginatedResponses = computed(() => {
+  return filteredResponses.value.slice(first.value, first.value + pageSize.value)
 })
 
 const exportModalVisible = ref(false)
@@ -376,92 +396,132 @@ const exportToExcel = () => {
         <p>No hi ha respostes en aquestes dates.</p>
       </div>
 
-      <div v-else class="responses-grid">
-        <div 
-          v-for="res in filteredResponses" 
-          :key="res.id" 
-          class="glass-card flex flex-col gap-3 relative transition-all"
-          :class="{ 'card-highlighted': hasInteresting(res) }"
-        >
-          <div class="flex justify-between align-start">
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <h3 class="font-bold text-lg m-0">{{ res.nom_candidat }}</h3>
-                <Button 
-                  :icon="res.is_interesting ? 'ti ti-star-filled' : 'ti ti-star'" 
-                  text 
-                  rounded 
-                  size="small" 
-                  :class="res.is_interesting ? 'text-gold' : 'text-gray'"
-                  :title="res.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
-                  @click.stop="toggleResponseInteresting(res)"
-                />
-              </div>
-              <p class="text-sm text-secondary"><i class="ti ti-mail mr-1"></i> {{ res.email_candidat }}</p>
-              <p v-if="res.telefon_candidat" class="text-sm text-secondary"><i class="ti ti-phone mr-1"></i> {{ res.telefon_candidat }}</p>
-            </div>
-            <div class="flex flex-col items-end gap-1">
-              <span class="badge" :class="getStatusBadge(res.estat)">{{ res.estat.toUpperCase() }}</span>
-              <div class="flex gap-1 mt-1">
-                <span v-if="hasInteresting(res)" class="text-xs bg-amber-500/20 text-amber-500 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <i class="ti ti-star-filled text-xs"></i> {{ $t('forms.hasInteresting') }}
-                </span>
-                <span v-if="hasComment(res)" class="text-xs bg-blue-500/20 text-blue-500 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <i class="ti ti-message text-xs"></i> {{ $t('forms.hasComment') }}
-                </span>
-              </div>
-              <!-- Badges de vinculació -->
-              <div class="flex items-center gap-2 flex-wrap text-xs mt-1 justify-end">
-                <span v-if="res.entrenador_nom" class="bg-indigo-500/20 text-indigo-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
-                  <i class="ti ti-user-check"></i> {{ res.entrenador_nom }}
-                </span>
-                <span v-else class="bg-amber-500/20 text-amber-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
-                  <i class="ti ti-help"></i> Sense assignar
-                </span>
-                <span v-if="res.atleta_nom" class="bg-purple-500/20 text-purple-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
-                  <i class="ti ti-user font-bold"></i> {{ res.atleta_nom }}
-                </span>
-              </div>
-            </div>
-          </div>
+      <div v-else class="glass-card mt-4 overflow-hidden p-0">
+        <div class="table-responsive">
+          <table class="responses-table">
+            <thead>
+              <tr>
+                <th style="width: 220px;">Candidat</th>
+                <th>Contacte</th>
+                <th class="text-center">Atleta Vinculat</th>
+                <th class="text-center">Entrenador Assignat</th>
+                <th class="text-center">Data Resposta</th>
+                <th>Estat</th>
+                <th>Notes / Comentari</th>
+                <th class="text-center" style="width: 120px;">Accions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                v-for="res in paginatedResponses" 
+                :key="res.id"
+                class="response-row"
+                :class="{ 'card-highlighted': hasInteresting(res) }"
+              >
+                <td class="col-candidat">
+                  <div class="flex items-center gap-2">
+                    <Button 
+                      :icon="res.is_interesting ? 'ti ti-star-filled' : 'ti ti-star'" 
+                      text 
+                      rounded 
+                      size="small" 
+                      :class="res.is_interesting ? 'text-gold' : 'text-gray'"
+                      :title="res.is_interesting ? $t('forms.unmarkInteresting') : $t('forms.markInteresting')"
+                      @click.stop="toggleResponseInteresting(res)"
+                    />
+                    <div class="flex flex-col">
+                      <span class="font-bold text-sm text-surface-900 leading-normal">{{ res.nom_candidat }}</span>
+                      <div class="flex gap-1 mt-0.5" v-if="hasInteresting(res) || hasComment(res)">
+                        <span v-if="hasInteresting(res)" class="text-xs bg-amber-500/20 text-amber-500 font-semibold px-1.5 py-0.2 rounded flex items-center gap-1" title="Destacat">
+                          <i class="ti ti-star-filled text-xs"></i>
+                        </span>
+                        <span v-if="hasComment(res)" class="text-xs bg-blue-500/20 text-blue-500 font-semibold px-1.5 py-0.2 rounded flex items-center gap-1" title="Amb comentari">
+                          <i class="ti ti-message text-xs"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </td>
 
-          <div 
-            v-if="res.comentari" 
-            class="bg-surface border rounded p-2.5 text-xs text-secondary flex items-start gap-2 transition-colors"
-            :class="hasInteresting(res) ? 'border-amber-500/40 bg-amber-500/5' : 'border-blue-500/30'"
-          >
-            <i class="ti ti-notes text-sm mt-0.5" :class="hasInteresting(res) ? 'text-amber-500' : 'text-blue-400'"></i>
-            <span class="whitespace-pre-wrap flex-1">{{ res.comentari }}</span>
-          </div>
+                <td class="col-contact">
+                  <div class="flex flex-col text-xs text-secondary gap-0.5">
+                    <span><i class="ti ti-mail mr-1"></i>{{ res.email_candidat }}</span>
+                    <span v-if="res.telefon_candidat"><i class="ti ti-phone mr-1"></i>{{ res.telefon_candidat }}</span>
+                  </div>
+                </td>
 
-          <div class="text-sm text-secondary mt-2">
-            Rebut el {{ new Date(res.created_at).toLocaleDateString() }}
-          </div>
+                <td class="col-atleta text-center">
+                  <span v-if="res.atleta_nom" class="text-xs bg-purple-500/20 text-purple-400 font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1">
+                    <i class="ti ti-user font-bold"></i> {{ res.atleta_nom }}
+                  </span>
+                  <span v-else class="text-xs text-muted">-</span>
+                </td>
 
-          <div class="flex gap-2 border-t pt-3 mt-auto">
-            <Button icon="ti ti-eye" label="Veure respostes" size="small" outlined class="flex-1" @click="viewAnswers(res)" />
-            <Button 
-              :label="res.entrenador_id ? 'Desassignar-me\'l' : 'Assignar-me\'l'" 
-              :icon="res.entrenador_id ? 'ti ti-user-minus' : 'ti ti-user-plus'" 
-              size="small" 
-              :severity="res.entrenador_id ? 'secondary' : 'info'" 
-              outlined 
-              @click="handleAssignResponse(res, !res.entrenador_id)" 
-            />
-          </div>
+                <td class="col-entrenador text-center">
+                  <div class="flex flex-col items-center gap-1">
+                    <span v-if="res.entrenador_nom" class="text-xs bg-indigo-500/20 text-indigo-400 font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1">
+                      <i class="ti ti-user-check"></i> {{ res.entrenador_nom }}
+                    </span>
+                    <span v-else class="text-xs bg-amber-500/20 text-amber-400 font-semibold px-2 py-0.5 rounded inline-flex items-center gap-1">
+                      <i class="ti ti-help"></i> Sense assignar
+                    </span>
+                    <Button 
+                      :label="res.entrenador_id ? 'Desassignar' : 'Assignar-me\'l'" 
+                      :icon="res.entrenador_id ? 'ti ti-user-minus' : 'ti ti-user-plus'" 
+                      size="small" 
+                      :severity="res.entrenador_id ? 'secondary' : 'info'" 
+                      text
+                      class="p-0 text-xs mt-0.5"
+                      @click.stop="handleAssignResponse(res, !res.entrenador_id)" 
+                    />
+                  </div>
+                </td>
 
-          <div class="field mt-2">
-            <label class="text-xs">Estat del candidat:</label>
-            <Select 
-              :modelValue="res.estat" 
-              :options="statusOptions" 
-              optionLabel="label" 
-              optionValue="value" 
-              class="w-full h-10 text-sm" 
-              @update:modelValue="(val) => changeStatus(res.id, val)" 
-            />
-          </div>
+                <td class="col-date text-center text-xs text-secondary">
+                  {{ new Date(res.created_at).toLocaleDateString() }}
+                </td>
+
+                <td class="col-estat">
+                  <Select 
+                    :modelValue="res.estat" 
+                    :options="statusOptions" 
+                    optionLabel="label" 
+                    optionValue="value" 
+                    class="w-full h-8 text-xs" 
+                    @update:modelValue="(val) => changeStatus(res.id, val)" 
+                  />
+                </td>
+
+                <td class="col-notes text-xs text-secondary">
+                  <div class="truncate max-w-[200px]" :title="res.comentari || ''">
+                    {{ res.comentari || '-' }}
+                  </div>
+                </td>
+
+                <td class="col-actions text-center">
+                  <Button 
+                    icon="ti ti-eye" 
+                    label="Veure" 
+                    size="small" 
+                    outlined 
+                    @click="viewAnswers(res)" 
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+
+        <Paginator 
+          v-if="filteredResponses.length > 0"
+          :rows="pageSize" 
+          :totalRecords="filteredResponses.length" 
+          :first="first"
+          :rowsPerPageOptions="[10, 20, 50]" 
+          @page="onPageChange"
+          class="border-top-1"
+          style="border-top: 1px solid var(--border);"
+        />
       </div>
     </div>
 
@@ -650,10 +710,28 @@ const exportToExcel = () => {
 </template>
 
 <style scoped>
-.responses-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+.responses-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.responses-table th {
+  padding: 14px 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  background: rgba(19, 20, 27, 0.5);
+  font-size: 0.85rem;
+}
+.responses-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.response-row {
+  transition: background-color var(--transition-fast);
+}
+.response-row:hover {
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
 .page-header {
