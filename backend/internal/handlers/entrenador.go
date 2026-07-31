@@ -371,3 +371,26 @@ func (h *Handler) SendManualReminder(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+func (h *Handler) ToggleAtletaAbsent(c *gin.Context) {
+	atletaID := c.Param("id")
+	var req models.ToggleAtletaAbsentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID := c.GetString("user_id")
+	entrenador, err := h.Store.GetEntrenadorByUsuariID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "perfil d'entrenador no trobat"})
+		return
+	}
+
+	err = h.Store.ToggleAtletaAbsent(c.Request.Context(), atletaID, entrenador.ID, req.WeekStart, req.Absent)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error actualitzant l'absència"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"absent": req.Absent})
+}

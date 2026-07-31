@@ -310,7 +310,7 @@ func (m *SMTPMailer) SendReminder(toEmail, toName, magicToken, weekStart, idioma
 
 	appURL := os.Getenv("FRONTEND_URL")
 	if appURL == "" {
-		appURL = "https://trainee.ericzapater.cat" // Fallback
+		appURL = "https://trainee.entrenadortrail.es" // Fallback
 	}
 	
 	// Create the magic link
@@ -318,7 +318,7 @@ func (m *SMTPMailer) SendReminder(toEmail, toName, magicToken, weekStart, idioma
 	
 	logoURL := os.Getenv("MAILER_LOGO_URL")
 	if logoURL == "" {
-		logoURL = "https://trainee.ericzapater.cat/logo.png"
+		logoURL = "https://trainee.entrenadortrail.es/logo.png"
 	}
 
 	data := templateData{
@@ -358,7 +358,7 @@ func (m *SMTPMailer) SendNewAthleteNotification(entrenadorEmail, entrenadorNom, 
 
 	appURL := os.Getenv("FRONTEND_URL")
 	if appURL == "" {
-		appURL = "https://trainee.ericzapater.cat"
+		appURL = "https://trainee.entrenadortrail.es"
 	}
 
 	data := newAthleteData{
@@ -398,7 +398,7 @@ func (m *SMTPMailer) SendNewCompetitionNotification(entrenadorEmail, entrenadorN
 
 	appURL := os.Getenv("FRONTEND_URL")
 	if appURL == "" {
-		appURL = "https://trainee.ericzapater.cat"
+		appURL = "https://trainee.entrenadortrail.es"
 	}
 
 	data := newCompetitionData{
@@ -439,12 +439,12 @@ func (m *SMTPMailer) SendPasswordResetNotification(toEmail, toName, newPassword,
 
 	appURL := os.Getenv("FRONTEND_URL")
 	if appURL == "" {
-		appURL = "https://trainee.ericzapater.cat" // Fallback
+		appURL = "https://trainee.entrenadortrail.es" // Fallback
 	}
 
 	logoURL := os.Getenv("MAILER_LOGO_URL")
 	if logoURL == "" {
-		logoURL = "https://trainee.ericzapater.cat/logo.png"
+		logoURL = "https://trainee.entrenadortrail.es/logo.png"
 	}
 
 	data := passwordResetData{
@@ -485,7 +485,7 @@ func (m *SMTPMailer) SendFeedbackReplyNotification(toEmail, toName, resum, respo
 
 	logoURL := os.Getenv("MAILER_LOGO_URL")
 	if logoURL == "" {
-		logoURL = "https://trainee.ericzapater.cat/logo.png"
+		logoURL = "https://trainee.entrenadortrail.es/logo.png"
 	}
 
 	data := feedbackReplyData{
@@ -528,12 +528,12 @@ func (m *SMTPMailer) SendWeekPlannedNotification(toEmail, toName, weekStart, idi
 
 	appURL := os.Getenv("FRONTEND_URL")
 	if appURL == "" {
-		appURL = "https://trainee.ericzapater.cat" // Fallback
+		appURL = "https://trainee.entrenadortrail.es" // Fallback
 	}
 	
 	logoURL := os.Getenv("MAILER_LOGO_URL")
 	if logoURL == "" {
-		logoURL = "https://trainee.ericzapater.cat/logo.png"
+		logoURL = "https://trainee.entrenadortrail.es/logo.png"
 	}
 
 	data := weekPlannedData{
@@ -574,7 +574,7 @@ func (m *SMTPMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom,
 
 	logoURL := os.Getenv("MAILER_LOGO_URL")
 	if logoURL == "" {
-		logoURL = "https://trainee.ericzapater.cat/logo.png"
+		logoURL = "https://trainee.entrenadortrail.es/logo.png"
 	}
 
 	data := newFeedbackData{

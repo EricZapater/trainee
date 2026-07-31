@@ -329,10 +329,16 @@ func (s *PostgresStore) GetFormResponses(ctx context.Context, formID string) ([]
 	}
 
 	rows, err := s.pool.Query(ctx, `
-		SELECT id, form_id, nom_candidat, email_candidat, telefon_candidat, estat, COALESCE(is_interesting, false), comentari, created_at
-		FROM form_responses
-		WHERE form_id = $1
-		ORDER BY created_at DESC
+		SELECT fr.id, fr.form_id, fr.nom_candidat, fr.email_candidat, fr.telefon_candidat, fr.estat, COALESCE(fr.is_interesting, false), fr.comentari, fr.created_at,
+		       fr.atleta_id, fr.entrenador_id,
+		       u.nom || ' ' || COALESCE(u.cognoms, ''),
+		       e.nom
+		FROM form_responses fr
+		LEFT JOIN atletes a ON a.id = fr.atleta_id
+		LEFT JOIN usuaris u ON u.id = a.usuari_id
+		LEFT JOIN entrenadors e ON e.id = fr.entrenador_id
+		WHERE fr.form_id = $1
+		ORDER BY fr.created_at DESC
 	`, formID)
 	if err != nil {
 		return nil, err
@@ -342,7 +348,7 @@ func (s *PostgresStore) GetFormResponses(ctx context.Context, formID string) ([]
 	var responses []models.FormResponseWithAnswers
 	for rows.Next() {
 		var r models.FormResponseWithAnswers
-		if err := rows.Scan(&r.ID, &r.FormID, &r.NomCandidat, &r.EmailCandidat, &r.TelefonCandidat, &r.Estat, &r.IsInteresting, &r.Comentari, &r.CreatedAt); err != nil {
+		if err := rows.Scan(&r.ID, &r.FormID, &r.NomCandidat, &r.EmailCandidat, &r.TelefonCandidat, &r.Estat, &r.IsInteresting, &r.Comentari, &r.CreatedAt, &r.AtletaID, &r.EntrenadorID, &r.AtletaNom, &r.EntrenadorNom); err != nil {
 			return nil, err
 		}
 		responses = append(responses, r)
@@ -433,7 +439,7 @@ func (s *PostgresStore) UpdateFormAnswer(ctx context.Context, answerID string, r
 	return nil
 }
 
-func (s *PostgresStore) SubmitFormResponse(ctx context.Context, formID string, req models.SubmitFormResponseRequest) error {
+func (s *PostgresStore) SubmitFormResponse(ctx context.Context, formID string, req models.SubmitFormResponseRequest, userID string) error {
 	var actiu bool
 	err := s.pool.QueryRow(ctx, `SELECT actiu FROM forms WHERE id = $1`, formID).Scan(&actiu)
 	if err != nil {
@@ -455,11 +461,28 @@ func (s *PostgresStore) SubmitFormResponse(ctx context.Context, formID string, r
 		tel = &req.TelefonCandidat
 	}
 
+	var atletaID *string
+	var entrenadorID *string
+	if userID != "" {
+		var aID string
+		var eID string
+		err = s.pool.QueryRow(ctx, `SELECT id, entrenador_id FROM atletes WHERE usuari_id = $1`, userID).Scan(&aID, &eID)
+		if err == nil {
+			atletaID = &aID
+			entrenadorID = &eID
+		} else {
+			err = s.pool.QueryRow(ctx, `SELECT id FROM entrenadors WHERE usuari_id = $1`, userID).Scan(&eID)
+			if err == nil {
+				entrenadorID = &eID
+			}
+		}
+	}
+
 	err = tx.QueryRow(ctx, `
-		INSERT INTO form_responses (form_id, nom_candidat, email_candidat, telefon_candidat, estat)
-		VALUES ($1, $2, $3, $4, 'pendent')
+		INSERT INTO form_responses (form_id, nom_candidat, email_candidat, telefon_candidat, estat, atleta_id, entrenador_id)
+		VALUES ($1, $2, $3, $4, 'pendent', $5, $6)
 		RETURNING id
-	`, formID, req.NomCandidat, req.EmailCandidat, tel).Scan(&responseID)
+	`, formID, req.NomCandidat, req.EmailCandidat, tel, atletaID, entrenadorID).Scan(&responseID)
 	if err != nil {
 		return err
 	}
@@ -475,4 +498,9 @@ func (s *PostgresStore) SubmitFormResponse(ctx context.Context, formID string, r
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (s *PostgresStore) AssignFormResponseEntrenador(ctx context.Context, responseID string, entrenadorID *string) error {
+	_, err := s.pool.Exec(ctx, `UPDATE form_responses SET entrenador_id = $1 WHERE id = $2`, entrenadorID, responseID)
+	return err
 }

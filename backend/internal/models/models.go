@@ -304,6 +304,7 @@ type AtletaSubmissionSummary struct {
 	Estat        string      `json:"estat"`
 	NotesSetmana *string     `json:"notes_setmana"`
 	Gestionat       bool        `json:"gestionat"`
+	Absent          bool        `json:"absent"`
 	RemindersAuto   int         `json:"reminders_auto"`
 	RemindersManual int         `json:"reminders_manual"`
 	Slots           []SlotEntry `json:"slots"`
@@ -311,6 +312,11 @@ type AtletaSubmissionSummary struct {
 
 type ToggleSubmissionGestionatRequest struct {
 	Gestionat bool `json:"gestionat"`
+}
+
+type ToggleAtletaAbsentRequest struct {
+	WeekStart string `json:"week_start" binding:"required"`
+	Absent    bool   `json:"absent"`
 }
 
 type ToggleSubmissionGestionatResult struct {
@@ -428,6 +434,11 @@ type FormResponse struct {
 	IsInteresting   bool      `json:"is_interesting"`
 	Comentari       *string   `json:"comentari"`
 	CreatedAt       time.Time `json:"created_at"`
+
+	AtletaID      *string `json:"atleta_id"`
+	EntrenadorID  *string `json:"entrenador_id"`
+	AtletaNom     *string `json:"atleta_nom,omitempty"`
+	EntrenadorNom *string `json:"entrenador_nom,omitempty"`
 }
 
 type FormAnswer struct {
@@ -495,6 +506,11 @@ type UpdateFormResponseRequest struct {
 type UpdateFormAnswerRequest struct {
 	IsInteresting *bool   `json:"is_interesting"`
 	Comentari     *string `json:"comentari"`
+}
+
+type AssignFormResponseRequest struct {
+	Assign       *bool   `json:"assign"`
+	EntrenadorID *string `json:"entrenador_id"`
 }
 
 // Extended response structures

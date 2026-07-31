@@ -212,6 +212,14 @@ func (s *PostgresStore) GetSubmissionsByEntrenadorAndWeek(ctx context.Context, e
 		summary.RemindersAuto = remindersAuto
 		summary.RemindersManual = remindersManual
 
+		// Check absence
+		var isAbsent bool
+		_ = s.pool.QueryRow(ctx,
+			`SELECT EXISTS(SELECT 1 FROM athlete_week_absences WHERE atleta_id = $1 AND week_start = $2::date)`,
+			atleta.ID, weekStart,
+		).Scan(&isAbsent)
+		summary.Absent = isAbsent
+
 		resp.Atletes = append(resp.Atletes, summary)
 	}
 
@@ -330,4 +338,27 @@ func (s *PostgresStore) ToggleSubmissionGestionat(ctx context.Context, submissio
 		Idioma:    idioma,
 		WeekStart: weekStart,
 	}, nil
+}
+
+func (s *PostgresStore) ToggleAtletaAbsent(ctx context.Context, atletaID, entrenadorID, weekStart string, absent bool) error {
+	if absent {
+		_, err := s.pool.Exec(ctx,
+			`INSERT INTO athlete_week_absences (atleta_id, week_start, marked_by)
+			 VALUES ($1, $2::date, $3)
+			 ON CONFLICT (atleta_id, week_start) DO NOTHING`,
+			atletaID, weekStart, entrenadorID)
+		return err
+	}
+	_, err := s.pool.Exec(ctx,
+		`DELETE FROM athlete_week_absences WHERE atleta_id = $1 AND week_start = $2::date`,
+		atletaID, weekStart)
+	return err
+}
+
+func (s *PostgresStore) IsAtletaAbsent(ctx context.Context, atletaID, weekStart string) (bool, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM athlete_week_absences WHERE atleta_id = $1 AND week_start = $2::date)`,
+		atletaID, weekStart).Scan(&exists)
+	return exists, err
 }

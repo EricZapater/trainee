@@ -42,6 +42,12 @@ func GenerateReminders(s store.Store, m mailer.Mailer, jwtSecret string) error {
 			continue
 		}
 
+		// Saltar atletes marcats com a absents aquesta setmana
+		isAbsent, _ := s.IsAtletaAbsent(ctx, a.ID, weekStart)
+		if isAbsent {
+			continue
+		}
+
 		submission, err := s.GetSubmissionByAtletaAndWeek(ctx, a.ID, weekStart)
 		if err != nil {
 			log.Printf("[CRON-REMINDER] Error obtenint submission per atleta %s: %v", a.ID, err)

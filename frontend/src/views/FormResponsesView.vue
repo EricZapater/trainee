@@ -9,10 +9,12 @@ import {
   updateFormResponseDetails, 
   updateFormAnswer, 
   getFormDetails, 
+  assignFormResponse,
   type FormResponseWithAnswers, 
   type FormWithQuestions,
   type FormAnswer
 } from '@/api/forms'
+import { useAuthStore } from '@/stores/useAuthStore'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Dialog from 'primevue/dialog'
@@ -29,6 +31,30 @@ const formId = route.params.id as string
 const responses = ref<FormResponseWithAnswers[]>([])
 const formDetails = ref<FormWithQuestions | null>(null)
 const loading = ref(true)
+
+const authStore = useAuthStore()
+const assignFilter = ref<'all' | 'mine' | 'unassigned'>('all')
+const assignFilterOptions = [
+  { label: 'Totes les respostes', value: 'all' },
+  { label: 'Els meus formularis', value: 'mine' },
+  { label: 'Sense assignar', value: 'unassigned' }
+]
+
+const handleAssignResponse = async (res: FormResponseWithAnswers, assign: boolean) => {
+  try {
+    const result = await assignFormResponse(res.id, assign)
+    res.entrenador_id = result.entrenador_id
+    res.entrenador_nom = result.entrenador_nom
+    toast.add({
+      severity: 'success',
+      summary: assign ? 'Formulari assignat' : 'Formulari desassignat',
+      detail: assign ? 'Aquest formulari ha sigut marcat com a teu.' : 'S\'ha treut la vinculació d\'entrenador.',
+      life: 2500
+    })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut actualitzar l\'assignació', life: 3000 })
+  }
+}
 
 const loadData = async () => {
   loading.value = true
@@ -176,11 +202,19 @@ const getQuestionText = (qId: string) => {
 const dateRange = ref<Date[]>([])
 
 const filteredResponses = computed(() => {
-  if (!dateRange.value || dateRange.value.length === 0) return responses.value
+  let list = responses.value
+
+  if (assignFilter.value === 'mine') {
+    list = list.filter(res => res.entrenador_id !== null && res.entrenador_id !== undefined)
+  } else if (assignFilter.value === 'unassigned') {
+    list = list.filter(res => !res.entrenador_id)
+  }
+
+  if (!dateRange.value || dateRange.value.length === 0) return list
   const start = dateRange.value[0]
   const end = dateRange.value[1]
   
-  return responses.value.filter(res => {
+  return list.filter(res => {
     const d = new Date(res.created_at)
     
     if (start && end) {
@@ -300,6 +334,13 @@ const exportToExcel = () => {
         </div>
         
         <div v-if="responses.length > 0" class="flex items-center gap-3">
+          <Select 
+            v-model="assignFilter" 
+            :options="assignFilterOptions" 
+            optionLabel="label" 
+            optionValue="value" 
+            class="w-48 text-sm"
+          />
           <DatePicker 
             v-model="dateRange" 
             selectionMode="range" 
@@ -369,6 +410,18 @@ const exportToExcel = () => {
                   <i class="ti ti-message text-xs"></i> {{ $t('forms.hasComment') }}
                 </span>
               </div>
+              <!-- Badges de vinculació -->
+              <div class="flex items-center gap-2 flex-wrap text-xs mt-1 justify-end">
+                <span v-if="res.entrenador_nom" class="bg-indigo-500/20 text-indigo-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                  <i class="ti ti-user-check"></i> {{ res.entrenador_nom }}
+                </span>
+                <span v-else class="bg-amber-500/20 text-amber-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                  <i class="ti ti-help"></i> Sense assignar
+                </span>
+                <span v-if="res.atleta_nom" class="bg-purple-500/20 text-purple-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                  <i class="ti ti-user font-bold"></i> {{ res.atleta_nom }}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -387,6 +440,14 @@ const exportToExcel = () => {
 
           <div class="flex gap-2 border-t pt-3 mt-auto">
             <Button icon="ti ti-eye" label="Veure respostes" size="small" outlined class="flex-1" @click="viewAnswers(res)" />
+            <Button 
+              :label="res.entrenador_id ? 'Desassignar-me\'l' : 'Assignar-me\'l'" 
+              :icon="res.entrenador_id ? 'ti ti-user-minus' : 'ti ti-user-plus'" 
+              size="small" 
+              :severity="res.entrenador_id ? 'secondary' : 'info'" 
+              outlined 
+              @click="handleAssignResponse(res, !res.entrenador_id)" 
+            />
           </div>
 
           <div class="field mt-2">
@@ -427,6 +488,27 @@ const exportToExcel = () => {
               </h3>
               <p class="text-sm"><i class="ti ti-mail mr-1"></i> {{ selectedResponse.email_candidat }}</p>
               <p v-if="selectedResponse.telefon_candidat" class="text-sm"><i class="ti ti-phone mr-1"></i> {{ selectedResponse.telefon_candidat }}</p>
+              
+              <!-- Badges de vinculació -->
+              <div class="flex items-center gap-2 flex-wrap text-xs mt-2">
+                <span v-if="selectedResponse.entrenador_nom" class="bg-indigo-500/20 text-indigo-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                  <i class="ti ti-user-check"></i> {{ selectedResponse.entrenador_nom }}
+                </span>
+                <span v-else class="bg-amber-500/20 text-amber-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                  <i class="ti ti-help"></i> Sense assignar
+                </span>
+                <span v-if="selectedResponse.atleta_nom" class="bg-purple-500/20 text-purple-400 font-semibold px-2 py-0.5 rounded flex items-center gap-1">
+                  <i class="ti ti-user font-bold"></i> {{ selectedResponse.atleta_nom }}
+                </span>
+                <Button 
+                  :label="selectedResponse.entrenador_id ? 'Desassignar-me\'l' : 'Assignar-me\'l'" 
+                  :icon="selectedResponse.entrenador_id ? 'ti ti-user-minus' : 'ti ti-user-plus'" 
+                  size="small" 
+                  :severity="selectedResponse.entrenador_id ? 'secondary' : 'info'" 
+                  text
+                  @click="handleAssignResponse(selectedResponse, !selectedResponse.entrenador_id)" 
+                />
+              </div>
             </div>
             <span class="badge" :class="getStatusBadge(selectedResponse.estat)">{{ selectedResponse.estat.toUpperCase() }}</span>
           </div>

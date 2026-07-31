@@ -7,15 +7,16 @@ import (
 )
 
 type Config struct {
-	DBURL     string
-	JWTSecret string
-	Port      string
-	Env       string
-	SMTPHost  string
-	SMTPPort  string
+	DBURL       string
+	JWTSecret   string
+	Port        string
+	Env         string
+	SMTPHost    string
+	SMTPPort    string
 	SMTPUser    string
 	SMTPPass    string
 	BrevoAPIKey string
+	FrontendURL string
 }
 
 func Load() *Config {
@@ -28,15 +29,16 @@ func Load() *Config {
 	}
 
 	return &Config{
-		DBURL:     dbUrl,
-		JWTSecret: getEnv("JWT_SECRET", "canvia_aquest_secret_en_produccio"),
-		Port:      getEnv("PORT", "8080"),
-		Env:       getEnv("ENV", "development"),
-		SMTPHost:  getEnv("SMTP_HOST", ""),
-		SMTPPort:  getEnv("SMTP_PORT", "587"),
+		DBURL:       dbUrl,
+		JWTSecret:   getEnv("JWT_SECRET", "canvia_aquest_secret_en_produccio"),
+		Port:        getEnv("PORT", "8080"),
+		Env:         getEnv("ENV", "development"),
+		SMTPHost:    getEnv("SMTP_HOST", ""),
+		SMTPPort:    getEnv("SMTP_PORT", "587"),
 		SMTPUser:    getEnv("SMTP_USER", ""),
 		SMTPPass:    getEnv("SMTP_PASS", ""),
 		BrevoAPIKey: getEnv("BREVO_API_KEY", ""),
+		FrontendURL: getEnv("FRONTEND_URL", "https://trainee.entrenadortrail.es"),
 	}
 }
 

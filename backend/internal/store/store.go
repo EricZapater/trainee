@@ -64,6 +64,10 @@ type Store interface {
 	ToggleSubmissionGestionat(ctx context.Context, submissionID string, entrenadorID string, gestionat bool) (*models.ToggleSubmissionGestionatResult, error)
 	GetInformeAtleta(ctx context.Context, atletaID string, start, end string) (*models.InformeResponse, error)
 
+	// Absències
+	ToggleAtletaAbsent(ctx context.Context, atletaID, entrenadorID, weekStart string, absent bool) error
+	IsAtletaAbsent(ctx context.Context, atletaID, weekStart string) (bool, error)
+
 	// Reminders
 	IncrementAutoReminder(ctx context.Context, atletaID string, weekStart string) error
 	IncrementManualReminder(ctx context.Context, atletaID string, weekStart string) error
@@ -107,7 +111,8 @@ type Store interface {
 	UpdateResponseStatus(ctx context.Context, responseID string, estat string) error
 	UpdateFormResponseDetails(ctx context.Context, responseID string, req models.UpdateFormResponseRequest) error
 	UpdateFormAnswer(ctx context.Context, answerID string, req models.UpdateFormAnswerRequest) error
-	SubmitFormResponse(ctx context.Context, formID string, req models.SubmitFormResponseRequest) error
+	SubmitFormResponse(ctx context.Context, formID string, req models.SubmitFormResponseRequest, userID string) error
+	AssignFormResponseEntrenador(ctx context.Context, responseID string, entrenadorID *string) error
 
 	// System Logs
 	AddSystemLog(ctx context.Context, accio, nivell, missatge string, detalls *string) error

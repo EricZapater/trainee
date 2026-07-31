@@ -95,3 +95,7 @@ export async function updateAtletaDetails(id: string, payload: { nom: string; co
 export async function sendManualReminder(atletaId: string, weekStart: string): Promise<void> {
   await api.post(`/entrenador/atletes/${atletaId}/remind?week=${weekStart}`)
 }
+
+export async function toggleAtletaAbsent(atletaId: string, weekStart: string, absent: boolean): Promise<void> {
+  await api.patch(`/entrenador/atletes/${atletaId}/absent`, { week_start: weekStart, absent })
+}

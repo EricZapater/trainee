@@ -38,3 +38,22 @@ func JWTAuth(secret string) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func OptionalJWTAuth(secret string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		header := c.GetHeader("Authorization")
+		if header != "" {
+			parts := strings.SplitN(header, " ", 2)
+			if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+				claims, err := auth.ValidateToken(parts[1], secret)
+				if err == nil {
+					sub, _ := claims.GetSubject()
+					c.Set("user_id", sub)
+					c.Set("rol", claims.Rol)
+					c.Set("nom", claims.Nom)
+				}
+			}
+		}
+		c.Next()
+	}
+}

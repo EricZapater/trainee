@@ -2,6 +2,39 @@
 
 Tots els canvis notables en aquest projecte es documentaran en aquest fitxer.
 
+## [1.4.0] - 2026-07-31
+
+### Afegit
+
+#### Backend
+- **Migració de Domini i CORS Multi-Origen**:
+  - Reconfiguració de Traefik al `docker-compose.yml` per al nou domini del frontend `trainee.entrenadortrail.es` (el backend es manté a `api.trainee.ericzapater.cat`).
+  - Middleware CORS unificat a `cors.go` per a suportar múltiples orígens configurables via la variable d'entorn `ALLOWED_ORIGINS`.
+  - Afegida la configuració `FrontendURL` a `config.go` i actualitzats tots els fallbacks del mailer a `https://trainee.entrenadortrail.es`.
+  - Actualitzat `.env.example` amb les noves variables d'entorn `FRONTEND_URL` i `ALLOWED_ORIGINS`.
+- **Absència Setmanal d'Atletes**:
+  - Nova migració de base de dades `000033_create_athlete_week_absences.up.sql` per enregistrar quan un entrenador marca la setmana d'un atleta com a absent.
+  - Nou endpoint `PATCH /api/entrenador/atletes/:id/absent` i mètodes a la interfície Store.
+  - El servei de recordatoris automàtics (`reminder_generator.go`) ara salta i ignora els atletes marcats com a absents aquella setmana (sense cap notificació per correu).
+- **Inici de Sessió a Formularis Públics i Assignació a Entrenadors**:
+  - Nova migració de base de dades `000034_add_atleta_and_entrenador_to_form_responses.up.sql` que afegeix les columnes `atleta_id` i `entrenador_id` (tots dos nullable) a `form_responses`.
+  - Nou middleware `OptionalJWTAuth` per a l'endpoint de submissió pública `POST /api/public/forms/:id/submit`, permetent vincular automàticament l'atleta i el seu entrenador a la resposta si la petició s'envia des d'un compte amb sessió oberta.
+  - Nou endpoint `PUT /api/entrenador/responses/:responseId/assign` per permetre als entrenadors assignar-se o desassignar-se formularis des de la vista de respostes.
+  - Actualitzades les consultes SQL de `GetFormResponses` per incloure els noms i dades de vinculació (`atleta_nom`, `entrenador_nom`).
+
+#### Frontend
+- **Gestió d'Absència Setmanal des del Dashboard (`DashboardView.vue`)**:
+  - Nou botó d'absència ✈️ a la columna de recordatoris del dashboard per marcar o retirar l'absència d'un atleta en la setmana seleccionada.
+  - Ressaltat visual amb badge **"Absent"** (violeta) i fila atenuada (50% d'opacitat).
+  - Ocultació automàtica del botó de recordatori manual i del checkbox de gestionat per a atletes absents.
+- **Inici de Sessió en Formularis Públics (`PublicFormView.vue`)**:
+  - Capçalera dinàmica que avisa a l'usuari si té la sessió iniciada (*"Sessió iniciada com a..."*) i ofereix la possibilitat de vincular el formulari al seu perfil.
+  - Diàleg modal d'inici de sessió ràpid directament des del formulari per als atletes no autènticats, omplint automàticament el nom i el correu electrònic en loguejar-se sense perdre les respostes introduïdes.
+- **Assignació de Formularis als Entrenadors (`FormResponsesView.vue`)**:
+  - Indicadors visuals en forma de badges per identificar l'entrenador assignat (*"El teu formulari"*, *"Entrenador: Nom"* o *"Sense assignar"*) i l'atleta vinculat.
+  - Botons d'acció directes *"Assignar-me'l"* i *"Desassignar-me'l"* tant a les targetes de resum com al diàleg modal de detall.
+  - Nou filtre a la barra d'eines per veure *"Totes les respostes"*, *"Els meus formularis"* o *"Sense assignar"*.
+
 ## [1.3.3] - 2026-07-21
 
 ### Afegit

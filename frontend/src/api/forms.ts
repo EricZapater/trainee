@@ -46,6 +46,10 @@ export interface FormResponse {
   estat: 'pendent' | 'contactat' | 'descartat' | 'acceptat'
   is_interesting?: boolean
   comentari?: string | null
+  atleta_id?: string | null
+  entrenador_id?: string | null
+  atleta_nom?: string | null
+  entrenador_nom?: string | null
   created_at: string
 }
 
@@ -129,6 +133,14 @@ export const updateFormAnswer = async (
   payload: { is_interesting?: boolean; comentari?: string | null }
 ): Promise<void> => {
   await apiClient.put(`/entrenador/answers/${answerId}`, payload)
+}
+
+export const assignFormResponse = async (
+  responseId: string,
+  assign: boolean
+): Promise<{ message: string; entrenador_id: string | null; entrenador_nom: string | null }> => {
+  const { data } = await apiClient.put(`/entrenador/responses/${responseId}/assign`, { assign })
+  return data
 }
 
 // Public Endpoints

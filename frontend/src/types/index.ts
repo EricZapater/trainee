@@ -117,6 +117,7 @@ export interface AtletaSubmissionSummary {
   estat: string
   notes_setmana?: string
   gestionat: boolean
+  absent: boolean
   reminders_auto: number
   reminders_manual: number
   slots: SlotEntry[]

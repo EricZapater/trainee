@@ -32,7 +32,7 @@ services:
       - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.trainee-frontend.rule=Host(`trainee.ericzapater.cat`)"
+      - "traefik.http.routers.trainee-frontend.rule=Host(`trainee.entrenadortrail.es`)"
       - "traefik.http.routers.trainee-frontend.entrypoints=websecure"
       - "traefik.http.routers.trainee-frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.trainee-frontend.loadbalancer.server.port=80"

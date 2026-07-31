@@ -182,6 +182,7 @@ func main() {
 		entrenadorRoutes.GET("/atletes/:id/history", h.GetAtletaStatusHistory)
 		entrenadorRoutes.PATCH("/atletes/:id/reasignar", h.ReasignarAtleta)
 		entrenadorRoutes.POST("/atletes/:id/remind", h.SendManualReminder)
+		entrenadorRoutes.PATCH("/atletes/:id/absent", h.ToggleAtletaAbsent)
 		
 		entrenadorRoutes.POST("/tests", h.CreateTest)
 		entrenadorRoutes.GET("/tests/pendents", h.ListPendingTestsByEntrenador)
@@ -211,6 +212,7 @@ func main() {
 		entrenadorRoutes.GET("/forms/:id/responses", h.GetFormResponses)
 		entrenadorRoutes.PUT("/responses/:responseId/status", h.UpdateResponseStatus)
 		entrenadorRoutes.PUT("/responses/:responseId", h.UpdateFormResponseDetails)
+		entrenadorRoutes.PUT("/responses/:responseId/assign", h.AssignFormResponseEntrenador)
 		entrenadorRoutes.PUT("/answers/:answerId", h.UpdateFormAnswer)
 
 		// Settings
@@ -241,7 +243,7 @@ func main() {
 	publicRoutes := api.Group("/public")
 	{
 		publicRoutes.GET("/forms/:id", h.PublicGetForm)
-		publicRoutes.POST("/forms/:id/submit", h.SubmitFormResponse)
+		publicRoutes.POST("/forms/:id/submit", middleware.OptionalJWTAuth(cfg.JWTSecret), h.SubmitFormResponse)
 	}
 
 	authenticated.GET("/competicions/:id", h.GetCompeticio)

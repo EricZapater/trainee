@@ -280,13 +280,55 @@ func (h *Handler) SubmitFormResponse(c *gin.Context) {
 		return
 	}
 
-	err := h.Store.SubmitFormResponse(c.Request.Context(), id, req)
+	userID := c.GetString("user_id")
+
+	err := h.Store.SubmitFormResponse(c.Request.Context(), id, req, userID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Formulari enviat correctament!"})
+}
+
+func (h *Handler) AssignFormResponseEntrenador(c *gin.Context) {
+	responseID := c.Param("responseId")
+	userID := c.GetString("user_id")
+
+	entrenador, err := h.Store.GetEntrenadorByUsuariID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "perfil d'entrenador no trobat"})
+		return
+	}
+
+	var req models.AssignFormResponseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var targetEntrenadorID *string
+	if req.Assign != nil {
+		if *req.Assign {
+			targetEntrenadorID = &entrenador.ID
+		} else {
+			targetEntrenadorID = nil
+		}
+	} else {
+		targetEntrenadorID = req.EntrenadorID
+	}
+
+	err = h.Store.AssignFormResponseEntrenador(c.Request.Context(), responseID, targetEntrenadorID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Assignació actualitzada",
+		"entrenador_id": targetEntrenadorID,
+		"entrenador_nom": entrenador.Nom,
+	})
 }
 
 // UploadFormImage - Pujada de múltiples imatges per a formularis i preguntes

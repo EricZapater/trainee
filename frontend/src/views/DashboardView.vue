@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getEntrenadorWeeks, getEntrenadorSubmissions, toggleSubmissionGestionat, sendManualReminder } from '@/api/entrenador'
+import { getEntrenadorWeeks, getEntrenadorSubmissions, toggleSubmissionGestionat, sendManualReminder, toggleAtletaAbsent } from '@/api/entrenador'
 import { useToast } from 'primevue/usetoast'
 import type { ManagedWeekWithCount, EntrenadorSubmissionsResponse, AtletaSubmissionSummary } from '@/types'
 import Select from 'primevue/select'
@@ -162,6 +162,23 @@ const handleSendReminder = async (atleta: AtletaSubmissionSummary) => {
     sendingReminderId.value = null
   }
 }
+
+const handleToggleAbsent = async (atleta: AtletaSubmissionSummary) => {
+  if (!selectedWeek.value) return
+  const newAbsent = !atleta.absent
+  try {
+    await toggleAtletaAbsent(atleta.atleta_id, selectedWeek.value, newAbsent)
+    atleta.absent = newAbsent
+    toast.add({ 
+      severity: 'success', 
+      summary: newAbsent ? 'Marcat com a absent' : 'Absència retirada', 
+      detail: `${atleta.nom} ${newAbsent ? 'marcat com a absent' : 'ja no està absent'} aquesta setmana.`, 
+      life: 3000 
+    })
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut actualitzar l\'absència', life: 3000 })
+  }
+}
 </script>
 
 <template>
@@ -263,9 +280,10 @@ const handleSendReminder = async (atleta: AtletaSubmissionSummary) => {
               :key="atleta.atleta_id"
               class="athlete-row"
               :class="{ 
-                'is-completed': atleta.estat === 'completada' && !atleta.gestionat, 
-                'is-draft': atleta.estat === 'esborrany' && !atleta.gestionat, 
-                'is-managed': atleta.gestionat 
+                'is-completed': atleta.estat === 'completada' && !atleta.gestionat && !atleta.absent, 
+                'is-draft': atleta.estat === 'esborrany' && !atleta.gestionat && !atleta.absent, 
+                'is-managed': atleta.gestionat && !atleta.absent,
+                'is-absent': atleta.absent
               }"
               @click="openAthleteDrawer(atleta)"
             >
@@ -275,7 +293,8 @@ const handleSendReminder = async (atleta: AtletaSubmissionSummary) => {
                     <span class="athlete-name font-semibold leading-normal">{{ atleta.nom }}</span>
                     <span class="athlete-cognoms text-xs text-secondary mt-0.5 leading-normal">{{ atleta.cognoms || '' }}</span>
                   </div>
-                  <span v-if="atleta.estat === 'completada'" class="status-badge done">Completada</span>
+                  <span v-if="atleta.absent" class="status-badge" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">Absent</span>
+                  <span v-else-if="atleta.estat === 'completada'" class="status-badge done">Completada</span>
                   <span v-else-if="atleta.estat === 'esborrany' || atleta.ha_respost" class="status-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">Esborrany</span>
                   <span v-else class="status-badge pending">Pendent</span>
                 </div>
@@ -319,7 +338,16 @@ const handleSendReminder = async (atleta: AtletaSubmissionSummary) => {
                     </span>
                   </div>
                   <Button 
-                    v-if="!atleta.gestionat && atleta.estat !== 'completada'"
+                    :icon="atleta.absent ? 'ti ti-plane-arrival' : 'ti ti-plane-departure'" 
+                    :severity="atleta.absent ? 'warn' : 'secondary'"
+                    :text="!atleta.absent"
+                    rounded
+                    size="small"
+                    v-tooltip.top="atleta.absent ? 'Retirar absència' : 'Marcar com a absent'"
+                    @click="handleToggleAbsent(atleta)" 
+                  />
+                  <Button 
+                    v-if="!atleta.gestionat && atleta.estat !== 'completada' && !atleta.absent"
                     icon="ti ti-send" 
                     severity="secondary" 
                     text 
@@ -333,7 +361,7 @@ const handleSendReminder = async (atleta: AtletaSubmissionSummary) => {
               </td>
               <td class="col-gestionat text-center" @click.stop>
                 <Checkbox 
-                  v-if="atleta.submission_id"
+                  v-if="atleta.submission_id && !atleta.absent"
                   v-model="atleta.gestionat" 
                   binary 
                   @change="handleGestionatChange(atleta)" 
@@ -475,6 +503,14 @@ const handleSendReminder = async (atleta: AtletaSubmissionSummary) => {
 
 .athlete-row.is-managed:hover {
   background-color: rgba(59, 130, 246, 0.25);
+}
+
+.athlete-row.is-absent {
+  opacity: 0.5;
+  background: rgba(139, 92, 246, 0.05) !important;
+}
+.athlete-row.is-absent:hover {
+  opacity: 0.7;
 }
 
 .athlete-info {

@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPublicForm, submitFormResponse, type FormWithQuestions } from '@/api/forms'
+import { useAuthStore } from '@/stores/useAuthStore'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
@@ -25,6 +26,33 @@ const candidat = ref({
   email: '',
   telefon: ''
 })
+
+const authStore = useAuthStore()
+const showLoginModal = ref(false)
+const loginEmail = ref('')
+const loginPassword = ref('')
+const loggingIn = ref(false)
+
+const handleHeaderLogin = async () => {
+  if (!loginEmail.value || !loginPassword.value) {
+    alert('Omple el correu i la contrasenya.')
+    return
+  }
+  loggingIn.value = true
+  try {
+    await authStore.login(loginEmail.value, loginPassword.value)
+    showLoginModal.value = false
+    // Pre-fill candidate info if logged in
+    if (authStore.usuari) {
+      candidat.value.nom = authStore.usuari.nom + (authStore.usuari.cognoms ? ' ' + authStore.usuari.cognoms : '')
+      candidat.value.email = authStore.usuari.email
+    }
+  } catch (e: any) {
+    alert(e.response?.data?.error || 'Error en iniciar sessió.')
+  } finally {
+    loggingIn.value = false
+  }
+}
 
 // Answers mapping: { [questionId]: value }
 const answers = ref<Record<string, any>>({})
@@ -61,6 +89,10 @@ const loadForm = async () => {
 
 onMounted(() => {
   loadForm()
+  if (authStore.usuari) {
+    candidat.value.nom = authStore.usuari.nom + (authStore.usuari.cognoms ? ' ' + authStore.usuari.cognoms : '')
+    candidat.value.email = authStore.usuari.email
+  }
 })
 
 const getOptionsArray = (optsString: string | null) => {
@@ -134,6 +166,26 @@ const handleSubmit = async () => {
     </div>
 
     <div v-else-if="form" class="max-w-5xl w-full mx-auto py-8 px-4">
+      <div v-if="authStore.isAuthenticated" class="glass-card mb-4 p-4 flex items-center justify-between bg-indigo-500/10 border-indigo-500/30">
+        <div class="flex items-center gap-3">
+          <i class="ti ti-user-check text-2xl text-indigo-400"></i>
+          <div>
+            <span class="font-semibold block text-sm">Sessió iniciada com a {{ authStore.usuari?.nom }} {{ authStore.usuari?.cognoms || '' }}</span>
+            <span class="text-xs text-secondary">Aquesta resposta es vincularà al teu compte d'atleta automàticament.</span>
+          </div>
+        </div>
+      </div>
+      <div v-else class="glass-card mb-4 p-4 flex items-center justify-between bg-amber-500/10 border-amber-500/30 flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+          <i class="ti ti-user-exclamation text-2xl text-amber-400"></i>
+          <div>
+            <span class="font-semibold block text-sm">Ets atleta del club?</span>
+            <span class="text-xs text-secondary">Inicia sessió per vincular aquest formulari al teu perfil.</span>
+          </div>
+        </div>
+        <Button label="Inicia sessió" icon="ti ti-login" size="small" severity="info" @click="showLoginModal = true" />
+      </div>
+
       <!-- Header -->
       <div class="glass-card text-center mb-6 py-8 relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 z-0"></div>
@@ -212,6 +264,20 @@ const handleSubmit = async () => {
       <div class="relative flex justify-center items-center">
         <img :src="activeImage!" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
         <Button icon="ti ti-x" class="absolute top-4 right-4 p-button-rounded p-button-secondary bg-black/50 border-none text-white hover:bg-black/80" @click="activeImage = null" />
+      </div>
+    </Dialog>
+
+    <Dialog v-model:visible="showLoginModal" header="Inicia sessió d'atleta" modal :style="{ width: '400px' }">
+      <div class="flex flex-col gap-4 py-2">
+        <div class="field">
+          <label>Correu electrònic</label>
+          <InputText v-model="loginEmail" type="email" class="w-full" placeholder="el.teu.email@example.com" />
+        </div>
+        <div class="field">
+          <label>Contrasenya</label>
+          <InputText v-model="loginPassword" type="password" class="w-full" placeholder="••••••••" @keyup.enter="handleHeaderLogin" />
+        </div>
+        <Button label="Entrar" icon="ti ti-login" class="w-full mt-2" :loading="loggingIn" @click="handleHeaderLogin" />
       </div>
     </Dialog>
   </div>
