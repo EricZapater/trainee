@@ -7,6 +7,7 @@ export interface Form {
   descripcio: string | null
   imatges: string[]
   actiu: boolean
+  notificar_entrenadors: boolean
   created_at: string
 }
 
@@ -63,8 +64,8 @@ export const listForms = async (): Promise<FormWithQuestions[]> => {
   return data
 }
 
-export const createForm = async (titol: string, descripcio: string | null, actiu: boolean, imatges?: string[]): Promise<Form> => {
-  const { data } = await apiClient.post('/entrenador/forms', { titol, descripcio, actiu, imatges: imatges || [] })
+export const createForm = async (titol: string, descripcio: string | null, actiu: boolean, imatges?: string[], notificar_entrenadors?: boolean): Promise<Form> => {
+  const { data } = await apiClient.post('/entrenador/forms', { titol, descripcio, actiu, imatges: imatges || [], notificar_entrenadors: !!notificar_entrenadors })
   return data
 }
 
@@ -73,7 +74,7 @@ export const getFormDetails = async (id: string): Promise<FormWithQuestions> => 
   return data
 }
 
-export const updateForm = async (id: string, payload: { titol: string; descripcio: string | null; actiu: boolean; imatges?: string[] }): Promise<void> => {
+export const updateForm = async (id: string, payload: { titol: string; descripcio: string | null; actiu: boolean; imatges?: string[]; notificar_entrenadors?: boolean }): Promise<void> => {
   await apiClient.put(`/entrenador/forms/${id}`, payload)
 }
 

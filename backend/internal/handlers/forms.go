@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -287,6 +288,32 @@ func (h *Handler) SubmitFormResponse(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	go func() {
+		ctx := context.Background()
+		form, err := h.Store.GetFormDetails(ctx, id)
+		if err != nil || !form.NotificarEntrenadors {
+			return
+		}
+
+		coaches, err := h.Store.ListAllUsuaris(ctx)
+		if err != nil {
+			return
+		}
+
+		for _, coach := range coaches {
+			if coach.Rol == "entrenador" && coach.Actiu {
+				_ = h.Mailer.SendNewFormResponseNotification(
+					coach.Email,
+					coach.Nom,
+					form.Titol,
+					req.NomCandidat,
+					req.EmailCandidat,
+					coach.Idioma,
+				)
+			}
+		}
+	}()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Formulari enviat correctament!"})
 }

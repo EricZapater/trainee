@@ -66,6 +66,15 @@ var feedbackReplyESPHTML string
 //go:embed feedback_reply_ENG.html
 var feedbackReplyENGHTML string
 
+//go:embed new_form_response_CAT.html
+var newFormResponseCATHTML string
+
+//go:embed new_form_response_ESP.html
+var newFormResponseESPHTML string
+
+//go:embed new_form_response_ENG.html
+var newFormResponseENGHTML string
+
 type Mailer interface {
 	SendReminder(toEmail, toName, magicToken, weekStart, idioma string) error
 	SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error
@@ -74,6 +83,7 @@ type Mailer interface {
 	SendFeedbackReplyNotification(toEmail, toName, resum, resposta, estat, idioma string, respostaImatges []string) error
 	SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error
 	SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio string, imatges []string, idioma string) error
+	SendNewFormResponseNotification(toEmail, toName, formTitol, candidatNom, candidatEmail, idioma string) error
 }
 
 type LogMailer struct{}
@@ -110,6 +120,11 @@ func (m *LogMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom, 
 
 func (m *LogMailer) SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error {
 	log.Printf("[MAILER LOG] Enviant notificació planificació a: %s (%s). Setmana: %s. Idioma: %s\n", toName, toEmail, weekStart, idioma)
+	return nil
+}
+
+func (m *LogMailer) SendNewFormResponseNotification(toEmail, toName, formTitol, candidatNom, candidatEmail, idioma string) error {
+	log.Printf("[LOG-MAILER] Sending form response notification to %s for form %s from %s", toEmail, formTitol, candidatNom)
 	return nil
 }
 
@@ -584,6 +599,54 @@ func (m *SMTPMailer) SendNewFeedbackNotification(toEmail, toName, informadorNom,
 		Resum:         resum,
 		Descripcio:    descripcio,
 		Imatges:       imatges,
+		LogoURL:       logoURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendNewFormResponseNotification(toEmail, toName, formTitol, candidatNom, candidatEmail, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ca":
+		subject = fmt.Sprintf("Nova resposta al formulari: %s", formTitol)
+		tmplHTML = newFormResponseCATHTML
+	case "en":
+		subject = fmt.Sprintf("New form response: %s", formTitol)
+		tmplHTML = newFormResponseENGHTML
+	default:
+		subject = fmt.Sprintf("Nueva respuesta en el formulario: %s", formTitol)
+		tmplHTML = newFormResponseESPHTML
+	}
+
+	tmpl, err := template.New("new_form_response").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	logoURL := os.Getenv("MAILER_LOGO_URL")
+	if logoURL == "" {
+		logoURL = "https://trainee.entrenadortrail.es/logo.png"
+	}
+
+	data := struct {
+		Nom           string
+		FormTitol     string
+		CandidatNom   string
+		CandidatEmail string
+		LogoURL       string
+	}{
+		Nom:           toName,
+		FormTitol:     formTitol,
+		CandidatNom:   candidatNom,
+		CandidatEmail: candidatEmail,
 		LogoURL:       logoURL,
 	}
 

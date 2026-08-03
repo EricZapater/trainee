@@ -2,6 +2,22 @@
 
 Tots els canvis notables en aquest projecte es documentaran en aquest fitxer.
 
+## [1.5.0] - 2026-08-03
+
+### Afegit
+
+#### Backend
+- **Notificació de Respostes de Formularis als Entrenadors**:
+  - Nova migració de base de dades `000035_add_notificar_entrenadors_to_forms.up.sql` que afegeix la columna `notificar_entrenadors` (booleà, per defecte `false`) a la taula `forms`.
+  - Noves plantilles de correu electrònic HTML multilingües (`new_form_response_CAT.html`, `new_form_response_ESP.html`, `new_form_response_ENG.html`).
+  - Actualitzat el servei de correu (`mailer.go`) amb el mètode `SendNewFormResponseNotification`.
+  - Actualitzat `SubmitFormResponse` per enviar asíncronament una notificació per correu a tots els entrenadors actius en rebre respostes a formularis que tinguin activat el flag `notificar_entrenadors`.
+
+#### Frontend
+- **Configuració de Notificació de Formularis (`FormsManagerView.vue` i `FormBuilderView.vue`)**:
+  - Afegit el commutador *"Notificar respostes per correu als entrenadors"* al modal de creació de nou formulari i a la secció de *"Configuració General"* de l'editor de formularis.
+  - El flag està protegit i només és visible/editable per entrenadors i administradors; el formulari públic per a candidats (`PublicFormView.vue`) no n'exposa cap referència.
+
 ## [1.4.0] - 2026-07-31
 
 ### Afegit

@@ -409,6 +409,7 @@ type Form struct {
 	Descripcio   *string   `json:"descripcio"`
 	Imatges      []string  `json:"imatges"`
 	Actiu        bool      `json:"actiu"`
+	NotificarEntrenadors bool `json:"notificar_entrenadors"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
@@ -458,6 +459,7 @@ type CreateFormRequest struct {
 	Descripcio string   `json:"descripcio"`
 	Imatges    []string `json:"imatges"`
 	Actiu      bool     `json:"actiu"`
+	NotificarEntrenadors bool `json:"notificar_entrenadors"`
 }
 
 type UpdateFormRequest struct {
@@ -465,6 +467,7 @@ type UpdateFormRequest struct {
 	Descripcio string   `json:"descripcio"`
 	Imatges    []string `json:"imatges"`
 	Actiu      bool     `json:"actiu"`
+	NotificarEntrenadors bool `json:"notificar_entrenadors"`
 }
 
 type CreateFormQuestionRequest struct {

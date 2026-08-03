@@ -50,7 +50,8 @@ const createLoading = ref(false)
 const formPayload = ref({
   titol: '',
   descripcio: '',
-  actiu: false
+  actiu: false,
+  notificar_entrenadors: false
 })
 
 const handleCreate = async () => {
@@ -58,7 +59,7 @@ const handleCreate = async () => {
   
   createLoading.value = true
   try {
-    const newForm = await createForm(formPayload.value.titol, formPayload.value.descripcio || null, formPayload.value.actiu)
+    const newForm = await createForm(formPayload.value.titol, formPayload.value.descripcio || null, formPayload.value.actiu, [], formPayload.value.notificar_entrenadors)
     toast.add({ severity: 'success', summary: 'Creat', detail: 'S\'ha creat el formulari', life: 3000 })
     createVisible.value = false
     router.push(`/entrenador/forms/${newForm.id}/edit`)
@@ -106,7 +107,7 @@ const copyLink = (id: string) => {
       <div class="flex justify-between align-center">
         <h1 class="page-title"><i class="ti ti-clipboard-list text-accent mr-2"></i>{{ $t('forms.title') }}</h1>
         <div class="flex gap-2">
-          <Button :label="$t('forms.newForm')" icon="ti ti-plus" @click="createVisible = true; formPayload = { titol: '', descripcio: '', actiu: false }" />
+          <Button :label="$t('forms.newForm')" icon="ti ti-plus" @click="createVisible = true; formPayload = { titol: '', descripcio: '', actiu: false, notificar_entrenadors: false }" />
         </div>
       </div>
     </div>
@@ -164,6 +165,10 @@ const copyLink = (id: string) => {
         <div class="field flex align-center gap-3">
           <InputSwitch v-model="formPayload.actiu" inputId="actiu-switch" />
           <label for="actiu-switch" class="mb-0">{{ $t('forms.active') }}</label>
+        </div>
+        <div class="field flex align-center gap-3">
+          <InputSwitch v-model="formPayload.notificar_entrenadors" inputId="notificar-switch" />
+          <label for="notificar-switch" class="mb-0">Notificar respostes per correu als entrenadors</label>
         </div>
       </div>
       <template #footer>

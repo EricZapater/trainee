@@ -10,7 +10,7 @@ import (
 
 func (s *PostgresStore) ListForms(ctx context.Context) ([]models.FormWithQuestions, error) {
 	query := `
-		SELECT f.id, f.titol, f.descripcio, f.imatges, f.actiu, f.created_at,
+		SELECT f.id, f.titol, f.descripcio, f.imatges, f.actiu, f.notificar_entrenadors, f.created_at,
 		       (SELECT COUNT(*) FROM form_responses WHERE form_id = f.id) as responses_count
 		FROM forms f
 		ORDER BY f.created_at DESC
@@ -25,7 +25,7 @@ func (s *PostgresStore) ListForms(ctx context.Context) ([]models.FormWithQuestio
 	for rows.Next() {
 		var f models.FormWithQuestions
 		var imatges []string
-		if err := rows.Scan(&f.ID, &f.Titol, &f.Descripcio, &imatges, &f.Actiu, &f.CreatedAt, &f.ResponsesCount); err != nil {
+		if err := rows.Scan(&f.ID, &f.Titol, &f.Descripcio, &imatges, &f.Actiu, &f.NotificarEntrenadors, &f.CreatedAt, &f.ResponsesCount); err != nil {
 			return nil, err
 		}
 		f.Imatges = imatges
@@ -44,17 +44,17 @@ func (s *PostgresStore) ListForms(ctx context.Context) ([]models.FormWithQuestio
 
 func (s *PostgresStore) CreateForm(ctx context.Context, req models.CreateFormRequest) (*models.Form, error) {
 	query := `
-		INSERT INTO forms (titol, descripcio, imatges, actiu)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, titol, descripcio, imatges, actiu, created_at
+		INSERT INTO forms (titol, descripcio, imatges, actiu, notificar_entrenadors)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, titol, descripcio, imatges, actiu, notificar_entrenadors, created_at
 	`
 	var f models.Form
 	imatges := req.Imatges
 	if imatges == nil {
 		imatges = []string{}
 	}
-	err := s.pool.QueryRow(ctx, query, req.Titol, req.Descripcio, imatges, req.Actiu).Scan(
-		&f.ID, &f.Titol, &f.Descripcio, &f.Imatges, &f.Actiu, &f.CreatedAt,
+	err := s.pool.QueryRow(ctx, query, req.Titol, req.Descripcio, imatges, req.Actiu, req.NotificarEntrenadors).Scan(
+		&f.ID, &f.Titol, &f.Descripcio, &f.Imatges, &f.Actiu, &f.NotificarEntrenadors, &f.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -64,13 +64,13 @@ func (s *PostgresStore) CreateForm(ctx context.Context, req models.CreateFormReq
 
 func (s *PostgresStore) GetFormDetails(ctx context.Context, id string) (*models.FormWithQuestions, error) {
 	query := `
-		SELECT id, titol, descripcio, imatges, actiu, created_at,
+		SELECT id, titol, descripcio, imatges, actiu, notificar_entrenadors, created_at,
 		       (SELECT COUNT(*) FROM form_responses WHERE form_id = $1) as responses_count
 		FROM forms WHERE id = $1
 	`
 	var f models.FormWithQuestions
 	err := s.pool.QueryRow(ctx, query, id).Scan(
-		&f.ID, &f.Titol, &f.Descripcio, &f.Imatges, &f.Actiu, &f.CreatedAt, &f.ResponsesCount,
+		&f.ID, &f.Titol, &f.Descripcio, &f.Imatges, &f.Actiu, &f.NotificarEntrenadors, &f.CreatedAt, &f.ResponsesCount,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errors.New("form not found")
@@ -88,12 +88,12 @@ func (s *PostgresStore) GetFormDetails(ctx context.Context, id string) (*models.
 
 func (s *PostgresStore) GetPublicForm(ctx context.Context, id string) (*models.FormWithQuestions, error) {
 	query := `
-		SELECT id, titol, descripcio, imatges, actiu, created_at
+		SELECT id, titol, descripcio, imatges, actiu, notificar_entrenadors, created_at
 		FROM forms WHERE id = $1 AND actiu = true
 	`
 	var f models.FormWithQuestions
 	err := s.pool.QueryRow(ctx, query, id).Scan(
-		&f.ID, &f.Titol, &f.Descripcio, &f.Imatges, &f.Actiu, &f.CreatedAt,
+		&f.ID, &f.Titol, &f.Descripcio, &f.Imatges, &f.Actiu, &f.NotificarEntrenadors, &f.CreatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errors.New("form not found or inactive")
@@ -145,9 +145,9 @@ func (s *PostgresStore) UpdateForm(ctx context.Context, id string, req models.Up
 		imatges = []string{}
 	}
 	cmd, err := s.pool.Exec(ctx, `
-		UPDATE forms SET titol = $1, descripcio = $2, imatges = $3, actiu = $4
-		WHERE id = $5
-	`, req.Titol, req.Descripcio, imatges, req.Actiu, id)
+		UPDATE forms SET titol = $1, descripcio = $2, imatges = $3, actiu = $4, notificar_entrenadors = $5
+		WHERE id = $6
+	`, req.Titol, req.Descripcio, imatges, req.Actiu, req.NotificarEntrenadors, id)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (s *PostgresStore) CloneForm(ctx context.Context, id string) (string, error
 	defer tx.Rollback(ctx)
 
 	var f models.Form
-	err = tx.QueryRow(ctx, `SELECT titol, descripcio, imatges FROM forms WHERE id = $1`, id).Scan(&f.Titol, &f.Descripcio, &f.Imatges)
+	err = tx.QueryRow(ctx, `SELECT titol, descripcio, imatges, notificar_entrenadors FROM forms WHERE id = $1`, id).Scan(&f.Titol, &f.Descripcio, &f.Imatges, &f.NotificarEntrenadors)
 	if err != nil {
 		return "", errors.New("form not found")
 	}
@@ -188,10 +188,10 @@ func (s *PostgresStore) CloneForm(ctx context.Context, id string) (string, error
 
 	var newFormID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO forms (titol, descripcio, imatges, actiu)
-		VALUES ($1, $2, $3, false)
+		INSERT INTO forms (titol, descripcio, imatges, actiu, notificar_entrenadors)
+		VALUES ($1, $2, $3, false, $4)
 		RETURNING id
-	`, nouTitol, f.Descripcio, f.Imatges).Scan(&newFormID)
+	`, nouTitol, f.Descripcio, f.Imatges, f.NotificarEntrenadors).Scan(&newFormID)
 	if err != nil {
 		return "", err
 	}

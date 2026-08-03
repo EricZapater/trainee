@@ -51,7 +51,8 @@ const handleUpdateForm = async () => {
       titol: form.value.titol,
       descripcio: form.value.descripcio,
       imatges: form.value.imatges || [],
-      actiu: form.value.actiu
+      actiu: form.value.actiu,
+      notificar_entrenadors: form.value.notificar_entrenadors
     })
     toast.add({ severity: 'success', summary: 'Guardat', detail: 'Informació actualitzada', life: 3000 })
   } catch (e) {
@@ -297,6 +298,10 @@ const onDrop = async (e: DragEvent, dropIndex: number) => {
           <div class="field flex align-center gap-3">
             <InputSwitch v-model="form.actiu" inputId="actiu-switch-edit" />
             <label for="actiu-switch-edit" class="mb-0">{{ $t('forms.active') }} (Visibilitat pública)</label>
+          </div>
+          <div class="field flex align-center gap-3">
+            <InputSwitch v-model="form.notificar_entrenadors" inputId="notificar-switch-edit" :disabled="isReadOnly" />
+            <label for="notificar-switch-edit" class="mb-0">Notificar respostes per correu als entrenadors</label>
           </div>
         </div>
       </div>
