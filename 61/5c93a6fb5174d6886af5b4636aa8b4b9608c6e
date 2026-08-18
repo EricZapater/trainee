@@ -1,0 +1,28 @@
+backend/cmd/server/main.go
+  h_42175f19913982 85,246
+backend/internal/handlers/auth.go
+  h_42175f19913982 17-21,24-25
+backend/internal/handlers/forms.go
+  h_42175f19913982 83-132
+frontend/CHANGELOG.md
+  h_42175f19913982 5-23
+frontend/package.json
+  h_42175f19913982 3
+frontend/src/views/CompeticionsAtletaView.vue
+  h_42175f19913982 220-224,371-387
+frontend/src/views/DashboardView.vue
+  h_42175f19913982 32,106-109,255-262
+frontend/src/views/FormsManagerView.vue
+  h_42175f19913982 96-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "615c93a6fb5174d6886af5b4636aa8b4b9608c6e",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
