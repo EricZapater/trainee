@@ -2,6 +2,25 @@
 
 Tots els canvis notables en aquest projecte es documentaran en aquest fitxer.
 
+## [1.6.0] - 2026-08-18
+
+### Afegit
+
+#### Backend
+- **Previsualització Open Graph per a formularis compartits per WhatsApp**:
+  - Nou endpoint públic `GET /api/public/forms/:id/preview` que retorna un HTML mínim amb les meta tags Open Graph dinàmiques (`og:title`, `og:description`, `og:url`, `twitter:card`) del formulari, permetent que WhatsApp i altres aplicacions de missatgeria mostrin el nom i la descripció reals del formulari en les previsualitzacions d'enllaç.
+  - L'endpoint redirigeix automàticament els usuaris humans al formulari real via `<meta http-equiv="refresh">`.
+  - Afegit el camp `FrontendURL` al struct `Handler` per garantir que l'URL de redirecció sempre sigui correcta independentment dels headers de la petició del bot.
+
+#### Frontend
+- **Filtre d'atletes absents al Dashboard (`DashboardView.vue`)**:
+  - Els atletes marcats com a absents ara s'oculten per defecte a la taula del dashboard.
+  - Nou botó toggle ✈️ a la barra d'eines del dashboard per mostrar o amagar els atletes absents (quan és actiu, es ressalta en blau).
+- **Descàrrega de GPX a la secció de competicions de l'atleta (`CompeticionsAtletaView.vue`)**:
+  - Cada targeta de competició ara mostra un link de descàrrega del fitxer `.gpx` associat (si n'hi ha), amb estil visual de pill de color primari.
+- **Previsualització Open Graph per a formularis (`FormsManagerView.vue`)**:
+  - El botó *"Copia l'enllaç"* ara copia l'URL de l'endpoint de previsualització del backend (`/api/public/forms/:id/preview`) en lloc de l'URL directa del frontend, assegurant que WhatsApp i altres bots llegeixin el títol i la descripció del formulari en compartir-lo.
+
 ## [1.5.0] - 2026-08-03
 
 ### Afegit

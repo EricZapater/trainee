@@ -217,6 +217,11 @@ const handleCreate = async () => {
             <span v-if="comp.kms"><i class="ti ti-route"></i> {{ comp.kms }} km</span>
             <span v-if="comp.desnivell"><i class="ti ti-mountain"></i> {{ comp.desnivell }} m+</span>
           </div>
+          <div v-if="comp.track_gpx_path" class="mt-2">
+            <a :href="comp.track_gpx_path" download class="gpx-link">
+              <i class="ti ti-download"></i> Descarregar GPX
+            </a>
+          </div>
         </div>
         <div class="comp-actions" v-if="comp.estat === 'activa'">
           <Button :label="$t('athleteCompetitions.edit')" icon="ti ti-edit" severity="secondary" variant="text" size="small" @click="openEditModal(comp)" />
@@ -362,5 +367,22 @@ const handleCreate = async () => {
 }
 .text-danger {
   color: var(--accent-danger);
+}
+.gpx-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.gpx-link:hover {
+  background: rgba(99, 102, 241, 0.2);
 }
 </style>

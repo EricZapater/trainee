@@ -29,6 +29,7 @@ const first = ref(0)
 const { pageSize: rows, setPageSize } = usePaginationPreference()
 const showOnlyPending = ref(false)
 const showInactive = ref(false)
+const showAbsent = ref(false)
 
 const planFilter = ref<'all' | 'planned' | 'unplanned'>('all')
 const planFilterOptions = [
@@ -101,6 +102,10 @@ const filteredAtletes = computed(() => {
   let list = submissionsData.value.atletes
   if (!showInactive.value) {
     list = list.filter(a => a.actiu)
+  }
+
+  if (!showAbsent.value) {
+    list = list.filter(a => !a.absent)
   }
   
   if (showOnlyPending.value) {
@@ -246,6 +251,14 @@ const handleToggleAbsent = async (atleta: AtletaSubmissionSummary) => {
           rounded 
           v-tooltip="'Mostra inactius'"
           @click="showInactive = !showInactive" 
+        />
+        <Button 
+          icon="ti ti-plane-departure" 
+          :severity="showAbsent ? 'info' : 'secondary'"
+          :text="!showAbsent"
+          rounded 
+          v-tooltip="showAbsent ? 'Amaga absents' : 'Mostra absents'"
+          @click="showAbsent = !showAbsent" 
         />
         <Button icon="ti ti-refresh" text rounded @click="loadSubmissions" :loading="loading" />
       </div>

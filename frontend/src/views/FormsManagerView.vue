@@ -93,7 +93,10 @@ const handleClone = async (id: string) => {
 }
 
 const copyLink = (id: string) => {
-  const url = `${window.location.origin}/forms/${id}`
+  // Usem l'endpoint de previsualització del backend perquè WhatsApp i altres bots
+  // puguin llegir les meta Open Graph (títol i descripció del formulari).
+  // L'endpoint fa redirect automàtic al formulari real per a usuaris humans.
+  const url = `${window.location.origin}/api/public/forms/${id}/preview`
   navigator.clipboard.writeText(url)
   toast.add({ severity: 'info', summary: 'Copiada', detail: 'Enllaç copiat al porta-retalls', life: 3000 })
 }

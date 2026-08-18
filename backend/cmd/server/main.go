@@ -82,7 +82,7 @@ func main() {
 		log.Fatalf("Error inicialitzant l'uploader: %v", err)
 	}
 
-	h := handlers.NewHandler(s, mailService, cfg.JWTSecret, fileUploader)
+	h := handlers.NewHandler(s, mailService, cfg.JWTSecret, fileUploader, cfg.FrontendURL)
 	systemLogsHandler := handlers.NewSystemLogsHandler(s)
 	settingsHandler := handlers.NewSettingsHandler(s, jm)
 	adminHandler := handlers.NewAdminHandler(s, mailService, cfg.JWTSecret)
@@ -243,6 +243,7 @@ func main() {
 	publicRoutes := api.Group("/public")
 	{
 		publicRoutes.GET("/forms/:id", h.PublicGetForm)
+		publicRoutes.GET("/forms/:id/preview", h.PublicFormOGPreview)
 		publicRoutes.POST("/forms/:id/submit", middleware.OptionalJWTAuth(cfg.JWTSecret), h.SubmitFormResponse)
 	}
 

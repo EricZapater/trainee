@@ -14,14 +14,15 @@ import (
 )
 
 type Handler struct {
-	Store     store.Store
-	Mailer    mailer.Mailer
-	JWTSecret string
-	Uploader  *uploader.Uploader
+	Store       store.Store
+	Mailer      mailer.Mailer
+	JWTSecret   string
+	Uploader    *uploader.Uploader
+	FrontendURL string
 }
 
-func NewHandler(s store.Store, m mailer.Mailer, jwtSecret string, u *uploader.Uploader) *Handler {
-	return &Handler{Store: s, Mailer: m, JWTSecret: jwtSecret, Uploader: u}
+func NewHandler(s store.Store, m mailer.Mailer, jwtSecret string, u *uploader.Uploader, frontendURL string) *Handler {
+	return &Handler{Store: s, Mailer: m, JWTSecret: jwtSecret, Uploader: u, FrontendURL: frontendURL}
 }
 
 func (h *Handler) Register(c *gin.Context) {

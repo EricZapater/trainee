@@ -80,6 +80,56 @@ func (h *Handler) PublicGetForm(c *gin.Context) {
 	c.JSON(http.StatusOK, f)
 }
 
+// PublicFormOGPreview - Retorna un HTML mínim amb meta Open Graph per a previsualitzacions (WhatsApp, etc.)
+func (h *Handler) PublicFormOGPreview(c *gin.Context) {
+	id := c.Param("id")
+
+	f, err := h.Store.GetPublicForm(c.Request.Context(), id)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	descripcio := "Omple el formulari de l'entrenador"
+	if f.Descripcio != nil && *f.Descripcio != "" {
+		descripcio = *f.Descripcio
+	}
+
+	frontendURL := h.FrontendURL
+	if frontendURL == "" {
+		frontendURL = "https://trainee.entrenadortrail.es"
+	}
+	formURL := fmt.Sprintf("%s/forms/%s", frontendURL, id)
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <title>%s</title>
+  <meta name="description" content="%s">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="%s">
+  <meta property="og:description" content="%s">
+  <meta property="og:url" content="%s">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="%s">
+  <meta name="twitter:description" content="%s">
+  <meta http-equiv="refresh" content="0; url=%s">
+</head>
+<body>
+  <p><a href="%s">%s</a></p>
+</body>
+</html>`,
+		f.Titol, descripcio,
+		f.Titol, descripcio, formURL,
+		f.Titol, descripcio,
+		formURL,
+		formURL, f.Titol,
+	)
+
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
 // UpdateForm - Actualitza títol, descripció i actiu
 func (h *Handler) UpdateForm(c *gin.Context) {
 	id := c.Param("id")
