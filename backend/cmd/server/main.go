@@ -40,7 +40,24 @@ func runMigrations(dbURL string) error {
 		return fmt.Errorf("error inicialitzant les migracions: %w", err)
 	}
 
+	version, dirty, errVer := m.Version()
+	if errVer == nil && dirty {
+		log.Printf("Avís: Base de dades en estat dirty a la versió %d. Intentant forçar a la versió %d...", version, version-1)
+		if errForce := m.Force(int(version - 1)); errForce != nil {
+			log.Printf("No s'ha pogut forçar la versió automàticament: %v", errForce)
+		}
+	}
+
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		if strings.Contains(err.Error(), "Dirty database") {
+			v, d, _ := m.Version()
+			if d && v > 0 {
+				log.Printf("Re-intentant recuperar base de dades dirty versió %d...", v)
+				if errForce := m.Force(int(v - 1)); errForce == nil {
+					return m.Up()
+				}
+			}
+		}
 		return fmt.Errorf("error executant les migracions: %w", err)
 	}
 
