@@ -1,0 +1,16 @@
+backend/cmd/server/main.go
+  h_42175f19913982 43-50,52-60
+backend/migrations/000036_make_forms_titol_unique.up.sql
+  h_42175f19913982 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1623d7c1b5c68195c7b415773903d1aca425b27",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
