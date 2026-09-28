@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 	"trainee-backend/internal/models"
@@ -43,7 +44,7 @@ func (h *Handler) CreateForm(c *gin.Context) {
 
 	f, err := h.Store.CreateForm(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -99,7 +100,7 @@ func (h *Handler) PublicFormOGPreview(c *gin.Context) {
 	if frontendURL == "" {
 		frontendURL = "https://trainee.entrenadortrail.es"
 	}
-	formURL := fmt.Sprintf("%s/forms/%s", frontendURL, id)
+	formURL := fmt.Sprintf("%s/forms/%s", frontendURL, url.PathEscape(f.Titol))
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="ca">
@@ -145,7 +146,7 @@ func (h *Handler) UpdateForm(c *gin.Context) {
 		if err.Error() == "not found or forbidden" {
 			c.JSON(http.StatusForbidden, gin.H{"error": "Formulari no trobat o accés denegat"})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
 		return
 	}

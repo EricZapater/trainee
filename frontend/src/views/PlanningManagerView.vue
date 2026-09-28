@@ -148,13 +148,27 @@ const getBadgeClass = (comp: Competicio) => {
   if (comp.tipus === 'B') return 'badge-b'
   return 'badge-c'
 }
+
+const getTipusTagSeverity = (tipus?: string) => {
+  if (tipus === 'A') return 'danger'
+  if (tipus === 'B') return 'warn'
+  if (tipus === 'C') return 'success'
+  return 'info'
+}
 </script>
 
 <template>
   <div class="planning-layout max-w-7xl mx-auto">
-    <div class="page-header glass-card">
-      <h1 class="page-title">{{ $t('planningManager.title') }}</h1>
-      <p class="text-secondary mt-2">{{ $t('planningManager.subtitle') }}</p>
+    <div class="page-header glass-card flex justify-between items-center flex-wrap gap-4">
+      <div>
+        <h1 class="page-title">{{ $t('planningManager.title') }}</h1>
+        <p class="text-secondary mt-2">{{ $t('planningManager.subtitle') }}</p>
+      </div>
+      <div class="flex items-center gap-4 text-xs font-medium bg-black/5 dark:bg-white/5 p-3 rounded-lg border border-border">
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block bg-[#ef4444]"></span> Tipus A</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block bg-[#f97316]"></span> Tipus B</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block bg-[#22c55e]"></span> Tipus C</span>
+      </div>
     </div>
 
     <div class="filters-card glass-card">
@@ -177,6 +191,9 @@ const getBadgeClass = (comp: Competicio) => {
             optionLabel="nomComplet" 
             optionValue="id" 
             :placeholder="$t('planningManager.selectAthlete')" 
+            filter
+            filterBy="nomComplet"
+            :filterPlaceholder="'Cercar atleta...'"
             class="w-full"
           />
         </div>
@@ -243,7 +260,7 @@ const getBadgeClass = (comp: Competicio) => {
         </div>
         <div class="detail-row">
           <span class="detail-label">{{ $t('planningManager.type') }}</span>
-          <Tag :value="$t('planningManager.type') + ' ' + selectedComp.tipus" />
+          <Tag :value="$t('planningManager.type') + ' ' + selectedComp.tipus" :severity="getTipusTagSeverity(selectedComp.tipus)" />
         </div>
         <div class="detail-row">
           <span class="detail-label">{{ $t('planningManager.status') }}</span>
@@ -389,15 +406,15 @@ const getBadgeClass = (comp: Competicio) => {
 
 /* Colors by Tipus */
 .badge-a {
-  background-color: var(--accent-danger);
+  background-color: #ef4444;
   color: white;
 }
 .badge-b {
-  background-color: var(--accent-warning);
+  background-color: #f97316;
   color: white;
 }
 .badge-c {
-  background-color: var(--accent-info);
+  background-color: #22c55e;
   color: white;
 }
 .badge-descartada {

@@ -55,8 +55,9 @@ const handleUpdateForm = async () => {
       notificar_entrenadors: form.value.notificar_entrenadors
     })
     toast.add({ severity: 'success', summary: 'Guardat', detail: 'Informació actualitzada', life: 3000 })
-  } catch (e) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut guardar', life: 3000 })
+  } catch (e: any) {
+    const msg = e.response?.data?.error || 'No s\'ha pogut guardar'
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 3000 })
   }
 }
 

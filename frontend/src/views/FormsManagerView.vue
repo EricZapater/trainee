@@ -63,8 +63,9 @@ const handleCreate = async () => {
     toast.add({ severity: 'success', summary: 'Creat', detail: 'S\'ha creat el formulari', life: 3000 })
     createVisible.value = false
     router.push(`/entrenador/forms/${newForm.id}/edit`)
-  } catch (error) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut crear', life: 3000 })
+  } catch (error: any) {
+    const msg = error.response?.data?.error || 'No s\'ha pogut crear'
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 3000 })
   } finally {
     createLoading.value = false
   }
@@ -92,11 +93,11 @@ const handleClone = async (id: string) => {
   }
 }
 
-const copyLink = (id: string) => {
+const copyLink = (titol: string) => {
   // Usem l'endpoint de previsualització del backend perquè WhatsApp i altres bots
   // puguin llegir les meta Open Graph (títol i descripció del formulari).
   // L'endpoint fa redirect automàtic al formulari real per a usuaris humans.
-  const url = `${window.location.origin}/api/public/forms/${id}/preview`
+  const url = `${window.location.origin}/api/public/forms/${encodeURIComponent(titol)}/preview`
   navigator.clipboard.writeText(url)
   toast.add({ severity: 'info', summary: 'Copiada', detail: 'Enllaç copiat al porta-retalls', life: 3000 })
 }
@@ -148,7 +149,7 @@ const copyLink = (id: string) => {
           <Button v-tooltip.top="$t('forms.edit')" icon="ti ti-edit" outlined @click="router.push(`/entrenador/forms/${form.id}/edit`)" />
           <Button v-tooltip.top="$t('forms.viewResponses')" icon="ti ti-eye" severity="secondary" outlined @click="router.push(`/entrenador/forms/${form.id}/responses`)" />
           <Button v-tooltip.top="$t('forms.clone')" icon="ti ti-copy" severity="info" outlined @click="handleClone(form.id)" />
-          <Button v-if="form.actiu" v-tooltip.top="$t('forms.share')" icon="ti ti-link" severity="success" outlined @click="copyLink(form.id)" />
+          <Button v-if="form.actiu" v-tooltip.top="$t('forms.share')" icon="ti ti-link" severity="success" outlined @click="copyLink(form.titol)" />
           <Button v-tooltip.top="'Esborrar'" icon="ti ti-trash" severity="danger" text @click="confirmDelete(form.id)" />
         </div>
       </div>

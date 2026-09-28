@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"trainee-backend/internal/models"
@@ -43,6 +44,15 @@ func (s *PostgresStore) ListForms(ctx context.Context) ([]models.FormWithQuestio
 }
 
 func (s *PostgresStore) CreateForm(ctx context.Context, req models.CreateFormRequest) (*models.Form, error) {
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM forms WHERE LOWER(titol) = LOWER($1))`, req.Titol).Scan(&exists)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, errors.New("Ja existeix un formulari amb aquest títol")
+	}
+
 	query := `
 		INSERT INTO forms (titol, descripcio, imatges, actiu, notificar_entrenadors)
 		VALUES ($1, $2, $3, $4, $5)
@@ -53,7 +63,7 @@ func (s *PostgresStore) CreateForm(ctx context.Context, req models.CreateFormReq
 	if imatges == nil {
 		imatges = []string{}
 	}
-	err := s.pool.QueryRow(ctx, query, req.Titol, req.Descripcio, imatges, req.Actiu, req.NotificarEntrenadors).Scan(
+	err = s.pool.QueryRow(ctx, query, req.Titol, req.Descripcio, imatges, req.Actiu, req.NotificarEntrenadors).Scan(
 		&f.ID, &f.Titol, &f.Descripcio, &f.Imatges, &f.Actiu, &f.NotificarEntrenadors, &f.CreatedAt,
 	)
 	if err != nil {
@@ -89,7 +99,7 @@ func (s *PostgresStore) GetFormDetails(ctx context.Context, id string) (*models.
 func (s *PostgresStore) GetPublicForm(ctx context.Context, id string) (*models.FormWithQuestions, error) {
 	query := `
 		SELECT id, titol, descripcio, imatges, actiu, notificar_entrenadors, created_at
-		FROM forms WHERE id = $1 AND actiu = true
+		FROM forms WHERE (titol = $1 OR id::text = $1) AND actiu = true
 	`
 	var f models.FormWithQuestions
 	err := s.pool.QueryRow(ctx, query, id).Scan(
@@ -105,7 +115,7 @@ func (s *PostgresStore) GetPublicForm(ctx context.Context, id string) (*models.F
 		f.Imatges = []string{}
 	}
 
-	f.Questions, err = s.getFormQuestions(ctx, id)
+	f.Questions, err = s.getFormQuestions(ctx, f.ID)
 	return &f, err
 }
 
@@ -140,6 +150,15 @@ func (s *PostgresStore) getFormQuestions(ctx context.Context, formID string) ([]
 }
 
 func (s *PostgresStore) UpdateForm(ctx context.Context, id string, req models.UpdateFormRequest) error {
+	var exists bool
+	err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM forms WHERE LOWER(titol) = LOWER($1) AND id != $2)`, req.Titol, id).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errors.New("Ja existeix un formulari amb aquest títol")
+	}
+
 	imatges := req.Imatges
 	if imatges == nil {
 		imatges = []string{}
@@ -184,7 +203,21 @@ func (s *PostgresStore) CloneForm(ctx context.Context, id string) (string, error
 		f.Imatges = []string{}
 	}
 
-	nouTitol := f.Titol + " (Clon)"
+	baseTitol := f.Titol + " (Clon)"
+	nouTitol := baseTitol
+	counter := 2
+	for {
+		var exists bool
+		err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM forms WHERE LOWER(titol) = LOWER($1))`, nouTitol).Scan(&exists)
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			break
+		}
+		nouTitol = fmt.Sprintf("%s %d", baseTitol, counter)
+		counter++
+	}
 
 	var newFormID string
 	err = tx.QueryRow(ctx, `
@@ -440,8 +473,9 @@ func (s *PostgresStore) UpdateFormAnswer(ctx context.Context, answerID string, r
 }
 
 func (s *PostgresStore) SubmitFormResponse(ctx context.Context, formID string, req models.SubmitFormResponseRequest, userID string) error {
+	var realFormID string
 	var actiu bool
-	err := s.pool.QueryRow(ctx, `SELECT actiu FROM forms WHERE id = $1`, formID).Scan(&actiu)
+	err := s.pool.QueryRow(ctx, `SELECT id, actiu FROM forms WHERE titol = $1 OR id::text = $1`, formID).Scan(&realFormID, &actiu)
 	if err != nil {
 		return errors.New("form not found")
 	}
@@ -482,7 +516,7 @@ func (s *PostgresStore) SubmitFormResponse(ctx context.Context, formID string, r
 		INSERT INTO form_responses (form_id, nom_candidat, email_candidat, telefon_candidat, estat, atleta_id, entrenador_id)
 		VALUES ($1, $2, $3, $4, 'pendent', $5, $6)
 		RETURNING id
-	`, formID, req.NomCandidat, req.EmailCandidat, tel, atletaID, entrenadorID).Scan(&responseID)
+	`, realFormID, req.NomCandidat, req.EmailCandidat, tel, atletaID, entrenadorID).Scan(&responseID)
 	if err != nil {
 		return err
 	}

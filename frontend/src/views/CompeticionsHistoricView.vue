@@ -64,7 +64,7 @@ const getEstatLabel = (comp: Competicio) => {
 const getTipusLabel = (tipus: string) => {
   if (tipus === 'A') return { label: 'Tipus A', severity: 'danger' }
   if (tipus === 'B') return { label: 'Tipus B', severity: 'warn' }
-  return { label: 'Tipus C', severity: 'info' }
+  return { label: 'Tipus C', severity: 'success' }
 }
 
 const filteredCompeticions = computed(() => {
