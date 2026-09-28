@@ -1,0 +1,28 @@
+backend/internal/handlers/forms.go
+  h_42175f19913982 7,47,103,149
+backend/internal/store/forms.go
+  h_42175f19913982 6,47-55,66,102,118,153-161,206-220,476,478,519
+backend/migrations/000036_make_forms_titol_unique.down.sql
+  h_42175f19913982 1
+backend/migrations/000036_make_forms_titol_unique.up.sql
+  h_42175f19913982 1-15
+frontend/src/views/CompeticionsHistoricView.vue
+  h_42175f19913982 67
+frontend/src/views/FormBuilderView.vue
+  h_42175f19913982 58-60
+frontend/src/views/FormsManagerView.vue
+  h_42175f19913982 66-68,96,100,152
+frontend/src/views/PlanningManagerView.vue
+  h_42175f19913982 151-157,162-171,194-196,263,409,413,417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c715eec72dd9653025abf2abf19bbd684d4999e7",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
