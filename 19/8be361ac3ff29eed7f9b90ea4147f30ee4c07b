@@ -1,0 +1,26 @@
+backend/internal/handlers/anuncis.go
+  h_42175f19913982 4,12-19,22,56,73-103,117,154
+backend/internal/handlers/material.go
+  h_42175f19913982 17,132,195,244
+backend/internal/mailer/mailer.go
+  h_42175f19913982 78-86,96,141-145,676-723
+backend/internal/mailer/new_anunci_CAT.html
+  h_42175f19913982 1-38
+backend/internal/mailer/new_anunci_ENG.html
+  h_42175f19913982 1-38
+backend/internal/mailer/new_anunci_ESP.html
+  h_42175f19913982 1-38
+backend/internal/middleware/jwt.go
+  h_42175f19913982 37,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "198be361ac3ff29eed7f9b90ea4147f30ee4c07b",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
