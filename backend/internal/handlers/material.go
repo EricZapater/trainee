@@ -14,7 +14,7 @@ import (
 // ListMaterialProductes retorna els productes del catàleg.
 // Entrenadors/Admins veuen tots; Atletes només els actius.
 func (h *Handler) ListMaterialProductes(c *gin.Context) {
-	userRole := c.GetString("user_rol")
+	userRole := getUserRole(c)
 	onlyActive := (userRole == "atleta")
 
 	productes, err := h.Store.GetMaterialProductes(c.Request.Context(), onlyActive)
@@ -129,7 +129,7 @@ func (h *Handler) UpdateMaterialSettings(c *gin.Context) {
 // ListMaterialComandes llista les comandes realitzades.
 func (h *Handler) ListMaterialComandes(c *gin.Context) {
 	userID := c.GetString("user_id")
-	userRole := c.GetString("user_rol")
+	userRole := getUserRole(c)
 
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
@@ -192,7 +192,7 @@ func (h *Handler) CreateMaterialComandes(c *gin.Context) {
 func (h *Handler) UpdateMaterialComanda(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.GetString("user_id")
-	userRole := c.GetString("user_rol")
+	userRole := getUserRole(c)
 
 	existing, err := h.Store.GetMaterialComandaByID(c.Request.Context(), id)
 	if err != nil {
@@ -241,7 +241,7 @@ func (h *Handler) UpdateMaterialComanda(c *gin.Context) {
 func (h *Handler) DeleteMaterialComanda(c *gin.Context) {
 	id := c.Param("id")
 	userID := c.GetString("user_id")
-	userRole := c.GetString("user_rol")
+	userRole := getUserRole(c)
 
 	existing, err := h.Store.GetMaterialComandaByID(c.Request.Context(), id)
 	if err != nil {

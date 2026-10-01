@@ -34,6 +34,7 @@ func JWTAuth(secret string) gin.HandlerFunc {
 		sub, _ := claims.GetSubject()
 		c.Set("user_id", sub)
 		c.Set("rol", claims.Rol)
+		c.Set("user_rol", claims.Rol)
 		c.Set("nom", claims.Nom)
 		c.Next()
 	}
@@ -50,6 +51,7 @@ func OptionalJWTAuth(secret string) gin.HandlerFunc {
 					sub, _ := claims.GetSubject()
 					c.Set("user_id", sub)
 					c.Set("rol", claims.Rol)
+					c.Set("user_rol", claims.Rol)
 					c.Set("nom", claims.Nom)
 				}
 			}

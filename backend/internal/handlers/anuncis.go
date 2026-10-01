@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -8,9 +9,17 @@ import (
 	"trainee-backend/internal/models"
 )
 
+func getUserRole(c *gin.Context) string {
+	r := c.GetString("user_rol")
+	if r == "" {
+		r = c.GetString("rol")
+	}
+	return r
+}
+
 func (h *Handler) ListAnuncis(c *gin.Context) {
 	userID := c.GetString("user_id")
-	userRole := c.GetString("user_rol")
+	userRole := getUserRole(c)
 
 	anuncis, err := h.Store.ListAnuncis(c.Request.Context())
 	if err != nil {
@@ -44,7 +53,7 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
-	userRole := c.GetString("user_rol")
+	userRole := getUserRole(c)
 	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -61,6 +70,37 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 		return
 	}
 
+	// Send email notification to all active coaches in background
+	go func() {
+		ctx := context.Background()
+		coaches, err := h.Store.ListAllUsuaris(ctx)
+		if err != nil {
+			return
+		}
+
+		usr, _ := h.Store.GetUsuariByID(ctx, userID)
+		autorNom := "Un usuari"
+		if usr != nil {
+			autorNom = usr.Nom
+			if usr.Cognoms != "" {
+				autorNom += " " + usr.Cognoms
+			}
+		}
+
+		for _, coach := range coaches {
+			if coach.Rol == "entrenador" && coach.Actiu {
+				_ = h.Mailer.SendNewAnunciNotification(
+					coach.Email,
+					coach.Nom,
+					autorNom,
+					req.Titol,
+					req.Descripcio,
+					coach.Idioma,
+				)
+			}
+		}
+	}()
+
 	c.JSON(http.StatusCreated, anunci)
 }
 
@@ -74,7 +114,7 @@ func (h *Handler) UpdateAnunciStatus(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
-	userRole := c.GetString("user_rol")
+	userRole := getUserRole(c)
 	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
@@ -111,7 +151,7 @@ func (h *Handler) UpdateAnunciEstat(c *gin.Context) {
 		return
 	}
 
-	userRole := c.GetString("user_rol")
+	userRole := getUserRole(c)
 	if userRole != "admin" && userRole != "entrenador" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to approve or reject anuncis"})
 		return

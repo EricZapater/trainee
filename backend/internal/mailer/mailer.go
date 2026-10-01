@@ -75,6 +75,15 @@ var newFormResponseESPHTML string
 //go:embed new_form_response_ENG.html
 var newFormResponseENGHTML string
 
+//go:embed new_anunci_CAT.html
+var newAnunciCATHTML string
+
+//go:embed new_anunci_ESP.html
+var newAnunciESPHTML string
+
+//go:embed new_anunci_ENG.html
+var newAnunciENGHTML string
+
 type Mailer interface {
 	SendReminder(toEmail, toName, magicToken, weekStart, idioma string) error
 	SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error
@@ -84,6 +93,7 @@ type Mailer interface {
 	SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error
 	SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio string, imatges []string, idioma string) error
 	SendNewFormResponseNotification(toEmail, toName, formTitol, candidatNom, candidatEmail, idioma string) error
+	SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, idioma string) error
 }
 
 type LogMailer struct{}
@@ -125,6 +135,11 @@ func (m *LogMailer) SendWeekPlannedNotification(toEmail, toName, weekStart, idio
 
 func (m *LogMailer) SendNewFormResponseNotification(toEmail, toName, formTitol, candidatNom, candidatEmail, idioma string) error {
 	log.Printf("[LOG-MAILER] Sending form response notification to %s for form %s from %s", toEmail, formTitol, candidatNom)
+	return nil
+}
+
+func (m *LogMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, idioma string) error {
+	log.Printf("[LOG-MAILER] Sending new anunci notification to %s from %s: %s", toEmail, autorNom, titol)
 	return nil
 }
 
@@ -648,6 +663,54 @@ func (m *SMTPMailer) SendNewFormResponseNotification(toEmail, toName, formTitol,
 		CandidatNom:   candidatNom,
 		CandidatEmail: candidatEmail,
 		LogoURL:       logoURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, idioma string) error {
+	var subject string
+	var tmplHTML string
+
+	switch idioma {
+	case "ca":
+		subject = fmt.Sprintf("Nou anunci al tauler: %s", titol)
+		tmplHTML = newAnunciCATHTML
+	case "en":
+		subject = fmt.Sprintf("New announcement: %s", titol)
+		tmplHTML = newAnunciENGHTML
+	default:
+		subject = fmt.Sprintf("Nuevo anuncio en el tablón: %s", titol)
+		tmplHTML = newAnunciESPHTML
+	}
+
+	tmpl, err := template.New("new_anunci").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.entrenadortrail.es"
+	}
+
+	data := struct {
+		EntrenadorNom string
+		AutorNom      string
+		Titol         string
+		Descripcio    string
+		AppURL        string
+	}{
+		EntrenadorNom: toName,
+		AutorNom:      autorNom,
+		Titol:         titol,
+		Descripcio:    descripcio,
+		AppURL:        appURL,
 	}
 
 	var body bytes.Buffer
