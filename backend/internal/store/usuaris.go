@@ -144,7 +144,7 @@ func (s *PostgresStore) GetUsuariByEntrenadorID(ctx context.Context, entrenadorI
 		`SELECT u.id, u.nom, u.cognoms, u.email, u.password_hash, u.rol, u.actiu, u.idioma, u.brevo_id, u.brevo_sync_status, u.created_at
 		 FROM usuaris u
 		 JOIN entrenadors e ON u.id = e.usuari_id
-		 WHERE e.id = $1`,
+		 WHERE e.id = $1 OR e.usuari_id = $1 OR u.id = $1`,
 		entrenadorID,
 	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {
@@ -159,7 +159,7 @@ func (s *PostgresStore) GetUsuariByAtletaID(ctx context.Context, atletaID string
 		`SELECT u.id, u.nom, u.cognoms, u.email, u.password_hash, u.rol, u.actiu, u.idioma, u.brevo_id, u.brevo_sync_status, u.created_at
 		 FROM usuaris u
 		 JOIN atletes a ON u.id = a.usuari_id
-		 WHERE a.id = $1`,
+		 WHERE a.id = $1 OR a.usuari_id = $1 OR u.id = $1`,
 		atletaID,
 	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {

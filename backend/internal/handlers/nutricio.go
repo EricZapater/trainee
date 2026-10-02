@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -89,17 +90,26 @@ func (h *Handler) CreateNutricioPlan(c *gin.Context) {
 	// Notify athlete & coach via email
 	go func() {
 		ctx := context.Background()
-		atletaUsuari, err := h.Store.GetUsuariByAtletaID(ctx, req.AtletaID)
-		if err == nil && atletaUsuari != nil {
-			dataRev := "Pendent"
-			if req.DataRevisio != nil {
-				dataRev = *req.DataRevisio
-			}
-			inst := "-"
-			if req.Instruccions != nil {
-				inst = *req.Instruccions
-			}
-			_ = h.Mailer.SendNutricioRevisionNotification(
+		atletaUsuari, err1 := h.Store.GetUsuariByAtletaID(ctx, req.AtletaID)
+		if err1 != nil {
+			log.Printf("[NUTRICIO MAIL] Could not fetch athlete user for ID %s: %v", req.AtletaID, err1)
+		}
+		entrenadorUsuari, err2 := h.Store.GetUsuariByEntrenadorID(ctx, entrenador.ID)
+		if err2 != nil {
+			log.Printf("[NUTRICIO MAIL] Could not fetch trainer user for ID %s: %v", entrenador.ID, err2)
+		}
+
+		dataRev := "Pendent"
+		if req.DataRevisio != nil && *req.DataRevisio != "" {
+			dataRev = *req.DataRevisio
+		}
+		inst := "-"
+		if req.Instruccions != nil && *req.Instruccions != "" {
+			inst = *req.Instruccions
+		}
+
+		if atletaUsuari != nil {
+			errMail := h.Mailer.SendNutricioRevisionNotification(
 				atletaUsuari.Email,
 				atletaUsuari.Nom,
 				req.Titol,
@@ -108,6 +118,28 @@ func (h *Handler) CreateNutricioPlan(c *gin.Context) {
 				inst,
 				atletaUsuari.Idioma,
 			)
+			if errMail != nil {
+				log.Printf("[NUTRICIO MAIL ERROR] Athlete notification to %s failed: %v", atletaUsuari.Email, errMail)
+			} else {
+				log.Printf("[NUTRICIO MAIL SUCCESS] Athlete notification sent to %s", atletaUsuari.Email)
+			}
+		}
+
+		if entrenadorUsuari != nil && (atletaUsuari == nil || entrenadorUsuari.Email != atletaUsuari.Email) {
+			errMail := h.Mailer.SendNutricioRevisionNotification(
+				entrenadorUsuari.Email,
+				entrenadorUsuari.Nom,
+				req.Titol,
+				"1",
+				dataRev,
+				inst,
+				entrenadorUsuari.Idioma,
+			)
+			if errMail != nil {
+				log.Printf("[NUTRICIO MAIL ERROR] Trainer notification to %s failed: %v", entrenadorUsuari.Email, errMail)
+			} else {
+				log.Printf("[NUTRICIO MAIL SUCCESS] Trainer notification sent to %s", entrenadorUsuari.Email)
+			}
 		}
 	}()
 
@@ -135,30 +167,57 @@ func (h *Handler) CreateNutricioRevision(c *gin.Context) {
 		return
 	}
 
-	// Notify athlete via email
+	// Notify athlete & coach via email
 	go func() {
 		ctx := context.Background()
-		plan, err := h.Store.GetNutricioPlanDetails(ctx, planID)
-		if err == nil && plan != nil {
-			atletaUsuari, err := h.Store.GetUsuariByAtletaID(ctx, plan.AtletaID)
-			if err == nil && atletaUsuari != nil {
-				dataRev := "Pendent"
-				if req.DataRevisio != nil {
-					dataRev = *req.DataRevisio
-				}
-				inst := "-"
-				if req.Instruccions != nil {
-					inst = *req.Instruccions
-				}
-				_ = h.Mailer.SendNutricioRevisionNotification(
+		planDetails, err := h.Store.GetNutricioPlanDetails(ctx, planID)
+		if err == nil && planDetails != nil {
+			atletaUsuari, err1 := h.Store.GetUsuariByAtletaID(ctx, planDetails.AtletaID)
+			if err1 != nil {
+				log.Printf("[NUTRICIO MAIL] Could not fetch athlete user for ID %s: %v", planDetails.AtletaID, err1)
+			}
+			entrenadorUsuari, err2 := h.Store.GetUsuariByEntrenadorID(ctx, planDetails.EntrenadorID)
+			if err2 != nil {
+				log.Printf("[NUTRICIO MAIL] Could not fetch trainer user for ID %s: %v", planDetails.EntrenadorID, err2)
+			}
+
+			dataRev := "Pendent"
+			if req.DataRevisio != nil && *req.DataRevisio != "" {
+				dataRev = *req.DataRevisio
+			}
+			inst := "-"
+			if req.Instruccions != nil && *req.Instruccions != "" {
+				inst = *req.Instruccions
+			}
+
+			if atletaUsuari != nil {
+				errMail := h.Mailer.SendNutricioRevisionNotification(
 					atletaUsuari.Email,
 					atletaUsuari.Nom,
-					plan.Titol,
+					planDetails.Titol,
 					fmt.Sprintf("%d", rev.Versio),
 					dataRev,
 					inst,
 					atletaUsuari.Idioma,
 				)
+				if errMail != nil {
+					log.Printf("[NUTRICIO MAIL ERROR] Athlete revision notification to %s failed: %v", atletaUsuari.Email, errMail)
+				}
+			}
+
+			if entrenadorUsuari != nil && (atletaUsuari == nil || entrenadorUsuari.Email != atletaUsuari.Email) {
+				errMail := h.Mailer.SendNutricioRevisionNotification(
+					entrenadorUsuari.Email,
+					entrenadorUsuari.Nom,
+					planDetails.Titol,
+					fmt.Sprintf("%d", rev.Versio),
+					dataRev,
+					inst,
+					entrenadorUsuari.Idioma,
+				)
+				if errMail != nil {
+					log.Printf("[NUTRICIO MAIL ERROR] Trainer revision notification to %s failed: %v", entrenadorUsuari.Email, errMail)
+				}
 			}
 		}
 	}()
