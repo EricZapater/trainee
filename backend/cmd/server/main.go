@@ -171,7 +171,12 @@ func main() {
 		// Preparació Nutricional (Autenticats)
 		authenticated.GET("/nutricio/plans", h.ListNutricioPlans)
 		authenticated.GET("/nutricio/plans/:id", h.GetNutricioPlanDetails)
-		authenticated.POST("/nutricio/revisions/:revisionId/feedback", h.AddNutricioFeedback)
+		authenticated.POST("/nutricio/plans", h.CreateNutricioPlan)
+		authenticated.POST("/nutricio/plans/:id/revisions", h.CreateNutricioRevision)
+		authenticated.POST("/nutricio/revisions/:revisionId/feedbacks", h.AddNutricioFeedback)
+		authenticated.PATCH("/nutricio/plans/:id/estat", h.UpdateNutricioPlanEstat)
+		authenticated.PUT("/nutricio/plans/:id/estat", h.UpdateNutricioPlanEstat)
+		authenticated.DELETE("/nutricio/plans/:id", h.DeleteNutricioPlan)
 	}
 
 
@@ -249,12 +254,6 @@ func main() {
 		entrenadorRoutes.PUT("/material/settings", h.UpdateMaterialSettings)
 		entrenadorRoutes.PUT("/material/comandes/bulk-status", h.BulkUpdateComandesState)
 		entrenadorRoutes.GET("/material/comandes/export", h.ExportMaterialComandesCSV)
-
-		// Preparació Nutricional (Entrenador)
-		entrenadorRoutes.POST("/nutricio/plans", h.CreateNutricioPlan)
-		entrenadorRoutes.POST("/nutricio/plans/:id/revisions", h.CreateNutricioRevision)
-		entrenadorRoutes.PUT("/nutricio/plans/:id/estat", h.UpdateNutricioPlanEstat)
-		entrenadorRoutes.DELETE("/nutricio/plans/:id", h.DeleteNutricioPlan)
 	}
 
 

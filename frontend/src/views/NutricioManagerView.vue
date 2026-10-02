@@ -794,7 +794,8 @@ const formatDate = (dStr?: string) => {
 <style scoped>
 /* Page Layout */
 .nutricio-layout {
-  max-width: 1200px;
+  max-width: 1400px;
+  width: 100%;
   margin: 0 auto;
   padding-bottom: 2rem;
 }
