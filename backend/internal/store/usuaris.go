@@ -153,6 +153,21 @@ func (s *PostgresStore) GetUsuariByEntrenadorID(ctx context.Context, entrenadorI
 	return &u, nil
 }
 
+func (s *PostgresStore) GetUsuariByAtletaID(ctx context.Context, atletaID string) (*models.Usuari, error) {
+	var u models.Usuari
+	err := s.pool.QueryRow(ctx,
+		`SELECT u.id, u.nom, u.cognoms, u.email, u.password_hash, u.rol, u.actiu, u.idioma, u.brevo_id, u.brevo_sync_status, u.created_at
+		 FROM usuaris u
+		 JOIN atletes a ON u.id = a.usuari_id
+		 WHERE a.id = $1`,
+		atletaID,
+	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 func (s *PostgresStore) ClaimEntrenador(ctx context.Context, entrenadorID, usuariID string) error {
 	tag, err := s.pool.Exec(ctx,
 		`UPDATE entrenadors SET usuari_id = $1

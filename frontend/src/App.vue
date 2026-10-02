@@ -212,6 +212,11 @@ const atletesMenuItems = computed(() => [
     command: () => router.push('/atletes')
   },
   {
+    label: 'Nutrició',
+    icon: 'ti ti-salad',
+    command: () => router.push('/nutricio')
+  },
+  {
     label: t('nav.athleteReports'),
     icon: 'ti ti-file-analytics',
     command: () => router.push('/informe')
@@ -395,6 +400,7 @@ const parsedChangelog = computed(() => {
           <template v-if="authStore.isAtleta">
             <router-link to="/calendar" class="nav-link">{{ $t('nav.calendar') }}</router-link>
             <router-link to="/competicions/atleta" class="nav-link">{{ $t('nav.competitions') }}</router-link>
+            <router-link to="/nutricio" class="nav-link">Nutrició</router-link>
             <router-link to="/material" class="nav-link">Material</router-link>
             <router-link to="/informe" class="nav-link">{{ $t('nav.myHistory') }}</router-link>
           </template>

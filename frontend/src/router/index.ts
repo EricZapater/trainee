@@ -187,6 +187,12 @@ const router = createRouter({
       name: 'material_manager',
       component: () => import('@/views/MaterialManagerView.vue'),
       meta: { requiresAuth: true, role: 'entrenador' }
+    },
+    {
+      path: '/nutricio',
+      name: 'nutricio',
+      component: () => import('@/views/NutricioManagerView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 

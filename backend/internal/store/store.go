@@ -32,6 +32,7 @@ type Store interface {
 	// Atletes
 	CreateAtleta(ctx context.Context, usuariID, entrenadorID string) (*models.Atleta, error)
 	GetAtletaByUsuariID(ctx context.Context, usuariID string) (*models.Atleta, error)
+	GetUsuariByAtletaID(ctx context.Context, atletaID string) (*models.Usuari, error)
 	ListAtletesByEntrenadorID(ctx context.Context, entrenadorID string) ([]models.Atleta, error)
 	ListAllActiveAtletes(ctx context.Context) ([]models.Atleta, error)
 	ReassignAtleta(ctx context.Context, atletaID, nouEntrenadorID string) error
@@ -150,6 +151,16 @@ type Store interface {
 	UpdateMaterialComanda(ctx context.Context, id string, req models.UpdateMaterialComandaRequest) (*models.MaterialComanda, error)
 	DeleteMaterialComanda(ctx context.Context, id string) error
 	BulkUpdateMaterialComandesState(ctx context.Context, comandaIDs []string, nouEstat string) error
+
+	// Nutrició
+	CreateNutricioPlan(ctx context.Context, entrenadorID string, req models.CreateNutricioPlanRequest) (*models.NutricioPlanWithDetails, error)
+	CreateNutricioRevision(ctx context.Context, planID string, req models.CreateNutricioRevisionRequest) (*models.NutricioRevision, error)
+	AddNutricioFeedback(ctx context.Context, revisionID, atletaID string, req models.CreateNutricioFeedbackRequest) (*models.NutricioFeedback, error)
+	GetNutricioPlanDetails(ctx context.Context, planID string) (*models.NutricioPlanWithDetails, error)
+	ListNutricioPlansByAtleta(ctx context.Context, atletaID string) ([]models.NutricioPlanWithDetails, error)
+	ListNutricioPlansByEntrenador(ctx context.Context, entrenadorID string) ([]models.NutricioPlanWithDetails, error)
+	UpdateNutricioPlanEstat(ctx context.Context, planID, estat string) error
+	DeleteNutricioPlan(ctx context.Context, planID string) error
 }
 
 

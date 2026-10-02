@@ -84,6 +84,12 @@ var newAnunciESPHTML string
 //go:embed new_anunci_ENG.html
 var newAnunciENGHTML string
 
+//go:embed nutricio_feedback_CAT.html
+var nutricioFeedbackCATHTML string
+
+//go:embed nutricio_revision_CAT.html
+var nutricioRevisionCATHTML string
+
 type Mailer interface {
 	SendReminder(toEmail, toName, magicToken, weekStart, idioma string) error
 	SendNewAthleteNotification(entrenadorEmail, entrenadorNom, atletaNom, idioma string) error
@@ -94,6 +100,8 @@ type Mailer interface {
 	SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio string, imatges []string, idioma string) error
 	SendNewFormResponseNotification(toEmail, toName, formTitol, candidatNom, candidatEmail, idioma string) error
 	SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, idioma string) error
+	SendNutricioRevisionNotification(toEmail, toName, planTitol, versio, dataRevisio, instruccions, idioma string) error
+	SendNutricioFeedbackNotification(toEmail, toName, atletaNom, planTitol, dataSortida, sensacions, idioma string) error
 }
 
 type LogMailer struct{}
@@ -140,6 +148,16 @@ func (m *LogMailer) SendNewFormResponseNotification(toEmail, toName, formTitol, 
 
 func (m *LogMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, idioma string) error {
 	log.Printf("[LOG-MAILER] Sending new anunci notification to %s from %s: %s", toEmail, autorNom, titol)
+	return nil
+}
+
+func (m *LogMailer) SendNutricioRevisionNotification(toEmail, toName, planTitol, versio, dataRevisio, instruccions, idioma string) error {
+	log.Printf("[LOG-MAILER] Sending nutricio revision notification to %s for plan %s (v%s)", toEmail, planTitol, versio)
+	return nil
+}
+
+func (m *LogMailer) SendNutricioFeedbackNotification(toEmail, toName, atletaNom, planTitol, dataSortida, sensacions, idioma string) error {
+	log.Printf("[LOG-MAILER] Sending nutricio feedback notification to %s from %s on plan %s", toEmail, atletaNom, planTitol)
 	return nil
 }
 
@@ -710,6 +728,82 @@ func (m *SMTPMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol,
 		AutorNom:      autorNom,
 		Titol:         titol,
 		Descripcio:    descripcio,
+		AppURL:        appURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendNutricioRevisionNotification(toEmail, toName, planTitol, versio, dataRevisio, instruccions, idioma string) error {
+	subject := fmt.Sprintf("Actualització Pla Nutricional (v%s): %s", versio, planTitol)
+	tmplHTML := nutricioRevisionCATHTML
+
+	tmpl, err := template.New("nutricio_revision").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.entrenadortrail.es"
+	}
+
+	data := struct {
+		Nom          string
+		PlanTitol    string
+		Versio       string
+		DataRevisio  string
+		Instruccions string
+		AppURL       string
+	}{
+		Nom:          toName,
+		PlanTitol:    planTitol,
+		Versio:       versio,
+		DataRevisio:  dataRevisio,
+		Instruccions: instruccions,
+		AppURL:       appURL,
+	}
+
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return fmt.Errorf("error executant la plantilla: %v", err)
+	}
+
+	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendNutricioFeedbackNotification(toEmail, toName, atletaNom, planTitol, dataSortida, sensacions, idioma string) error {
+	subject := fmt.Sprintf("Nou registre nutricional de %s: %s", atletaNom, planTitol)
+	tmplHTML := nutricioFeedbackCATHTML
+
+	tmpl, err := template.New("nutricio_feedback").Parse(tmplHTML)
+	if err != nil {
+		return fmt.Errorf("error parsejant la plantilla: %v", err)
+	}
+
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.entrenadortrail.es"
+	}
+
+	data := struct {
+		EntrenadorNom string
+		AtletaNom     string
+		PlanTitol     string
+		DataSortida   string
+		Sensacions    string
+		AppURL        string
+	}{
+		EntrenadorNom: toName,
+		AtletaNom:     atletaNom,
+		PlanTitol:     planTitol,
+		DataSortida:   dataSortida,
+		Sensacions:    sensacions,
 		AppURL:        appURL,
 	}
 
