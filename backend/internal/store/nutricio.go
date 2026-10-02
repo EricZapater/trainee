@@ -127,12 +127,16 @@ func (s *PostgresStore) AddNutricioFeedback(ctx context.Context, revisionID, atl
 func (s *PostgresStore) GetNutricioPlanDetails(ctx context.Context, planID string) (*models.NutricioPlanWithDetails, error) {
 	queryPlan := `
 		SELECT p.id, p.atleta_id, p.entrenador_id, p.titol, p.estat, p.created_at,
-		       COALESCE(u_atl.nom, a.id, ''), COALESCE(u_atl.cognoms, ''), COALESCE(u_ent.nom, e.nom, '')
+		       COALESCE(u_atl.nom, u_atl_direct.nom, 'Atleta'), 
+		       COALESCE(u_atl.cognoms, u_atl_direct.cognoms, ''), 
+		       COALESCE(u_ent.nom, u_ent_direct.nom, e.nom, 'Entrenador')
 		FROM nutricio_plans p
 		LEFT JOIN atletes a ON (a.id = p.atleta_id OR a.usuari_id = p.atleta_id)
 		LEFT JOIN usuaris u_atl ON u_atl.id = a.usuari_id
+		LEFT JOIN usuaris u_atl_direct ON u_atl_direct.id = p.atleta_id
 		LEFT JOIN entrenadors e ON (e.id = p.entrenador_id OR e.usuari_id = p.entrenador_id)
 		LEFT JOIN usuaris u_ent ON u_ent.id = e.usuari_id
+		LEFT JOIN usuaris u_ent_direct ON u_ent_direct.id = p.entrenador_id
 		WHERE p.id = $1
 	`
 	var p models.NutricioPlanWithDetails
@@ -170,10 +174,11 @@ func (s *PostgresStore) GetNutricioPlanDetails(ctx context.Context, planID strin
 
 	for i, rev := range revisions {
 		queryFB := `
-			SELECT f.id, f.revision_id, f.atleta_id, f.data_sortida::text, f.durada_hores, f.productes_consumits, f.ch_g_h_real, f.sodi_mg_h_real, f.fluid_ml_h_real, f.sensacions, f.created_at, u.nom
+			SELECT f.id, f.revision_id, f.atleta_id, f.data_sortida::text, f.durada_hores, f.productes_consumits, f.ch_g_h_real, f.sodi_mg_h_real, f.fluid_ml_h_real, f.sensacions, f.created_at, COALESCE(u.nom, u_direct.nom, 'Atleta')
 			FROM nutricio_feedbacks f
 			LEFT JOIN atletes a ON (a.id = f.atleta_id OR a.usuari_id = f.atleta_id)
 			LEFT JOIN usuaris u ON u.id = a.usuari_id
+			LEFT JOIN usuaris u_direct ON u_direct.id = f.atleta_id
 			WHERE f.revision_id = $1
 			ORDER BY f.data_sortida DESC, f.created_at DESC
 		`
@@ -209,8 +214,9 @@ func (s *PostgresStore) ListNutricioPlansByAtleta(ctx context.Context, atletaID 
 	query := `
 		SELECT DISTINCT p.id 
 		FROM nutricio_plans p
-		LEFT JOIN atletes a ON (a.id = p.atleta_id OR a.usuari_id = p.atleta_id)
-		WHERE p.atleta_id = $1 OR a.id = $1 OR a.usuari_id = $1
+		WHERE p.atleta_id = $1
+		   OR p.atleta_id IN (SELECT id FROM atletes WHERE usuari_id = $1 OR id = $1)
+		   OR p.atleta_id IN (SELECT usuari_id FROM atletes WHERE id = $1 OR usuari_id = $1)
 		ORDER BY p.created_at DESC
 	`
 	rows, err := s.pool.Query(ctx, query, atletaID)
@@ -247,8 +253,9 @@ func (s *PostgresStore) ListNutricioPlansByEntrenador(ctx context.Context, entre
 	query := `
 		SELECT DISTINCT p.id 
 		FROM nutricio_plans p
-		LEFT JOIN entrenadors e ON (e.id = p.entrenador_id OR e.usuari_id = p.entrenador_id)
-		WHERE p.entrenador_id = $1 OR e.id = $1 OR e.usuari_id = $1
+		WHERE p.entrenador_id = $1
+		   OR p.entrenador_id IN (SELECT id FROM entrenadors WHERE usuari_id = $1 OR id = $1)
+		   OR p.entrenador_id IN (SELECT usuari_id FROM entrenadors WHERE id = $1 OR usuari_id = $1)
 		ORDER BY p.created_at DESC
 	`
 	rows, err := s.pool.Query(ctx, query, entrenadorID)
