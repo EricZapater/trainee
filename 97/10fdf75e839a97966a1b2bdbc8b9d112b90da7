@@ -1,0 +1,14 @@
+backend/internal/store/nutricio.go
+  h_42175f19913982 130-132,136,139,177,181,217-219,256-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9710fdf75e839a97966a1b2bdbc8b9d112b90da7",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
