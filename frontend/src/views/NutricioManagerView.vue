@@ -260,24 +260,27 @@ const formatDate = (dStr?: string) => {
 </script>
 
 <template>
-  <div class="nutricio-container">
+  <div class="nutricio-layout max-w-7xl mx-auto">
     <Toast />
 
-    <header class="page-header">
+    <!-- Header Card -->
+    <div class="header-section glass-card flex justify-between align-center p-4 mb-4 border-round">
       <div>
-        <h1><i class="ti ti-salad text-accent"></i> Preparació Nutricional</h1>
-        <p class="subtitle">Disseny i seguiment dels plans de nutrició per competició i entrenament</p>
+        <h1 class="page-title m-0 text-primary" style="font-size: 1.8rem; font-weight: 700;">
+          <i class="ti ti-salad text-accent mr-2"></i> Preparació Nutricional
+        </h1>
+        <p class="subtitle m-0 text-secondary text-sm mt-1">Disseny i seguiment dels plans de nutrició per competició i entrenament</p>
       </div>
 
       <div class="actions" v-if="authStore.isEntrenador">
         <Button label="Nou Pla Nutricional" icon="ti ti-plus" class="p-button-primary" @click="openNewPlanModal" />
       </div>
-    </header>
+    </div>
 
-    <!-- Filters Bar -->
-    <div class="filters-bar glass-card">
-      <div class="filter-group">
-        <span class="p-input-icon-left search-input">
+    <!-- Filters Bar Card -->
+    <div class="filters-bar glass-card p-4 mb-4 border-round">
+      <div class="filter-group flex gap-4 align-center flex-wrap">
+        <span class="p-input-icon-left search-input flex-1">
           <i class="ti ti-search"></i>
           <InputText v-model="searchQuery" placeholder="Cercar per títol o atleta..." class="w-full" />
         </span>
@@ -297,35 +300,35 @@ const formatDate = (dStr?: string) => {
     </div>
 
     <!-- Content Section -->
-    <div v-if="loading" class="loading-state">
-      <i class="ti ti-loader spin-icon" style="font-size: 2rem"></i>
-      <p>Carregant plans nutricionals...</p>
+    <div v-if="loading" class="loading-state glass-card p-6 text-center border-round">
+      <i class="ti ti-loader spin-icon text-accent" style="font-size: 2.5rem"></i>
+      <p class="mt-2 text-secondary">Carregant plans nutricionals...</p>
     </div>
 
-    <div v-else-if="filteredPlans.length === 0" class="empty-state glass-card">
-      <i class="ti ti-salad" style="font-size: 3rem"></i>
-      <p>No s'ha trobat cap pla nutricional.</p>
+    <div v-else-if="filteredPlans.length === 0" class="empty-state glass-card p-6 text-center border-round">
+      <i class="ti ti-salad text-secondary" style="font-size: 3.5rem"></i>
+      <p class="mt-2 text-secondary font-medium">No s'ha trobat cap pla nutricional.</p>
       <Button v-if="authStore.isEntrenador" label="Crear el primer pla" icon="ti ti-plus" class="mt-4" @click="openNewPlanModal" />
     </div>
 
     <div v-else class="plans-list space-y-6">
-      <div v-for="plan in filteredPlans" :key="plan.id" class="plan-card glass-card">
+      <div v-for="plan in filteredPlans" :key="plan.id" class="plan-card glass-card p-5 border-round mb-4">
         <!-- Card Header -->
-        <div class="plan-card-header">
+        <div class="plan-card-header flex justify-between align-center mb-4 flex-wrap gap-3">
           <div class="header-main">
             <div class="flex align-center gap-3">
-              <h2 class="plan-title">{{ plan.titol }}</h2>
+              <h2 class="plan-title text-xl font-bold m-0 text-primary">{{ plan.titol }}</h2>
               <Tag :severity="plan.estat === 'actiu' ? 'success' : 'secondary'" :value="plan.estat.toUpperCase()" />
             </div>
-            <p class="plan-meta">
-              <span v-if="authStore.isEntrenador">Atleta: <strong>{{ plan.atleta_nom }} {{ plan.atleta_cognoms }}</strong></span>
-              <span v-else>Entrenador: <strong>{{ plan.entrenador_nom }}</strong></span>
+            <p class="plan-meta text-xs text-secondary mt-1 m-0">
+              <span v-if="authStore.isEntrenador">Atleta: <strong class="text-primary">{{ plan.atleta_nom }} {{ plan.atleta_cognoms }}</strong></span>
+              <span v-else>Entrenador: <strong class="text-primary">{{ plan.entrenador_nom }}</strong></span>
               <span class="mx-2">•</span>
               <span>Creat: {{ formatDate(plan.created_at) }}</span>
             </p>
           </div>
 
-          <div class="header-actions">
+          <div class="header-actions flex align-center gap-2">
             <template v-if="authStore.isEntrenador">
               <Button
                 v-if="plan.estat === 'actiu'"
@@ -350,14 +353,14 @@ const formatDate = (dStr?: string) => {
         </div>
 
         <!-- Current Revision details -->
-        <div v-if="plan.revisions && plan.revisions.length > 0" class="current-revision-box">
-          <div class="revision-header">
-            <div class="badge-versio">
-              <i class="ti ti-shield-check text-accent"></i>
+        <div v-if="plan.revisions && plan.revisions.length > 0" class="current-revision-box p-4 border-round mb-4">
+          <div class="revision-header flex justify-between align-center mb-3 flex-wrap gap-2">
+            <div class="badge-versio flex align-center gap-2 font-bold text-primary">
+              <i class="ti ti-shield-check text-accent text-lg"></i>
               <span>Versió {{ plan.revisions[0].versio }} (Actual)</span>
             </div>
 
-            <div v-if="plan.revisions[0].data_revisio" class="revision-date-tag" :class="{ overdue: isRevisionOverdueOrToday(plan.revisions[0].data_revisio) }">
+            <div v-if="plan.revisions[0].data_revisio" class="revision-date-tag text-xs flex align-center gap-1" :class="{ overdue: isRevisionOverdueOrToday(plan.revisions[0].data_revisio) }">
               <i class="ti ti-calendar-event"></i>
               <span>Propera revisió: <strong>{{ formatDate(plan.revisions[0].data_revisio) }}</strong></span>
               <span v-if="isRevisionOverdueOrToday(plan.revisions[0].data_revisio)" class="revisio-alert"> (Revisió pendent!)</span>
@@ -365,42 +368,46 @@ const formatDate = (dStr?: string) => {
           </div>
 
           <!-- Macros Target Cards -->
-          <div class="macros-grid">
-            <div class="macro-card">
+          <div class="macros-grid grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <div class="macro-card flex align-center gap-3 p-3 border-round">
               <div class="macro-icon ch"><i class="ti ti-flame"></i></div>
-              <div class="macro-info">
-                <span class="macro-label">Carbohidrats</span>
-                <span class="macro-value">{{ plan.revisions[0].objectiu_ch_g_h ?? '-' }} <small>g/h</small></span>
+              <div class="macro-info flex flex-col">
+                <span class="macro-label text-xs text-secondary font-semibold">Carbohidrats</span>
+                <span class="macro-value text-xl font-bold text-primary">{{ plan.revisions[0].objectiu_ch_g_h ?? '-' }} <small class="text-xs text-secondary font-normal">g/h</small></span>
               </div>
             </div>
 
-            <div class="macro-card">
+            <div class="macro-card flex align-center gap-3 p-3 border-round">
               <div class="macro-icon sodi"><i class="ti ti-atom"></i></div>
-              <div class="macro-info">
-                <span class="macro-label">Sodi</span>
-                <span class="macro-value">{{ plan.revisions[0].objectiu_sodi_mg_h ?? '-' }} <small>mg/h</small></span>
+              <div class="macro-info flex flex-col">
+                <span class="macro-label text-xs text-secondary font-semibold">Sodi</span>
+                <span class="macro-value text-xl font-bold text-primary">{{ plan.revisions[0].objectiu_sodi_mg_h ?? '-' }} <small class="text-xs text-secondary font-normal">mg/h</small></span>
               </div>
             </div>
 
-            <div class="macro-card">
+            <div class="macro-card flex align-center gap-3 p-3 border-round">
               <div class="macro-icon fluid"><i class="ti ti-droplet"></i></div>
-              <div class="macro-info">
-                <span class="macro-label">Hidratació</span>
-                <span class="macro-value">{{ plan.revisions[0].objectiu_fluid_ml_h ?? '-' }} <small>ml/h</small></span>
+              <div class="macro-info flex flex-col">
+                <span class="macro-label text-xs text-secondary font-semibold">Hidratació</span>
+                <span class="macro-value text-xl font-bold text-primary">{{ plan.revisions[0].objectiu_fluid_ml_h ?? '-' }} <small class="text-xs text-secondary font-normal">ml/h</small></span>
               </div>
             </div>
           </div>
 
           <!-- Products & Instructions -->
-          <div class="plan-details-grid">
-            <div class="details-box" v-if="plan.revisions[0].productes_propostes">
-              <h4><i class="ti ti-box"></i> Productes i Suplements Proposts</h4>
-              <p class="whitespace-pre-line">{{ plan.revisions[0].productes_propostes }}</p>
+          <div class="plan-details-grid grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="details-box p-3 border-round" v-if="plan.revisions[0].productes_propostes">
+              <h4 class="m-0 mb-2 text-xs font-bold text-secondary flex align-center gap-2">
+                <i class="ti ti-box text-accent"></i> Productes i Suplements Proposts
+              </h4>
+              <p class="whitespace-pre-line m-0 text-sm leading-relaxed text-primary">{{ plan.revisions[0].productes_propostes }}</p>
             </div>
 
-            <div class="details-box" v-if="plan.revisions[0].instruccions">
-              <h4><i class="ti ti-notes"></i> Instruccions / Estratègia</h4>
-              <p class="whitespace-pre-line">{{ plan.revisions[0].instruccions }}</p>
+            <div class="details-box p-3 border-round" v-if="plan.revisions[0].instruccions">
+              <h4 class="m-0 mb-2 text-xs font-bold text-secondary flex align-center gap-2">
+                <i class="ti ti-notes text-accent"></i> Instruccions / Estratègia
+              </h4>
+              <p class="whitespace-pre-line m-0 text-sm leading-relaxed text-primary">{{ plan.revisions[0].instruccions }}</p>
             </div>
           </div>
 
@@ -417,7 +424,7 @@ const formatDate = (dStr?: string) => {
         </div>
 
         <!-- History of Revisions and Feedbacks -->
-        <div class="revisions-history mt-6">
+        <div class="revisions-history mt-4">
           <Accordion :value="['0']" multiple>
             <AccordionPanel v-for="rev in plan.revisions" :key="rev.id" :value="`rev-${rev.id}`">
               <AccordionHeader>
@@ -432,21 +439,21 @@ const formatDate = (dStr?: string) => {
               </AccordionHeader>
               <AccordionContent>
                 <div class="history-content">
-                  <div class="rev-summary-bar">
+                  <div class="rev-summary-bar flex gap-4 p-2 border-round text-xs mb-3">
                     <span><strong>CH:</strong> {{ rev.objectiu_ch_g_h ?? '-' }} g/h</span>
                     <span><strong>Sodi:</strong> {{ rev.objectiu_sodi_mg_h ?? '-' }} mg/h</span>
                     <span><strong>Fluid:</strong> {{ rev.objectiu_fluid_ml_h ?? '-' }} ml/h</span>
                   </div>
 
                   <!-- Feedbacks List for this revision -->
-                  <div v-if="!rev.feedbacks || rev.feedbacks.length === 0" class="no-feedbacks">
-                    <p class="text-sm text-secondary italic">Cap registre o comentari introduït en aquesta versió.</p>
+                  <div v-if="!rev.feedbacks || rev.feedbacks.length === 0" class="no-feedbacks py-2">
+                    <p class="text-sm text-secondary italic m-0">Cap registre o comentari introduït en aquesta versió.</p>
                   </div>
                   <div v-else class="feedbacks-timeline space-y-3 mt-3">
-                    <div v-for="fb in rev.feedbacks" :key="fb.id" class="feedback-card">
-                      <div class="feedback-top">
-                        <div class="fb-date">
-                          <i class="ti ti-calendar"></i> {{ formatDate(fb.data_sortida) }}
+                    <div v-for="fb in rev.feedbacks" :key="fb.id" class="feedback-card p-3 border-round mb-2">
+                      <div class="feedback-top flex justify-between align-center mb-2">
+                        <div class="fb-date font-semibold text-sm">
+                          <i class="ti ti-calendar mr-1"></i> {{ formatDate(fb.data_sortida) }}
                           <span v-if="fb.durada_hores"> ({{ fb.durada_hores }} hores)</span>
                         </div>
                         <div class="fb-atleta text-xs text-secondary">
@@ -455,23 +462,23 @@ const formatDate = (dStr?: string) => {
                       </div>
 
                       <!-- Real macros compared to target -->
-                      <div class="fb-macros-real">
-                        <span class="real-pill" v-if="fb.ch_g_h_real !== undefined">
+                      <div class="fb-macros-real flex gap-2 flex-wrap mb-2">
+                        <span class="real-pill text-xs px-2 py-1 border-round" v-if="fb.ch_g_h_real !== undefined">
                           CH Real: <strong>{{ fb.ch_g_h_real }}</strong> g/h
                         </span>
-                        <span class="real-pill" v-if="fb.sodi_mg_h_real !== undefined">
+                        <span class="real-pill text-xs px-2 py-1 border-round" v-if="fb.sodi_mg_h_real !== undefined">
                           Sodi Real: <strong>{{ fb.sodi_mg_h_real }}</strong> mg/h
                         </span>
-                        <span class="real-pill" v-if="fb.fluid_ml_h_real !== undefined">
+                        <span class="real-pill text-xs px-2 py-1 border-round" v-if="fb.fluid_ml_h_real !== undefined">
                           Fluid Real: <strong>{{ fb.fluid_ml_h_real }}</strong> ml/h
                         </span>
                       </div>
 
-                      <div v-if="fb.productes_consumits" class="fb-products mt-2 text-sm">
+                      <div v-if="fb.productes_consumits" class="fb-products text-sm">
                         <strong>Productes consumits:</strong> {{ fb.productes_consumits }}
                       </div>
 
-                      <div v-if="fb.sensacions" class="fb-sensations mt-2 text-sm italic">
+                      <div v-if="fb.sensacions" class="fb-sensations mt-1 text-sm italic text-secondary">
                         "{{ fb.sensacions }}"
                       </div>
                     </div>
@@ -484,200 +491,331 @@ const formatDate = (dStr?: string) => {
       </div>
     </div>
 
-    <!-- Modal Nou Pla Nutricional -->
-    <Dialog v-model:visible="newPlanVisible" header="Crear Nou Pla Nutricional" modal :style="{ width: '550px', maxWidth: '95vw' }">
-      <div class="dialog-form flex flex-col gap-4 mt-2">
-        <div class="field" v-if="authStore.isEntrenador">
-          <label>Atleta <span class="required">*</span></label>
-          <Select v-model="newPlanForm.atleta_id" :options="atletaOptions" optionLabel="label" optionValue="value" placeholder="Selecciona atleta" filter class="w-full" />
-        </div>
-
-        <div class="field">
-          <label>Títol del Pla <span class="required">*</span></label>
-          <InputText v-model="newPlanForm.titol" placeholder="Ex: Pla de Carrera Marató de Barcelona" class="w-full" />
-        </div>
-
-        <div class="grid grid-cols-3 gap-3">
-          <div class="field">
-            <label>Objectiu CH (g/h)</label>
-            <InputNumber v-model="newPlanForm.objectiu_ch_g_h" :min="0" class="w-full" />
+    <!-- Modal Nou Pla Nutricional (Molt més maco i estructurat) -->
+    <Dialog 
+      v-model:visible="newPlanVisible" 
+      modal 
+      :style="{ width: '650px', maxWidth: '95vw' }" 
+      class="nutricio-styled-dialog"
+    >
+      <template #header>
+        <div class="dialog-header-custom flex align-center gap-3">
+          <div class="header-icon-box flex align-center justify-center">
+            <i class="ti ti-salad text-2xl text-accent"></i>
           </div>
-          <div class="field">
-            <label>Sodi (mg/h)</label>
-            <InputNumber v-model="newPlanForm.objectiu_sodi_mg_h" :min="0" class="w-full" />
-          </div>
-          <div class="field">
-            <label>Hidratació (ml/h)</label>
-            <InputNumber v-model="newPlanForm.objectiu_fluid_ml_h" :min="0" class="w-full" />
+          <div>
+            <h3 class="m-0 font-bold text-lg text-primary">Crear Nou Pla Nutricional</h3>
+            <p class="m-0 text-xs text-secondary">Estableix els objectius horaris de nutrició, suplementació i seguiment</p>
           </div>
         </div>
+      </template>
 
-        <div class="field">
-          <label>Productes Proposts</label>
-          <Textarea v-model="newPlanForm.productes_propostes" rows="3" placeholder="Ex: 1 Gel Maurten Hydrogel cada 30min, Isotònic 500ml/h..." class="w-full" />
+      <div class="styled-form-body flex flex-col gap-5 py-2">
+        <!-- Secció 1: Dades Generals -->
+        <div class="form-section-card p-4 border-round">
+          <div class="section-title text-xs font-bold uppercase tracking-wider text-accent mb-3 flex align-center gap-2">
+            <i class="ti ti-id"></i> Informació Principal
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="field flex flex-col gap-1.5" v-if="authStore.isEntrenador">
+              <label class="text-xs font-semibold text-secondary flex align-center gap-1">
+                <i class="ti ti-user"></i> Atleta <span class="required">*</span>
+              </label>
+              <Select 
+                v-model="newPlanForm.atleta_id" 
+                :options="atletaOptions" 
+                optionLabel="label" 
+                optionValue="value" 
+                placeholder="Selecciona atleta" 
+                filter 
+                class="w-full" 
+              />
+            </div>
+
+            <div class="field flex flex-col gap-1.5" :class="{ 'md:col-span-2': !authStore.isEntrenador }">
+              <label class="text-xs font-semibold text-secondary flex align-center gap-1">
+                <i class="ti ti-file-text"></i> Títol del Pla <span class="required">*</span>
+              </label>
+              <InputText v-model="newPlanForm.titol" placeholder="Ex: Pla de Nutrició - Marató de Barcelona" class="w-full" />
+            </div>
+          </div>
         </div>
 
-        <div class="field">
-          <label>Instruccions / Estratègia</label>
-          <Textarea v-model="newPlanForm.instruccions" rows="3" placeholder="Començar a beure des del minut 15, prendre cafè al km 30..." class="w-full" />
+        <!-- Secció 2: Target Macros per hora -->
+        <div class="form-section-card p-4 border-round">
+          <div class="section-title text-xs font-bold uppercase tracking-wider text-accent mb-3 flex align-center gap-2">
+            <i class="ti ti-target"></i> Objectius de Nutrició per Hora
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="macro-input-box ch-box p-3 border-round flex flex-col gap-2">
+              <div class="flex align-center justify-between">
+                <span class="text-xs font-bold text-warning flex align-center gap-1">
+                  <i class="ti ti-flame"></i> Carbohidrats
+                </span>
+                <span class="text-xs text-secondary">g/h</span>
+              </div>
+              <InputNumber v-model="newPlanForm.objectiu_ch_g_h" :min="0" :max="150" suffix=" g/h" class="w-full custom-num-input" />
+              <span class="text-xs text-secondary italic">Recomanat: 30 - 90 g/h</span>
+            </div>
+
+            <div class="macro-input-box sodi-box p-3 border-round flex flex-col gap-2">
+              <div class="flex align-center justify-between">
+                <span class="text-xs font-bold text-emerald-400 flex align-center gap-1">
+                  <i class="ti ti-atom"></i> Sodi
+                </span>
+                <span class="text-xs text-secondary">mg/h</span>
+              </div>
+              <InputNumber v-model="newPlanForm.objectiu_sodi_mg_h" :min="0" :max="2000" suffix=" mg/h" class="w-full custom-num-input" />
+              <span class="text-xs text-secondary italic">Recomanat: 300 - 800 mg/h</span>
+            </div>
+
+            <div class="macro-input-box fluid-box p-3 border-round flex flex-col gap-2">
+              <div class="flex align-center justify-between">
+                <span class="text-xs font-bold text-blue-400 flex align-center gap-1">
+                  <i class="ti ti-droplet"></i> Hidratació
+                </span>
+                <span class="text-xs text-secondary">ml/h</span>
+              </div>
+              <InputNumber v-model="newPlanForm.objectiu_fluid_ml_h" :min="0" :max="2000" suffix=" ml/h" class="w-full custom-num-input" />
+              <span class="text-xs text-secondary italic">Recomanat: 400 - 800 ml/h</span>
+            </div>
+          </div>
         </div>
 
-        <div class="field">
-          <label>Data de Propera Revisió</label>
-          <InputText type="date" v-model="newPlanForm.data_revisio" class="w-full" />
+        <!-- Secció 3: Suplementació i Recomanacions -->
+        <div class="form-section-card p-4 border-round">
+          <div class="section-title text-xs font-bold uppercase tracking-wider text-accent mb-3 flex align-center gap-2">
+            <i class="ti ti-checklist"></i> Proposta de Suplements i Estratègia
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <div class="field flex flex-col gap-1.5">
+              <label class="text-xs font-semibold text-secondary flex align-center gap-1">
+                <i class="ti ti-box"></i> Productes i Suplements Proposts
+              </label>
+              <Textarea 
+                v-model="newPlanForm.productes_propostes" 
+                rows="3" 
+                placeholder="Ex: 1 Gel Maurten Hydrogel cada 30min (25g CH)&#10;1 Bidó 500ml amb 1 Pastilla de Sales (400mg Sodi)" 
+                class="w-full" 
+              />
+            </div>
+
+            <div class="field flex flex-col gap-1.5">
+              <label class="text-xs font-semibold text-secondary flex align-center gap-1">
+                <i class="ti ti-notes"></i> Instruccions i Protocol
+              </label>
+              <Textarea 
+                v-model="newPlanForm.instruccions" 
+                rows="3" 
+                placeholder="Ex: Començar a beure des del minut 15. Prendre gel abans dels ascensos exigents. Si fa molta calor augmentar ingesta de fluid." 
+                class="w-full" 
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Secció 4: Data de Revisió -->
+        <div class="form-section-card p-4 border-round">
+          <div class="section-title text-xs font-bold uppercase tracking-wider text-accent mb-2 flex align-center gap-2">
+            <i class="ti ti-calendar-event"></i> Calendari de Revisió
+          </div>
+
+          <div class="field flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-secondary">Data de la Propera Revisió del Pla</label>
+            <InputText type="date" v-model="newPlanForm.data_revisio" class="w-full" />
+            <p class="text-xs text-secondary m-0 mt-1 flex align-center gap-1">
+              <i class="ti ti-info-circle"></i> Quan s'assoleixi aquesta data es recomana actualitzar les quantitats o la proposta de productes.
+            </p>
+          </div>
         </div>
       </div>
+
       <template #footer>
-        <Button label="Cancel·lar" icon="ti ti-x" text @click="newPlanVisible = false" />
-        <Button label="Crear Pla" icon="ti ti-check" :loading="submitting" @click="handleCreatePlan" />
+        <div class="flex justify-end gap-2 pt-2 border-t border-white/10">
+          <Button label="Cancel·lar" icon="ti ti-x" text @click="newPlanVisible = false" />
+          <Button label="Crear Pla Nutricional" icon="ti ti-check" class="p-button-primary" :loading="submitting" @click="handleCreatePlan" />
+        </div>
       </template>
     </Dialog>
 
     <!-- Modal Nova Revisió -->
-    <Dialog v-model:visible="newRevisionVisible" header="Crear Nova Revisió del Pla" modal :style="{ width: '550px', maxWidth: '95vw' }">
-      <div class="dialog-form flex flex-col gap-4 mt-2">
-        <p class="text-sm text-secondary">
-          Aquesta nova revisió guardarà la versió actual a l'històric i aplicarà els nous paràmetres i instruccions.
-        </p>
+    <Dialog 
+      v-model:visible="newRevisionVisible" 
+      modal 
+      :style="{ width: '650px', maxWidth: '95vw' }" 
+      class="nutricio-styled-dialog"
+    >
+      <template #header>
+        <div class="dialog-header-custom flex align-center gap-3">
+          <div class="header-icon-box flex align-center justify-center">
+            <i class="ti ti-refresh text-2xl text-accent"></i>
+          </div>
+          <div>
+            <h3 class="m-0 font-bold text-lg text-primary">Nova Revisió del Pla</h3>
+            <p class="m-0 text-xs text-secondary">Actualitza els objectius i instruccions del pla existent</p>
+          </div>
+        </div>
+      </template>
 
-        <div class="grid grid-cols-3 gap-3">
-          <div class="field">
-            <label>Objectiu CH (g/h)</label>
-            <InputNumber v-model="newRevisionForm.objectiu_ch_g_h" :min="0" class="w-full" />
+      <div class="styled-form-body flex flex-col gap-5 py-2">
+        <!-- Banner informatiu versió -->
+        <div class="version-banner p-3 border-round flex align-center gap-3">
+          <i class="ti ti-info-circle text-accent text-xl"></i>
+          <span class="text-xs text-secondary">
+            Aquesta nova revisió crearà una nova versió al pla i conservarà l'històric i tots els registres anteriors.
+          </span>
+        </div>
+
+        <!-- Target Macros -->
+        <div class="form-section-card p-4 border-round">
+          <div class="section-title text-xs font-bold uppercase tracking-wider text-accent mb-3 flex align-center gap-2">
+            <i class="ti ti-target"></i> Nous Objectius per Hora
           </div>
-          <div class="field">
-            <label>Sodi (mg/h)</label>
-            <InputNumber v-model="newRevisionForm.objectiu_sodi_mg_h" :min="0" class="w-full" />
-          </div>
-          <div class="field">
-            <label>Hidratació (ml/h)</label>
-            <InputNumber v-model="newRevisionForm.objectiu_fluid_ml_h" :min="0" class="w-full" />
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="macro-input-box ch-box p-3 border-round flex flex-col gap-2">
+              <span class="text-xs font-bold text-warning flex align-center gap-1">
+                <i class="ti ti-flame"></i> Carbohidrats
+              </span>
+              <InputNumber v-model="newRevisionForm.objectiu_ch_g_h" :min="0" :max="150" suffix=" g/h" class="w-full custom-num-input" />
+            </div>
+
+            <div class="macro-input-box sodi-box p-3 border-round flex flex-col gap-2">
+              <span class="text-xs font-bold text-emerald-400 flex align-center gap-1">
+                <i class="ti ti-atom"></i> Sodi
+              </span>
+              <InputNumber v-model="newRevisionForm.objectiu_sodi_mg_h" :min="0" :max="2000" suffix=" mg/h" class="w-full custom-num-input" />
+            </div>
+
+            <div class="macro-input-box fluid-box p-3 border-round flex flex-col gap-2">
+              <span class="text-xs font-bold text-blue-400 flex align-center gap-1">
+                <i class="ti ti-droplet"></i> Hidratació
+              </span>
+              <InputNumber v-model="newRevisionForm.objectiu_fluid_ml_h" :min="0" :max="2000" suffix=" ml/h" class="w-full custom-num-input" />
+            </div>
           </div>
         </div>
 
-        <div class="field">
-          <label>Productes Proposts</label>
-          <Textarea v-model="newRevisionForm.productes_propostes" rows="3" class="w-full" />
+        <!-- Suplementació i Recomanacions -->
+        <div class="form-section-card p-4 border-round">
+          <div class="section-title text-xs font-bold uppercase tracking-wider text-accent mb-3 flex align-center gap-2">
+            <i class="ti ti-checklist"></i> Productes i Instruccions
+          </div>
+
+          <div class="flex flex-col gap-4">
+            <div class="field flex flex-col gap-1.5">
+              <label class="text-xs font-semibold text-secondary">Productes i Suplements Proposts</label>
+              <Textarea v-model="newRevisionForm.productes_propostes" rows="3" class="w-full" />
+            </div>
+
+            <div class="field flex flex-col gap-1.5">
+              <label class="text-xs font-semibold text-secondary">Instruccions / Estratègia</label>
+              <Textarea v-model="newRevisionForm.instruccions" rows="3" class="w-full" />
+            </div>
+          </div>
         </div>
 
-        <div class="field">
-          <label>Instruccions / Estratègia</label>
-          <Textarea v-model="newRevisionForm.instruccions" rows="3" class="w-full" />
-        </div>
-
-        <div class="field">
-          <label>Nova Data de Revisió</label>
-          <InputText type="date" v-model="newRevisionForm.data_revisio" class="w-full" />
+        <!-- Data de Revisió -->
+        <div class="form-section-card p-4 border-round">
+          <div class="field flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-secondary">Nova Data de Revisió Programada</label>
+            <InputText type="date" v-model="newRevisionForm.data_revisio" class="w-full" />
+          </div>
         </div>
       </div>
+
       <template #footer>
-        <Button label="Cancel·lar" icon="ti ti-x" text @click="newRevisionVisible = false" />
-        <Button label="Guardar Nova Revisió" icon="ti ti-check" :loading="submitting" @click="handleCreateRevision" />
+        <div class="flex justify-end gap-2 pt-2 border-t border-white/10">
+          <Button label="Cancel·lar" icon="ti ti-x" text @click="newRevisionVisible = false" />
+          <Button label="Guardar Nova Revisió" icon="ti ti-check" class="p-button-primary" :loading="submitting" @click="handleCreateRevision" />
+        </div>
       </template>
     </Dialog>
 
     <!-- Modal Registrar Feedback / Sensacions -->
-    <Dialog v-model:visible="newFeedbackVisible" header="Registrar Entrenament i Sensacions" modal :style="{ width: '550px', maxWidth: '95vw' }">
-      <div class="dialog-form flex flex-col gap-4 mt-2">
-        <div class="grid grid-cols-2 gap-3">
-          <div class="field">
-            <label>Data de la Sortida <span class="required">*</span></label>
-            <InputText type="date" v-model="newFeedbackForm.data_sortida" class="w-full" />
+    <Dialog 
+      v-model:visible="newFeedbackVisible" 
+      modal 
+      :style="{ width: '600px', maxWidth: '95vw' }" 
+      class="nutricio-styled-dialog"
+    >
+      <template #header>
+        <div class="dialog-header-custom flex align-center gap-3">
+          <div class="header-icon-box flex align-center justify-center">
+            <i class="ti ti-message-plus text-2xl text-accent"></i>
           </div>
-          <div class="field">
-            <label>Durada (hores)</label>
-            <InputNumber v-model="newFeedbackForm.durada_hores" :min="0" :step="0.5" class="w-full" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Productes Consumits</label>
-          <Textarea v-model="newFeedbackForm.productes_consumits" rows="2" placeholder="Ex: 3 gells 226ers, 1 bidó 500ml isotònic..." class="w-full" />
-        </div>
-
-        <div class="grid grid-cols-3 gap-3">
-          <div class="field">
-            <label>CH Real (g/h)</label>
-            <InputNumber v-model="newFeedbackForm.ch_g_h_real" :min="0" class="w-full" />
-          </div>
-          <div class="field">
-            <label>Sodi Real (mg/h)</label>
-            <InputNumber v-model="newFeedbackForm.sodi_mg_h_real" :min="0" class="w-full" />
-          </div>
-          <div class="field">
-            <label>Fluid Real (ml/h)</label>
-            <InputNumber v-model="newFeedbackForm.fluid_ml_h_real" :min="0" class="w-full" />
+          <div>
+            <h3 class="m-0 font-bold text-lg text-primary">Registrar Entrenament i Sensacions</h3>
+            <p class="m-0 text-xs text-secondary">Introdueix els valors reals consumits i com t'has sentit</p>
           </div>
         </div>
+      </template>
 
-        <div class="field">
-          <label>Sensacions i Comentaris</label>
-          <Textarea v-model="newFeedbackForm.sensacions" rows="3" placeholder="Sensacions d'estómac, assimilació de productes, fatiga..." class="w-full" />
+      <div class="styled-form-body flex flex-col gap-4 py-2">
+        <div class="form-section-card p-4 border-round">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div class="field flex flex-col gap-1.5">
+              <label class="text-xs font-semibold text-secondary">Data de la Sortida <span class="required">*</span></label>
+              <InputText type="date" v-model="newFeedbackForm.data_sortida" class="w-full" />
+            </div>
+            <div class="field flex flex-col gap-1.5">
+              <label class="text-xs font-semibold text-secondary">Durada (hores)</label>
+              <InputNumber v-model="newFeedbackForm.durada_hores" :min="0" :step="0.5" suffix=" hores" class="w-full" />
+            </div>
+          </div>
+
+          <div class="field flex flex-col gap-1.5 mb-3">
+            <label class="text-xs font-semibold text-secondary">Productes Consumits</label>
+            <Textarea v-model="newFeedbackForm.productes_consumits" rows="2" placeholder="Ex: 3 gells 226ers, 1 bidó 500ml isotònic..." class="w-full" />
+          </div>
+
+          <!-- Real macros achieved -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div class="field flex flex-col gap-1">
+              <label class="text-xs font-semibold text-warning">CH Real (g/h)</label>
+              <InputNumber v-model="newFeedbackForm.ch_g_h_real" :min="0" suffix=" g/h" class="w-full" />
+            </div>
+            <div class="field flex flex-col gap-1">
+              <label class="text-xs font-semibold text-emerald-400">Sodi Real (mg/h)</label>
+              <InputNumber v-model="newFeedbackForm.sodi_mg_h_real" :min="0" suffix=" mg/h" class="w-full" />
+            </div>
+            <div class="field flex flex-col gap-1">
+              <label class="text-xs font-semibold text-blue-400">Fluid Real (ml/h)</label>
+              <InputNumber v-model="newFeedbackForm.fluid_ml_h_real" :min="0" suffix=" ml/h" class="w-full" />
+            </div>
+          </div>
+
+          <div class="field flex flex-col gap-1.5">
+            <label class="text-xs font-semibold text-secondary">Sensacions i Comentaris</label>
+            <Textarea v-model="newFeedbackForm.sensacions" rows="3" placeholder="Sensacions d'estómac, assimilació de productes, fatiga..." class="w-full" />
+          </div>
         </div>
       </div>
+
       <template #footer>
-        <Button label="Cancel·lar" icon="ti ti-x" text @click="newFeedbackVisible = false" />
-        <Button label="Guardar Registre" icon="ti ti-check" :loading="submitting" @click="handleAddFeedback" />
+        <div class="flex justify-end gap-2 pt-2 border-t border-white/10">
+          <Button label="Cancel·lar" icon="ti ti-x" text @click="newFeedbackVisible = false" />
+          <Button label="Guardar Registre" icon="ti ti-check" class="p-button-primary" :loading="submitting" @click="handleAddFeedback" />
+        </div>
       </template>
     </Dialog>
   </div>
 </template>
 
 <style scoped>
-.nutricio-container {
-  max-width: 1100px;
-  margin: 0 auto;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.page-header h1 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.subtitle {
-  color: var(--text-secondary);
-  margin-top: 0.25rem;
-}
-
-.filters-bar {
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  border-radius: var(--radius-md);
-}
-
-.filter-group {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+.nutricio-layout {
+  width: 100%;
 }
 
 .search-input {
-  flex: 1;
   min-width: 240px;
 }
 
 .atleta-select {
   width: 250px;
-}
-
-.loading-state, .empty-state {
-  text-align: center;
-  padding: 3rem;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
 }
 
 .spin-icon {
@@ -688,63 +826,9 @@ const formatDate = (dStr?: string) => {
   100% { transform: rotate(360deg); }
 }
 
-.plan-card {
-  padding: 1.5rem;
-  border-radius: var(--radius-lg);
-  margin-bottom: 1.5rem;
-}
-
-.plan-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.plan-title {
-  font-size: 1.35rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.plan-meta {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin-top: 0.25rem;
-}
-
 .current-revision-box {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-md);
-  padding: 1.25rem;
-}
-
-.revision-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.badge-versio {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-}
-
-.revision-date-tag {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
 }
 
 .revision-date-tag.overdue {
@@ -757,121 +841,41 @@ const formatDate = (dStr?: string) => {
   font-weight: bold;
 }
 
-.macros-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
 .macro-card {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .macro-icon {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
 }
 
 .macro-icon.ch { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
 .macro-icon.sodi { background: rgba(16, 185, 129, 0.15); color: #10b981; }
 .macro-icon.fluid { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
 
-.macro-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.macro-label {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
-.macro-value {
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.plan-details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-}
-
 .details-box {
-  background: rgba(0, 0, 0, 0.15);
-  padding: 0.85rem 1rem;
-  border-radius: var(--radius-sm);
-}
-
-.details-box h4 {
-  font-size: 0.85rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.details-box p {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.4;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .rev-summary-bar {
-  display: flex;
-  gap: 1.5rem;
-  padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 6px;
-  font-size: 0.85rem;
-  margin-bottom: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .feedback-card {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem 1rem;
-}
-
-.feedback-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.fb-date {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.fb-macros-real {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
 }
 
 .real-pill {
-  font-size: 0.8rem;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 2px 8px;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .required {
@@ -880,5 +884,41 @@ const formatDate = (dStr?: string) => {
 
 .whitespace-pre-line {
   white-space: pre-line;
+}
+
+/* Styled Dialog Customization */
+.header-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.form-section-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.macro-input-box {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.macro-input-box.ch-box {
+  border-left: 3px solid #f59e0b;
+}
+
+.macro-input-box.sodi-box {
+  border-left: 3px solid #10b981;
+}
+
+.macro-input-box.fluid-box {
+  border-left: 3px solid #3b82f6;
+}
+
+.version-banner {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 </style>
