@@ -1,0 +1,14 @@
+frontend/src/views/NutricioManagerView.vue
+  h_42175f19913982 490,494,630,634,724,728,1236,1245-1246,1249-1253,1286,1289-1297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b3fcc86cbe1b67d5f6255fbe3302dff87b2df5d",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
