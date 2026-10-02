@@ -487,11 +487,11 @@ const formatDate = (dStr?: string) => {
       </div>
     </div>
 
-    <!-- Modal Nou Pla Nutricional -->
+    <!-- Modal Nou Pla Nutricional (820px d'ample) -->
     <Dialog 
       v-model:visible="newPlanVisible" 
       modal 
-      :style="{ width: '640px', maxWidth: '95vw' }" 
+      :style="{ width: '820px', maxWidth: '95vw' }" 
       class="nutricio-styled-dialog"
     >
       <template #header>
@@ -627,11 +627,11 @@ const formatDate = (dStr?: string) => {
       </template>
     </Dialog>
 
-    <!-- Modal Nova Revisió -->
+    <!-- Modal Nova Revisió (820px d'ample) -->
     <Dialog 
       v-model:visible="newRevisionVisible" 
       modal 
-      :style="{ width: '640px', maxWidth: '95vw' }" 
+      :style="{ width: '820px', maxWidth: '95vw' }" 
       class="nutricio-styled-dialog"
     >
       <template #header>
@@ -721,11 +721,11 @@ const formatDate = (dStr?: string) => {
       </template>
     </Dialog>
 
-    <!-- Modal Registrar Feedback / Sensacions -->
+    <!-- Modal Registrar Feedback / Sensacions (750px d'ample) -->
     <Dialog 
       v-model:visible="newFeedbackVisible" 
       modal 
-      :style="{ width: '600px', maxWidth: '95vw' }" 
+      :style="{ width: '750px', maxWidth: '95vw' }" 
       class="nutricio-styled-dialog"
     >
       <template #header>
@@ -1233,7 +1233,7 @@ const formatDate = (dStr?: string) => {
 .form-grid-2 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .grid-span-2 {
@@ -1242,12 +1242,15 @@ const formatDate = (dStr?: string) => {
 
 .form-grid-3 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
 }
 
-@media (max-width: 640px) {
-  .form-grid-2, .form-grid-3 {
+@media (max-width: 768px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .form-grid-3 {
     grid-template-columns: 1fr;
   }
   .grid-span-2 {
@@ -1280,10 +1283,18 @@ const formatDate = (dStr?: string) => {
   background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 0.85rem;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
+}
+
+.macro-input-box :deep(.p-inputnumber) {
+  width: 100%;
+}
+
+.macro-input-box :deep(.p-inputnumber-input) {
+  width: 100%;
 }
 
 .macro-input-box.ch-box {
