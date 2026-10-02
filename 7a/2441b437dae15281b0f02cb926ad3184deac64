@@ -1,0 +1,16 @@
+backend/cmd/server/main.go
+  h_42175f19913982 174-179
+frontend/src/views/NutricioManagerView.vue
+  h_42175f19913982 797-798
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a2441b437dae15281b0f02cb926ad3184deac64",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
