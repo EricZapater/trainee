@@ -1,0 +1,42 @@
+backend/cmd/server/main.go
+  h_42175f19913982 170-174,252-257
+backend/internal/handlers/nutricio.go
+  h_42175f19913982 1-286
+backend/internal/mailer/mailer.go
+  h_42175f19913982 87-92,103-104,154-163,742-817
+backend/internal/mailer/nutricio_feedback_CAT.html
+  h_42175f19913982 1-37
+backend/internal/mailer/nutricio_revision_CAT.html
+  h_42175f19913982 1-37
+backend/internal/models/nutricio.go
+  h_42175f19913982 1-85
+backend/internal/store/nutricio.go
+  h_42175f19913982 1-278
+backend/internal/store/store.go
+  h_42175f19913982 35,154-163
+backend/internal/store/usuaris.go
+  h_42175f19913982 150-164
+backend/migrations/000037_create_nutricio_tables.down.sql
+  h_42175f19913982 1-3
+backend/migrations/000037_create_nutricio_tables.up.sql
+  h_42175f19913982 1-35
+frontend/src/App.vue
+  h_42175f19913982 214-218,403
+frontend/src/api/nutricio.ts
+  h_42175f19913982 1-106
+frontend/src/router/index.ts
+  h_42175f19913982 190-195
+frontend/src/views/NutricioManagerView.vue
+  h_42175f19913982 1-884
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18581d73bcb35edaa39eaf2a62f15ddaf83cb9c9",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
