@@ -58,6 +58,16 @@ func (h *Handler) ListNutricioPlans(c *gin.Context) {
 		return
 	}
 
+	if userRole == "admin" {
+		plans, err := h.Store.ListAllNutricioPlans(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error carregant plans nutricionals"})
+			return
+		}
+		c.JSON(http.StatusOK, plans)
+		return
+	}
+
 	c.JSON(http.StatusOK, []models.NutricioPlanWithDetails{})
 }
 

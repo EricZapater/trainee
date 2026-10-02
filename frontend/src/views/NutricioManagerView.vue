@@ -32,10 +32,12 @@ import {
 const authStore = useAuthStore()
 const toast = useToast()
 
+const isEntrenadorOrAdmin = computed(() => authStore.isEntrenador || authStore.usuari?.rol === 'admin')
+
 const loading = ref(false)
 const submitting = ref(false)
 const plans = ref<NutricioPlanWithDetails[]>([])
-const atletes = ref<{ id: string; nom: string; cognoms: string; email: string }[]>([])
+const atletes = ref<{ id: string; usuari_id?: string; nom: string; cognoms: string; email: string }[]>([])
 const selectedAtletaFilter = ref<string | null>(null)
 const searchQuery = ref('')
 
@@ -84,7 +86,7 @@ const loadData = async () => {
     const plansData = await getNutricioPlans()
     plans.value = plansData
 
-    if (authStore.isEntrenador) {
+    if (isEntrenadorOrAdmin.value) {
       const atletesData = await getAtletes()
       atletes.value = atletesData
     }
@@ -108,8 +110,16 @@ const atletaOptions = computed(() => {
 
 const filteredPlans = computed(() => {
   return plans.value.filter(p => {
-    if (selectedAtletaFilter.value && p.atleta_id !== selectedAtletaFilter.value) {
-      return false
+    if (selectedAtletaFilter.value) {
+      const selectedAtletaObj = atletes.value.find(a => a.id === selectedAtletaFilter.value || a.usuari_id === selectedAtletaFilter.value)
+      const validIds = new Set<string>([selectedAtletaFilter.value])
+      if (selectedAtletaObj) {
+        if (selectedAtletaObj.id) validIds.add(selectedAtletaObj.id)
+        if (selectedAtletaObj.usuari_id) validIds.add(selectedAtletaObj.usuari_id)
+      }
+      if (!validIds.has(p.atleta_id)) {
+        return false
+      }
     }
     if (searchQuery.value.trim()) {
       const q = searchQuery.value.toLowerCase()
@@ -272,7 +282,7 @@ const formatDate = (dStr?: string) => {
         <p class="subtitle">Disseny i seguiment dels plans de nutrició per competició i entrenament</p>
       </div>
 
-      <div class="actions" v-if="authStore.isEntrenador">
+      <div class="actions" v-if="isEntrenadorOrAdmin">
         <Button label="Nou Pla Nutricional" icon="ti ti-plus" class="p-button-primary" @click="openNewPlanModal" />
       </div>
     </header>
@@ -286,7 +296,7 @@ const formatDate = (dStr?: string) => {
         </div>
 
         <Select
-          v-if="authStore.isEntrenador"
+          v-if="isEntrenadorOrAdmin"
           v-model="selectedAtletaFilter"
           :options="atletaOptions"
           optionLabel="label"
@@ -308,7 +318,7 @@ const formatDate = (dStr?: string) => {
     <div v-else-if="filteredPlans.length === 0" class="empty-state glass-card">
       <i class="ti ti-salad text-muted"></i>
       <p>No s'ha trobat cap pla nutricional.</p>
-      <Button v-if="authStore.isEntrenador" label="Crear el primer pla" icon="ti ti-plus" class="mt-4" @click="openNewPlanModal" />
+      <Button v-if="isEntrenadorOrAdmin" label="Crear el primer pla" icon="ti ti-plus" class="mt-4" @click="openNewPlanModal" />
     </div>
 
     <div v-else class="plans-list">
@@ -321,7 +331,7 @@ const formatDate = (dStr?: string) => {
               <Tag :severity="plan.estat === 'actiu' ? 'success' : 'secondary'" :value="plan.estat.toUpperCase()" />
             </div>
             <p class="plan-meta">
-              <span v-if="authStore.isEntrenador">Atleta: <strong>{{ plan.atleta_nom }} {{ plan.atleta_cognoms }}</strong></span>
+              <span v-if="isEntrenadorOrAdmin">Atleta: <strong>{{ plan.atleta_nom }} {{ plan.atleta_cognoms }}</strong></span>
               <span v-else>Entrenador: <strong>{{ plan.entrenador_nom }}</strong></span>
               <span class="dot-separator">•</span>
               <span>Creat: {{ formatDate(plan.created_at) }}</span>
@@ -329,7 +339,7 @@ const formatDate = (dStr?: string) => {
           </div>
 
           <div class="header-actions">
-            <template v-if="authStore.isEntrenador">
+            <template v-if="isEntrenadorOrAdmin">
               <Button
                 v-if="plan.estat === 'actiu'"
                 label="Nova Revisió"
@@ -514,7 +524,7 @@ const formatDate = (dStr?: string) => {
           </div>
 
           <div class="form-grid-2">
-            <div class="field" v-if="authStore.isEntrenador">
+            <div class="field" v-if="isEntrenadorOrAdmin">
               <label>
                 <i class="ti ti-user"></i> Atleta <span class="required">*</span>
               </label>
@@ -529,7 +539,7 @@ const formatDate = (dStr?: string) => {
               />
             </div>
 
-            <div class="field" :class="{ 'grid-span-2': !authStore.isEntrenador }">
+            <div class="field" :class="{ 'grid-span-2': !isEntrenadorOrAdmin }">
               <label>
                 <i class="ti ti-file-text"></i> Títol del Pla <span class="required">*</span>
               </label>

@@ -159,6 +159,7 @@ type Store interface {
 	GetNutricioPlanDetails(ctx context.Context, planID string) (*models.NutricioPlanWithDetails, error)
 	ListNutricioPlansByAtleta(ctx context.Context, atletaID string) ([]models.NutricioPlanWithDetails, error)
 	ListNutricioPlansByEntrenador(ctx context.Context, entrenadorID string) ([]models.NutricioPlanWithDetails, error)
+	ListAllNutricioPlans(ctx context.Context) ([]models.NutricioPlanWithDetails, error)
 	UpdateNutricioPlanEstat(ctx context.Context, planID, estat string) error
 	DeleteNutricioPlan(ctx context.Context, planID string) error
 }

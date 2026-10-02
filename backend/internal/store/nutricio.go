@@ -288,6 +288,38 @@ func (s *PostgresStore) ListNutricioPlansByEntrenador(ctx context.Context, entre
 	return result, nil
 }
 
+func (s *PostgresStore) ListAllNutricioPlans(ctx context.Context) ([]models.NutricioPlanWithDetails, error) {
+	query := `SELECT id FROM nutricio_plans ORDER BY created_at DESC`
+	rows, err := s.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var planIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		planIDs = append(planIDs, id)
+	}
+	rows.Close()
+
+	var result []models.NutricioPlanWithDetails
+	for _, id := range planIDs {
+		details, err := s.GetNutricioPlanDetails(ctx, id)
+		if err == nil && details != nil {
+			result = append(result, *details)
+		}
+	}
+
+	if result == nil {
+		result = []models.NutricioPlanWithDetails{}
+	}
+	return result, nil
+}
+
 func (s *PostgresStore) UpdateNutricioPlanEstat(ctx context.Context, planID, estat string) error {
 	_, err := s.pool.Exec(ctx, `UPDATE nutricio_plans SET estat = $1 WHERE id = $2`, estat, planID)
 	return err
