@@ -1,0 +1,20 @@
+backend/internal/handlers/nutricio.go
+  h_42175f19913982 55-64
+backend/internal/store/nutricio.go
+  h_42175f19913982 291-322
+backend/internal/store/store.go
+  h_42175f19913982 162
+frontend/src/views/NutricioManagerView.vue
+  h_42175f19913982 35-36,40,89,113-122,285,299,321,334,342,527,542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89718dd32a6d91d7ea2f8e75a2164ad34cb8d26d",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
