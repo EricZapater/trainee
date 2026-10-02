@@ -248,15 +248,13 @@ func (h *Handler) AddNutricioFeedback(c *gin.Context) {
 	userRole := getUserRole(c)
 
 	var atletaID string
-	if userRole == "atleta" {
-		atleta, err := h.Store.GetAtletaByUsuariID(c.Request.Context(), userID)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "perfil d'atleta no trobat"})
-			return
-		}
+	atleta, err := h.Store.GetAtletaByUsuariID(c.Request.Context(), userID)
+	if err == nil && atleta != nil {
 		atletaID = atleta.ID
+	} else if userRole == "admin" || userRole == "entrenador" {
+		atletaID = userID
 	} else {
-		c.JSON(http.StatusForbidden, gin.H{"error": "només l'atleta pot afegir registres de feedback"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "només l'atleta, entrenador o administrador pot afegir registres de feedback"})
 		return
 	}
 
