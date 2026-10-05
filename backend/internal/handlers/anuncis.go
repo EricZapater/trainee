@@ -53,16 +53,12 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
-	userRole := getUserRole(c)
 	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	estat := "pendent"
-	if userRole == "admin" || userRole == "entrenador" {
-		estat = "aprovat"
-	}
 
 	anunci, err := h.Store.CreateAnunci(c.Request.Context(), userID, req, estat)
 	if err != nil {
@@ -70,7 +66,7 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 		return
 	}
 
-	// Send email notification in background
+	// Send email notification to all active coaches and admins in background
 	go func() {
 		ctx := context.Background()
 		users, err := h.Store.ListAllUsuaris(ctx)
@@ -87,33 +83,17 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 			}
 		}
 
-		if estat == "aprovat" {
-			// Direct creation by coach/admin: send email to everyone
-			for _, u := range users {
-				if u.Actiu {
-					_ = h.Mailer.SendNewAnunciNotification(
-						u.Email,
-						u.Nom,
-						autorNom,
-						req.Titol,
-						req.Descripcio,
-						u.Idioma,
-					)
-				}
-			}
-		} else {
-			// Athlete creation pending approval: notify coaches and admins
-			for _, u := range users {
-				if (u.Rol == "entrenador" || u.Rol == "admin") && u.Actiu {
-					_ = h.Mailer.SendNewAnunciNotification(
-						u.Email,
-						u.Nom,
-						autorNom,
-						req.Titol,
-						req.Descripcio,
-						u.Idioma,
-					)
-				}
+		// Notify coaches and admins about the new pending announcement
+		for _, u := range users {
+			if (u.Rol == "entrenador" || u.Rol == "admin") && u.Actiu {
+				_ = h.Mailer.SendNewAnunciNotification(
+					u.Email,
+					u.Nom,
+					autorNom,
+					req.Titol,
+					req.Descripcio,
+					u.Idioma,
+				)
 			}
 		}
 	}()
