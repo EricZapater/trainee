@@ -70,10 +70,10 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 		return
 	}
 
-	// Send email notification to all active coaches in background
+	// Send email notification in background
 	go func() {
 		ctx := context.Background()
-		coaches, err := h.Store.ListAllUsuaris(ctx)
+		users, err := h.Store.ListAllUsuaris(ctx)
 		if err != nil {
 			return
 		}
@@ -87,16 +87,33 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 			}
 		}
 
-		for _, coach := range coaches {
-			if coach.Rol == "entrenador" && coach.Actiu {
-				_ = h.Mailer.SendNewAnunciNotification(
-					coach.Email,
-					coach.Nom,
-					autorNom,
-					req.Titol,
-					req.Descripcio,
-					coach.Idioma,
-				)
+		if estat == "aprovat" {
+			// Direct creation by coach/admin: send email to everyone
+			for _, u := range users {
+				if u.Actiu {
+					_ = h.Mailer.SendNewAnunciNotification(
+						u.Email,
+						u.Nom,
+						autorNom,
+						req.Titol,
+						req.Descripcio,
+						u.Idioma,
+					)
+				}
+			}
+		} else {
+			// Athlete creation pending approval: notify coaches and admins
+			for _, u := range users {
+				if (u.Rol == "entrenador" || u.Rol == "admin") && u.Actiu {
+					_ = h.Mailer.SendNewAnunciNotification(
+						u.Email,
+						u.Nom,
+						autorNom,
+						req.Titol,
+						req.Descripcio,
+						u.Idioma,
+					)
+				}
 			}
 		}
 	}()
@@ -161,6 +178,40 @@ func (h *Handler) UpdateAnunciEstat(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update anunci estat"})
 		return
+	}
+
+	// If approved, send notification email to all active users
+	if req.Estat == "aprovat" {
+		go func() {
+			ctx := context.Background()
+			anunci, err := h.Store.GetAnunciByID(ctx, id)
+			if err != nil || anunci == nil {
+				return
+			}
+
+			users, err := h.Store.ListAllUsuaris(ctx)
+			if err != nil {
+				return
+			}
+
+			autorNom := anunci.AutorNom
+			if autorNom == "" {
+				autorNom = "Un usuari"
+			}
+
+			for _, u := range users {
+				if u.Actiu {
+					_ = h.Mailer.SendNewAnunciNotification(
+						u.Email,
+						u.Nom,
+						autorNom,
+						anunci.Titol,
+						anunci.Descripcio,
+						u.Idioma,
+					)
+				}
+			}
+		}()
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Estat updated successfully"})

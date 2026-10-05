@@ -696,10 +696,10 @@ func (m *SMTPMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol,
 	var tmplHTML string
 
 	switch idioma {
-	case "ca":
+	case "ca", "CAT":
 		subject = fmt.Sprintf("Nou anunci al tauler: %s", titol)
 		tmplHTML = newAnunciCATHTML
-	case "en":
+	case "en", "ENG":
 		subject = fmt.Sprintf("New announcement: %s", titol)
 		tmplHTML = newAnunciENGHTML
 	default:
@@ -718,12 +718,14 @@ func (m *SMTPMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol,
 	}
 
 	data := struct {
+		Nom           string
 		EntrenadorNom string
 		AutorNom      string
 		Titol         string
 		Descripcio    string
 		AppURL        string
 	}{
+		Nom:           toName,
 		EntrenadorNom: toName,
 		AutorNom:      autorNom,
 		Titol:         titol,
