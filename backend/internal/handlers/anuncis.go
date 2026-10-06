@@ -66,6 +66,10 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 		return
 	}
 
+	// Audit log
+	detallsLog := fmt.Sprintf(`{"anunci_id":"%s","autor_id":"%s"}`, anunci.ID, userID)
+	_ = h.Store.AddSystemLog(c.Request.Context(), "anunci_created", "INFO", fmt.Sprintf("Creat nou anunci '%s' per l'usuari %s", anunci.Titol, userID), &detallsLog)
+
 	// Send email notification to all active coaches and admins in background
 	go func() {
 		ctx := context.Background()
@@ -136,6 +140,10 @@ func (h *Handler) UpdateAnunciStatus(c *gin.Context) {
 		return
 	}
 
+	// Audit log
+	detallsLog := fmt.Sprintf(`{"anunci_id":"%s","usuari_id":"%s","actiu":%t}`, id, userID, req.Actiu)
+	_ = h.Store.AddSystemLog(c.Request.Context(), "anunci_status_updated", "INFO", fmt.Sprintf("Usuari %s ha canviat actiu=%t a l'anunci '%s'", userID, req.Actiu, anunci.Titol), &detallsLog)
+
 	c.JSON(http.StatusOK, gin.H{"message": "Status updated successfully"})
 }
 
@@ -148,10 +156,26 @@ func (h *Handler) UpdateAnunciEstat(c *gin.Context) {
 		return
 	}
 
+	userID := c.GetString("user_id")
 	userRole := getUserRole(c)
 	if userRole != "admin" && userRole != "entrenador" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized to approve or reject anuncis"})
 		return
+	}
+
+	anunci, _ := h.Store.GetAnunciByID(c.Request.Context(), id)
+	titolAnunci := id
+	if anunci != nil {
+		titolAnunci = anunci.Titol
+	}
+
+	usr, _ := h.Store.GetUsuariByID(c.Request.Context(), userID)
+	userNom := userID
+	if usr != nil {
+		userNom = usr.Nom
+		if usr.Cognoms != "" {
+			userNom += " " + usr.Cognoms
+		}
 	}
 
 	err := h.Store.UpdateAnunciEstat(c.Request.Context(), id, req.Estat)
@@ -159,6 +183,16 @@ func (h *Handler) UpdateAnunciEstat(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update anunci estat"})
 		return
 	}
+
+	// Audit log
+	detallsLog := fmt.Sprintf(`{"anunci_id":"%s","validat_per_id":"%s","validat_per_nom":"%s","estat":"%s"}`, id, userID, userNom, req.Estat)
+	_ = h.Store.AddSystemLog(
+		c.Request.Context(),
+		"anunci_estat_updated",
+		"INFO",
+		fmt.Sprintf("L'usuari %s ha canviat l'estat de l'anunci '%s' a '%s'", userNom, titolAnunci, req.Estat),
+		&detallsLog,
+	)
 
 	// If approved, send notification email to all active users
 	if req.Estat == "aprovat" {
