@@ -14,6 +14,7 @@ import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
+import Checkbox from 'primevue/checkbox'
 import { useToast } from 'primevue/usetoast'
 import { changePassword } from '@/api/auth'
 import { getAnuncis } from '@/api/anuncis'
@@ -101,7 +102,8 @@ const userMenuItems = computed(() => [
       changeProfileForm.value = {
         nom: authStore.usuari?.nom || '',
         cognoms: authStore.usuari?.cognoms || '',
-        email: authStore.usuari?.email || ''
+        email: authStore.usuari?.email || '',
+        notificacions_tauler: authStore.usuari?.notificacions_tauler !== false
       }
       changeProfileVisible.value = true
     }
@@ -256,7 +258,7 @@ const handleChangePassword = async () => {
 
 const changeProfileVisible = ref(false)
 const changeProfileLoading = ref(false)
-const changeProfileForm = ref({ nom: '', cognoms: '', email: '' })
+const changeProfileForm = ref({ nom: '', cognoms: '', email: '', notificacions_tauler: true })
 
 const handleChangeProfile = async () => {
   if (!changeProfileForm.value.nom || !changeProfileForm.value.email) {
@@ -505,6 +507,10 @@ const parsedChangelog = computed(() => {
         <div class="field">
           <label>Email</label>
           <InputText type="email" v-model="changeProfileForm.email" class="w-full" />
+        </div>
+        <div class="field flex align-items-center gap-2 mt-2">
+          <Checkbox v-model="changeProfileForm.notificacions_tauler" :binary="true" inputId="notificacions_tauler" />
+          <label for="notificacions_tauler" class="cursor-pointer text-sm">Rebre notificacions del tauler d'anuncis per correu</label>
         </div>
       </div>
       <template #footer>

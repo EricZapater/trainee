@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as apiLogin, register as apiRegister, magicLogin as apiMagicLogin, updateIdioma as apiUpdateIdioma, updateProfile as apiUpdateProfile } from '@/api/auth'
+import { login as apiLogin, register as apiRegister, magicLogin as apiMagicLogin, updateIdioma as apiUpdateIdioma, updateProfile as apiUpdateProfile, updateNotificacionsTauler as apiUpdateNotificacionsTauler } from '@/api/auth'
 import type { Usuari } from '@/types'
 import router from '@/router'
 import i18n, { idiomToLocale } from '@/i18n'
@@ -82,12 +82,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function updateProfile(payload: { nom: string; cognoms?: string; email: string }) {
+  async function updateNotificacionsTauler(notificacions: boolean) {
+    await apiUpdateNotificacionsTauler(notificacions)
+    if (usuari.value) {
+      usuari.value.notificacions_tauler = notificacions
+      localStorage.setItem('trainee_usuari', JSON.stringify(usuari.value))
+    }
+  }
+
+  async function updateProfile(payload: { nom: string; cognoms?: string; email: string; notificacions_tauler?: boolean }) {
     await apiUpdateProfile(payload)
     if (usuari.value) {
       usuari.value.nom = payload.nom
       usuari.value.cognoms = payload.cognoms || ''
       usuari.value.email = payload.email
+      if (payload.notificacions_tauler !== undefined) {
+        usuari.value.notificacions_tauler = payload.notificacions_tauler
+      }
       localStorage.setItem('trainee_usuari', JSON.stringify(usuari.value))
     }
   }
@@ -110,6 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     updateIdioma,
+    updateNotificacionsTauler,
     updateProfile,
     loadFromStorage
   }

@@ -6,6 +6,7 @@ export interface Usuari {
   rol: 'atleta' | 'entrenador' | 'admin'
   actiu: boolean
   idioma: string
+  notificacions_tauler?: boolean
   brevo_sync_status?: string
   created_at: string
 }

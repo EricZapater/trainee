@@ -209,6 +209,23 @@ func (h *Handler) UpdateIdioma(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "idioma actualitzat correctament"})
 }
 
+func (h *Handler) UpdateNotificacionsTauler(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req models.UpdateNotificacionsTaulerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.Store.UpdateUsuariNotificacionsTauler(c.Request.Context(), userID, req.NotificacionsTauler); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'han pogut actualitzar les preferències de notificació"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "preferències de notificació actualitzades correctament"})
+}
+
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	userID := c.GetString("user_id")
 
@@ -224,7 +241,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	if err := h.Store.UpdateUsuariProfile(c.Request.Context(), userID, req.Nom, req.Cognoms, req.Email); err != nil {
+	if err := h.Store.UpdateUsuariProfile(c.Request.Context(), userID, req.Nom, req.Cognoms, req.Email, req.NotificacionsTauler); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error actualitzant el perfil"})
 		return
 	}

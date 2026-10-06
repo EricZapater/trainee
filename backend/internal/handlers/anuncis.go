@@ -29,6 +29,9 @@ func (h *Handler) ListAnuncis(c *gin.Context) {
 
 	var filtered []models.Anunci
 	for _, a := range anuncis {
+		if !a.Actiu {
+			continue // Completely exclude inactive announcements from the board
+		}
 		if userRole == "admin" || userRole == "entrenador" {
 			filtered = append(filtered, a)
 		} else {
@@ -214,7 +217,7 @@ func (h *Handler) UpdateAnunciEstat(c *gin.Context) {
 			}
 
 			for _, u := range users {
-				if u.Actiu {
+				if u.Actiu && u.NotificacionsTauler {
 					_ = h.Mailer.SendNewAnunciNotification(
 						u.Email,
 						u.Nom,

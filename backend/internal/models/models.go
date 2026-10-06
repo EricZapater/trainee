@@ -7,17 +7,18 @@ import "time"
 // ============================================================
 
 type Usuari struct {
-	ID               string    `json:"id"`
-	Nom              string    `json:"nom"`
-	Cognoms          string    `json:"cognoms"`
-	Email            string    `json:"email"`
-	PasswordHash     string    `json:"-"`
-	Rol              string    `json:"rol"`
-	Actiu            bool      `json:"actiu"`
-	Idioma           string    `json:"idioma"`
-	BrevoID          *string   `json:"brevo_id"`
-	BrevoSyncStatus  string    `json:"brevo_sync_status"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID                  string    `json:"id"`
+	Nom                 string    `json:"nom"`
+	Cognoms             string    `json:"cognoms"`
+	Email               string    `json:"email"`
+	PasswordHash        string    `json:"-"`
+	Rol                 string    `json:"rol"`
+	Actiu               bool      `json:"actiu"`
+	Idioma              string    `json:"idioma"`
+	NotificacionsTauler bool      `json:"notificacions_tauler"`
+	BrevoID             *string   `json:"brevo_id"`
+	BrevoSyncStatus     string    `json:"brevo_sync_status"`
+	CreatedAt           time.Time `json:"created_at"`
 }
 
 type Entrenador struct {
@@ -187,10 +188,15 @@ type UpdateIdiomaRequest struct {
 	Idioma string `json:"idioma" binding:"required,oneof=CAT ESP ENG"`
 }
 
+type UpdateNotificacionsTaulerRequest struct {
+	NotificacionsTauler bool `json:"notificacions_tauler"`
+}
+
 type UpdateProfileRequest struct {
-	Nom     string `json:"nom" binding:"required"`
-	Cognoms string `json:"cognoms"`
-	Email   string `json:"email" binding:"required,email"`
+	Nom                 string `json:"nom" binding:"required"`
+	Cognoms             string `json:"cognoms"`
+	Email               string `json:"email" binding:"required,email"`
+	NotificacionsTauler *bool  `json:"notificacions_tauler"`
 }
 
 type LoginRequest struct {

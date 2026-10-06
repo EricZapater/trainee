@@ -14,7 +14,8 @@ type Store interface {
 	ListAllUsuaris(ctx context.Context) ([]models.Usuari, error)
 	UpdateUsuariPassword(ctx context.Context, id, passwordHash string) error
 	UpdateUsuariIdioma(ctx context.Context, id, idioma string) error
-	UpdateUsuariProfile(ctx context.Context, id, nom, cognoms, email string) error
+	UpdateUsuariNotificacionsTauler(ctx context.Context, id string, notificacionsTauler bool) error
+	UpdateUsuariProfile(ctx context.Context, id, nom, cognoms, email string, notificacionsTauler *bool) error
 	ToggleUserStatus(ctx context.Context, usuariID string, actiu bool, changedBy *string) error
 	GetUserStatusHistory(ctx context.Context, usuariID string) ([]models.UserStatusHistory, error)
 	ForceBrevoSync(ctx context.Context, id string) error

@@ -134,6 +134,7 @@ func main() {
 	{
 		authenticated.POST("/auth/change-password", h.ChangePassword)
 		authenticated.PATCH("/usuaris/me/idioma", h.UpdateIdioma)
+		authenticated.PATCH("/usuaris/me/notificacions-tauler", h.UpdateNotificacionsTauler)
 		authenticated.PUT("/usuaris/me", h.UpdateProfile)
 
 		// Anuncis (accessible by all roles)

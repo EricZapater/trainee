@@ -36,7 +36,12 @@ export async function updateIdioma(idioma: string): Promise<{ message: string }>
   return data
 }
 
-export async function updateProfile(payload: { nom: string; cognoms?: string; email: string }): Promise<{ message: string }> {
+export async function updateNotificacionsTauler(notificacions_tauler: boolean): Promise<{ message: string }> {
+  const { data } = await api.patch<{ message: string }>('/usuaris/me/notificacions-tauler', { notificacions_tauler })
+  return data
+}
+
+export async function updateProfile(payload: { nom: string; cognoms?: string; email: string; notificacions_tauler?: boolean }): Promise<{ message: string }> {
   const { data } = await api.put('/usuaris/me', payload)
   return data
 }
