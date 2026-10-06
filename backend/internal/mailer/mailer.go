@@ -99,7 +99,7 @@ type Mailer interface {
 	SendWeekPlannedNotification(toEmail, toName, weekStart, idioma string) error
 	SendNewFeedbackNotification(toEmail, toName, informadorNom, tipus, resum, descripcio string, imatges []string, idioma string) error
 	SendNewFormResponseNotification(toEmail, toName, formTitol, candidatNom, candidatEmail, idioma string) error
-	SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, idioma string) error
+	SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, contacte, idioma string) error
 	SendNutricioRevisionNotification(toEmail, toName, planTitol, versio, dataRevisio, instruccions, idioma string) error
 	SendNutricioFeedbackNotification(toEmail, toName, atletaNom, planTitol, dataSortida, sensacions, idioma string) error
 }
@@ -146,8 +146,8 @@ func (m *LogMailer) SendNewFormResponseNotification(toEmail, toName, formTitol, 
 	return nil
 }
 
-func (m *LogMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, idioma string) error {
-	log.Printf("[LOG-MAILER] Sending new anunci notification to %s from %s: %s", toEmail, autorNom, titol)
+func (m *LogMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, contacte, idioma string) error {
+	log.Printf("[LOG-MAILER] Sending new anunci notification to %s from %s: %s (contacte: %s)", toEmail, autorNom, titol, contacte)
 	return nil
 }
 
@@ -691,7 +691,7 @@ func (m *SMTPMailer) SendNewFormResponseNotification(toEmail, toName, formTitol,
 	return m.sendRawEmail(toEmail, subject, body.String())
 }
 
-func (m *SMTPMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, idioma string) error {
+func (m *SMTPMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, contacte, idioma string) error {
 	var subject string
 	var tmplHTML string
 
@@ -723,6 +723,7 @@ func (m *SMTPMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol,
 		AutorNom      string
 		Titol         string
 		Descripcio    string
+		Contacte      string
 		AppURL        string
 	}{
 		Nom:           toName,
@@ -730,6 +731,7 @@ func (m *SMTPMailer) SendNewAnunciNotification(toEmail, toName, autorNom, titol,
 		AutorNom:      autorNom,
 		Titol:         titol,
 		Descripcio:    descripcio,
+		Contacte:      contacte,
 		AppURL:        appURL,
 	}
 

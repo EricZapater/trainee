@@ -94,6 +94,32 @@ const formatDate = (d: string) => {
         <div class="text-md text-primary">{{ anunci.autor_nom }}</div>
       </div>
 
+      <div class="field" v-if="anunci.contacte">
+        <label class="text-sm text-secondary font-semibold">Forma de contacte</label>
+        <div class="flex align-items-center justify-between gap-2 p-2 border-round surface-100 mt-1" style="background: var(--surface-card, #f8fafc); border: 1px solid var(--surface-border, #e2e8f0);">
+          <div class="flex align-items-center gap-2">
+            <i :class="anunci.contacte.includes('@') ? 'ti ti-mail text-primary text-lg' : 'ti ti-phone text-primary text-lg'"></i>
+            <span class="text-sm font-semibold text-primary">{{ anunci.contacte }}</span>
+          </div>
+          <a 
+            v-if="anunci.contacte.includes('@')" 
+            :href="'mailto:' + anunci.contacte" 
+            class="p-button p-button-sm p-button-outlined p-button-info"
+            style="text-decoration: none; padding: 4px 10px; font-size: 0.8rem;"
+          >
+            <i class="ti ti-mail mr-1"></i> Contactar
+          </a>
+          <a 
+            v-else 
+            :href="'tel:' + anunci.contacte.replace(/\s+/g, '')" 
+            class="p-button p-button-sm p-button-outlined p-button-success"
+            style="text-decoration: none; padding: 4px 10px; font-size: 0.8rem;"
+          >
+            <i class="ti ti-phone mr-1"></i> Trucar
+          </a>
+        </div>
+      </div>
+
       <div class="field">
         <label class="text-sm text-secondary font-semibold">Data de publicació</label>
         <div class="text-md text-primary">{{ formatDate(anunci.created_at) }}</div>

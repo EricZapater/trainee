@@ -25,6 +25,7 @@ const createLoading = ref(false)
 const formData = ref({
   titol: '',
   descripcio: '',
+  contacte: '',
   enllac: '',
   tags: [] as string[]
 })
@@ -39,6 +40,19 @@ const searchTags = (event: any) => {
   if (query && !filteredTags.value.includes(query)) {
     filteredTags.value.push(query) // Allow selecting the new tag
   }
+}
+
+const isValidEmailOrPhone = (val: string) => {
+  const v = val.trim()
+  if (!v) return false
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (emailRegex.test(v)) return true
+  const phoneRegex = /^[\+]?[(]?[0-9]{1,4}[)]?[-\s\./0-9]{5,20}$/
+  if (phoneRegex.test(v)) {
+    const digits = v.replace(/\D/g, '').length
+    if (digits >= 6 && digits <= 16) return true
+  }
+  return false
 }
 
 const loadData = async () => {
@@ -73,8 +87,13 @@ const onFileChange = (e: any) => {
 }
 
 const handleCreate = async () => {
-  if (!formData.value.titol || !formData.value.descripcio) {
-    toast.add({ severity: 'warn', summary: 'Avís', detail: 'El títol i descripció són obligatoris', life: 3000 })
+  if (!formData.value.titol.trim() || !formData.value.descripcio.trim() || !formData.value.contacte.trim()) {
+    toast.add({ severity: 'warn', summary: 'Avís', detail: 'El títol, la forma de contacte i la descripció són obligatoris', life: 3000 })
+    return
+  }
+
+  if (!isValidEmailOrPhone(formData.value.contacte)) {
+    toast.add({ severity: 'error', summary: 'Error de validació', detail: 'La forma de contacte ha de ser un correu electrònic o un número de telèfon vàlid', life: 4000 })
     return
   }
 
@@ -86,9 +105,10 @@ const handleCreate = async () => {
     }
 
     await createAnunci({
-      titol: formData.value.titol,
-      descripcio: formData.value.descripcio,
-      enllac: formData.value.enllac ? formData.value.enllac : undefined,
+      titol: formData.value.titol.trim(),
+      descripcio: formData.value.descripcio.trim(),
+      contacte: formData.value.contacte.trim(),
+      enllac: formData.value.enllac ? formData.value.enllac.trim() : undefined,
       tags: formData.value.tags,
       imatges: imatgesUrls,
       actiu: true
@@ -96,11 +116,12 @@ const handleCreate = async () => {
 
     toast.add({ severity: 'success', summary: 'Èxit', detail: 'Anunci creat correctament', life: 3000 })
     createVisible.value = false
-    formData.value = { titol: '', descripcio: '', enllac: '', tags: [] }
+    formData.value = { titol: '', descripcio: '', contacte: '', enllac: '', tags: [] }
     selectedImages.value = []
     await loadData()
-  } catch (e) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut crear l\'anunci', life: 3000 })
+  } catch (e: any) {
+    const msg = e.response?.data?.error || 'No s\'ha pogut crear l\'anunci'
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 3000 })
   } finally {
     createLoading.value = false
   }
@@ -169,7 +190,6 @@ const getTagSeverity = (tag: string) => {
             <span class="font-bold text-primary">{{ data.titol }}</span>
             <span v-if="data.estat === 'pendent'" class="ml-2 px-2 py-1 bg-orange-100 text-orange-600 border-round text-xs">Pendent d'aprovació</span>
             <span v-else-if="data.estat === 'rebutjat'" class="ml-2 px-2 py-1 bg-red-100 text-red-600 border-round text-xs">Rebutjat</span>
-            <span v-else-if="!data.actiu" class="ml-2 px-2 py-1 bg-gray-200 text-gray-600 border-round text-xs">Inactiu</span>
           </template>
           <template #filter="{ filterModel, filterCallback }">
             <InputText v-model="filterModel.value" type="text" @input="filterCallback()" placeholder="Buscar per títol..." class="p-column-filter" />
@@ -179,6 +199,16 @@ const getTagSeverity = (tag: string) => {
         <Column field="autor_nom" header="Autor" :showFilterMenu="false" style="min-width: 150px">
           <template #filter="{ filterModel, filterCallback }">
             <InputText v-model="filterModel.value" type="text" @input="filterCallback()" placeholder="Buscar per autor..." class="p-column-filter" />
+          </template>
+        </Column>
+
+        <Column field="contacte" header="Contacte" :showFilterMenu="false" style="min-width: 160px">
+          <template #body="{ data }">
+            <span v-if="data.contacte" class="text-sm font-medium text-secondary">
+              <i :class="data.contacte.includes('@') ? 'ti ti-mail mr-1' : 'ti ti-phone mr-1'"></i>
+              {{ data.contacte }}
+            </span>
+            <span v-else class="text-xs text-muted">-</span>
           </template>
         </Column>
 
@@ -207,8 +237,14 @@ const getTagSeverity = (tag: string) => {
     <Dialog v-model:visible="createVisible" header="Crear Nou Anunci" modal :style="{ width: '500px' }">
       <div class="flex flex-col gap-4 mt-2">
         <div class="field flex flex-col gap-2">
-          <label class="font-semibold text-secondary">Títol</label>
+          <label class="font-semibold text-secondary">Títol <span style="color: var(--p-red-500, #ef4444); font-weight: bold;">*</span></label>
           <InputText v-model="formData.titol" placeholder="Introdueix el títol" />
+        </div>
+
+        <div class="field flex flex-col gap-2">
+          <label class="font-semibold text-secondary">Forma de Contacte (Email o Telèfon) <span style="color: var(--p-red-500, #ef4444); font-weight: bold;">*</span></label>
+          <InputText v-model="formData.contacte" placeholder="Ex: email@example.com o +34 600 000 000" />
+          <small class="text-secondary text-xs">Indica un correu electrònic o un telèfon vàlid perquè puguin contactar amb tu.</small>
         </div>
         
         <div class="field flex flex-col gap-2">
@@ -234,7 +270,7 @@ const getTagSeverity = (tag: string) => {
         </div>
 
         <div class="field flex flex-col gap-2">
-          <label class="font-semibold text-secondary">Descripció</label>
+          <label class="font-semibold text-secondary">Descripció <span style="color: var(--p-red-500, #ef4444); font-weight: bold;">*</span></label>
           <Textarea v-model="formData.descripcio" rows="5" placeholder="Contingut de l'anunci..." />
         </div>
       </div>

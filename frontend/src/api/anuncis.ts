@@ -6,6 +6,7 @@ export interface Anunci {
   autor_nom: string
   titol: string
   descripcio: string
+  contacte?: string
   enllac?: string
   imatges: string[]
   tags: string[]
@@ -17,6 +18,7 @@ export interface Anunci {
 export interface CreateAnunciRequest {
   titol: string
   descripcio: string
+  contacte: string
   enllac?: string
   imatges: string[]
   tags: string[]

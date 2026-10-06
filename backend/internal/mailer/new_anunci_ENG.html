@@ -24,6 +24,7 @@
               <ul style="font-size: 16px; background: #f9f9f9; padding: 15px 15px 15px 35px; border-radius: 5px;">
                 <li><strong>Author:</strong> {{.AutorNom}}</li>
                 <li><strong>Title:</strong> {{.Titol}}</li>
+                {{if .Contacte}}<li><strong>Contact:</strong> {{.Contacte}}</li>{{end}}
                 <li><strong>Description:</strong> {{.Descripcio}}</li>
               </ul>
               <div class="button-container">

@@ -545,6 +545,7 @@ type Anunci struct {
 	AutorNom   string    `json:"autor_nom"`
 	Titol      string    `json:"titol"`
 	Descripcio string    `json:"descripcio"`
+	Contacte   string    `json:"contacte"`
 	Enllac     *string   `json:"enllac,omitempty"`
 	Imatges    []string  `json:"imatges"`
 	Tags       []string  `json:"tags"`
@@ -556,6 +557,7 @@ type Anunci struct {
 type CreateAnunciRequest struct {
 	Titol      string   `json:"titol" binding:"required"`
 	Descripcio string   `json:"descripcio" binding:"required"`
+	Contacte   string   `json:"contacte" binding:"required"`
 	Enllac     *string  `json:"enllac"`
 	Imatges    []string `json:"imatges"`
 	Tags       []string `json:"tags"`

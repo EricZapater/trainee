@@ -7,7 +7,7 @@ import (
 
 func (s *PostgresStore) ListAnuncis(ctx context.Context) ([]models.Anunci, error) {
 	query := `
-		SELECT a.id, a.autor_id, u.nom as autor_nom, a.titol, a.descripcio, a.enllac, a.imatges, a.tags, a.estat, a.actiu, a.created_at
+		SELECT a.id, a.autor_id, u.nom as autor_nom, a.titol, a.descripcio, a.contacte, a.enllac, a.imatges, a.tags, a.estat, a.actiu, a.created_at
 		FROM anuncis a
 		JOIN usuaris u ON a.autor_id = u.id
 		ORDER BY 
@@ -31,6 +31,7 @@ func (s *PostgresStore) ListAnuncis(ctx context.Context) ([]models.Anunci, error
 			&a.AutorNom,
 			&a.Titol,
 			&a.Descripcio,
+			&a.Contacte,
 			&a.Enllac,
 			&imatges,
 			&tags,
@@ -61,14 +62,15 @@ func (s *PostgresStore) ListAnuncis(ctx context.Context) ([]models.Anunci, error
 
 func (s *PostgresStore) CreateAnunci(ctx context.Context, autorID string, req models.CreateAnunciRequest, estat string) (*models.Anunci, error) {
 	query := `
-		INSERT INTO anuncis (autor_id, titol, descripcio, enllac, imatges, tags, estat, actiu)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO anuncis (autor_id, titol, descripcio, contacte, enllac, imatges, tags, estat, actiu)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, created_at
 	`
 	var a models.Anunci
 	a.AutorID = autorID
 	a.Titol = req.Titol
 	a.Descripcio = req.Descripcio
+	a.Contacte = req.Contacte
 	a.Enllac = req.Enllac
 	a.Imatges = req.Imatges
 	if a.Imatges == nil {
@@ -81,7 +83,7 @@ func (s *PostgresStore) CreateAnunci(ctx context.Context, autorID string, req mo
 	a.Estat = estat
 	a.Actiu = req.Actiu
 
-	err := s.pool.QueryRow(ctx, query, autorID, req.Titol, req.Descripcio, req.Enllac, a.Imatges, a.Tags, estat, req.Actiu).Scan(&a.ID, &a.CreatedAt)
+	err := s.pool.QueryRow(ctx, query, autorID, req.Titol, req.Descripcio, req.Contacte, req.Enllac, a.Imatges, a.Tags, estat, req.Actiu).Scan(&a.ID, &a.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +105,7 @@ func (s *PostgresStore) UpdateAnunciEstat(ctx context.Context, id string, estat 
 
 func (s *PostgresStore) GetAnunciByID(ctx context.Context, id string) (*models.Anunci, error) {
 	query := `
-		SELECT a.id, a.autor_id, u.nom as autor_nom, a.titol, a.descripcio, a.enllac, a.imatges, a.tags, a.estat, a.actiu, a.created_at
+		SELECT a.id, a.autor_id, u.nom as autor_nom, a.titol, a.descripcio, a.contacte, a.enllac, a.imatges, a.tags, a.estat, a.actiu, a.created_at
 		FROM anuncis a
 		JOIN usuaris u ON a.autor_id = u.id
 		WHERE a.id = $1
@@ -117,6 +119,7 @@ func (s *PostgresStore) GetAnunciByID(ctx context.Context, id string) (*models.A
 		&a.AutorNom,
 		&a.Titol,
 		&a.Descripcio,
+		&a.Contacte,
 		&a.Enllac,
 		&imatges,
 		&tags,

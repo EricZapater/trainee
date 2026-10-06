@@ -4,10 +4,40 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"trainee-backend/internal/models"
 )
+
+var (
+	emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	phoneRegex = regexp.MustCompile(`^[\+]?[(]?[0-9]{1,4}[)]?[-\s\./0-9]{5,20}$`)
+)
+
+func isValidContact(contact string) bool {
+	contact = strings.TrimSpace(contact)
+	if contact == "" {
+		return false
+	}
+	if emailRegex.MatchString(contact) {
+		return true
+	}
+	if phoneRegex.MatchString(contact) {
+		digits := 0
+		for _, r := range contact {
+			if unicode.IsDigit(r) {
+				digits++
+			}
+		}
+		if digits >= 6 && digits <= 16 {
+			return true
+		}
+	}
+	return false
+}
 
 func getUserRole(c *gin.Context) string {
 	r := c.GetString("user_rol")
@@ -55,6 +85,12 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 		return
 	}
 
+	req.Contacte = strings.TrimSpace(req.Contacte)
+	if !isValidContact(req.Contacte) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "La forma de contacte ha de ser un correu electrònic o un número de telèfon vàlid"})
+		return
+	}
+
 	userID := c.GetString("user_id")
 	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
@@ -99,6 +135,7 @@ func (h *Handler) CreateAnunci(c *gin.Context) {
 					autorNom,
 					req.Titol,
 					req.Descripcio,
+					req.Contacte,
 					u.Idioma,
 				)
 			}
@@ -224,6 +261,7 @@ func (h *Handler) UpdateAnunciEstat(c *gin.Context) {
 						autorNom,
 						anunci.Titol,
 						anunci.Descripcio,
+						anunci.Contacte,
 						u.Idioma,
 					)
 				}

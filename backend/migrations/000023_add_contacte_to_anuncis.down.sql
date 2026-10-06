@@ -1,0 +1,1 @@
+ALTER TABLE anuncis DROP COLUMN IF EXISTS contacte;
