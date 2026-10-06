@@ -1,0 +1,36 @@
+backend/internal/handlers/anuncis.go
+  h_42175f19913982 7-9,15-41,88-93,138,264
+backend/internal/mailer/mailer.go
+  h_42175f19913982 102,149-150,694,726,734
+backend/internal/mailer/new_anunci_CAT.html
+  h_42175f19913982 27
+backend/internal/mailer/new_anunci_ENG.html
+  h_42175f19913982 27
+backend/internal/mailer/new_anunci_ESP.html
+  h_42175f19913982 27
+backend/internal/models/models.go
+  h_42175f19913982 548,560
+backend/internal/store/anuncis.go
+  h_42175f19913982 10,34,65-66,73,86,108,122
+backend/migrations/000023_add_contacte_to_anuncis.down.sql
+  h_42175f19913982 1
+backend/migrations/000023_add_contacte_to_anuncis.up.sql
+  h_42175f19913982 1
+frontend/src/api/anuncis.ts
+  h_42175f19913982 9,21
+frontend/src/components/AnunciDrawer.vue
+  h_42175f19913982 97-122
+frontend/src/views/AnuncisView.vue
+  h_42175f19913982 28,45-57,90-96,108-111,119,122-124,205-214,240,243-248,273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "00d38b02f6d55fa4df1e1d6c16ba786b123f2183",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
