@@ -16,6 +16,20 @@ func (s *PostgresStore) CreateNutricioPlan(ctx context.Context, entrenadorID str
 	}
 	defer tx.Rollback(ctx)
 
+	// Resolve atleta_id to atletes(id) if usuari_id was provided
+	var actualAtletaID string
+	err = tx.QueryRow(ctx, `SELECT id FROM atletes WHERE id::text = $1 OR usuari_id::text = $1 LIMIT 1`, req.AtletaID).Scan(&actualAtletaID)
+	if err == nil && actualAtletaID != "" {
+		req.AtletaID = actualAtletaID
+	}
+
+	// Resolve entrenador_id to entrenadors(id) if usuari_id was provided
+	var actualEntrenadorID string
+	err = tx.QueryRow(ctx, `SELECT id FROM entrenadors WHERE id::text = $1 OR usuari_id::text = $1 LIMIT 1`, entrenadorID).Scan(&actualEntrenadorID)
+	if err == nil && actualEntrenadorID != "" {
+		entrenadorID = actualEntrenadorID
+	}
+
 	var p models.NutricioPlan
 	err = tx.QueryRow(ctx, `
 		INSERT INTO nutricio_plans (atleta_id, entrenador_id, titol, estat)
@@ -212,7 +226,7 @@ func (s *PostgresStore) GetNutricioPlanDetails(ctx context.Context, planID strin
 
 func (s *PostgresStore) ListNutricioPlansByAtleta(ctx context.Context, atletaID string) ([]models.NutricioPlanWithDetails, error) {
 	query := `
-		SELECT DISTINCT p.id 
+		SELECT p.id 
 		FROM nutricio_plans p
 		WHERE p.atleta_id = $1
 		   OR p.atleta_id IN (SELECT id FROM atletes WHERE usuari_id = $1 OR id = $1)
@@ -251,7 +265,7 @@ func (s *PostgresStore) ListNutricioPlansByAtleta(ctx context.Context, atletaID 
 
 func (s *PostgresStore) ListNutricioPlansByEntrenador(ctx context.Context, entrenadorID string) ([]models.NutricioPlanWithDetails, error) {
 	query := `
-		SELECT DISTINCT p.id 
+		SELECT p.id 
 		FROM nutricio_plans p
 		WHERE p.entrenador_id = $1
 		   OR p.entrenador_id IN (SELECT id FROM entrenadors WHERE usuari_id = $1 OR id = $1)

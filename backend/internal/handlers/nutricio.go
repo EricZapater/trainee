@@ -19,11 +19,13 @@ func (h *Handler) ListNutricioPlans(c *gin.Context) {
 	if userRole == "atleta" {
 		atleta, err := h.Store.GetAtletaByUsuariID(c.Request.Context(), userID)
 		if err != nil {
+			log.Printf("[NUTRICIO] Atleta profile not found for user %s: %v", userID, err)
 			c.JSON(http.StatusNotFound, gin.H{"error": "perfil d'atleta no trobat"})
 			return
 		}
 		plans, err := h.Store.ListNutricioPlansByAtleta(c.Request.Context(), atleta.ID)
 		if err != nil {
+			log.Printf("[NUTRICIO] Error listing plans for atleta %s: %v", atleta.ID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error carregant plans nutricionals"})
 			return
 		}
@@ -34,6 +36,7 @@ func (h *Handler) ListNutricioPlans(c *gin.Context) {
 	// Entrenador / Admin
 	entrenador, err := h.Store.GetEntrenadorByUsuariID(c.Request.Context(), userID)
 	if err != nil && userRole != "admin" {
+		log.Printf("[NUTRICIO] Entrenador profile not found for user %s: %v", userID, err)
 		c.JSON(http.StatusNotFound, gin.H{"error": "perfil d'entrenador no trobat"})
 		return
 	}
@@ -41,6 +44,7 @@ func (h *Handler) ListNutricioPlans(c *gin.Context) {
 	if atletaQuery != "" {
 		plans, err := h.Store.ListNutricioPlansByAtleta(c.Request.Context(), atletaQuery)
 		if err != nil {
+			log.Printf("[NUTRICIO] Error listing plans for atletaQuery %s: %v", atletaQuery, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error carregant plans nutricionals d'atleta"})
 			return
 		}
@@ -51,6 +55,7 @@ func (h *Handler) ListNutricioPlans(c *gin.Context) {
 	if entrenador != nil {
 		plans, err := h.Store.ListNutricioPlansByEntrenador(c.Request.Context(), entrenador.ID)
 		if err != nil {
+			log.Printf("[NUTRICIO] Error listing plans for entrenador %s: %v", entrenador.ID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error carregant plans nutricionals"})
 			return
 		}
@@ -61,6 +66,7 @@ func (h *Handler) ListNutricioPlans(c *gin.Context) {
 	if userRole == "admin" {
 		plans, err := h.Store.ListAllNutricioPlans(c.Request.Context())
 		if err != nil {
+			log.Printf("[NUTRICIO] Error listing all plans for admin: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error carregant plans nutricionals"})
 			return
 		}

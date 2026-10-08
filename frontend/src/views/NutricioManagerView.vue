@@ -83,15 +83,26 @@ const newFeedbackForm = ref<CreateNutricioFeedbackRequest>({
 const loadData = async () => {
   loading.value = true
   try {
-    const plansData = await getNutricioPlans()
-    plans.value = plansData
+    const plansPromise = getNutricioPlans().catch(err => {
+      console.error('Error fetching nutricio plans:', err)
+      toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut carregar els plans nutricionals', life: 3000 })
+      return []
+    })
 
+    const atletesPromise = isEntrenadorOrAdmin.value
+      ? getAtletes().catch(err => {
+          console.error('Error fetching atletes:', err)
+          return []
+        })
+      : Promise.resolve([])
+
+    const [plansData, atletesData] = await Promise.all([plansPromise, atletesPromise])
+    plans.value = plansData || []
     if (isEntrenadorOrAdmin.value) {
-      const atletesData = await getAtletes()
-      atletes.value = atletesData
+      atletes.value = atletesData || []
     }
   } catch (e: any) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut carregar els plans nutricionals', life: 3000 })
+    console.error('Error in loadData:', e)
   } finally {
     loading.value = false
   }
