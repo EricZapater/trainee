@@ -72,8 +72,10 @@ export interface CreateNutricioFeedbackRequest {
   sensacions?: string
 }
 
-export async function getNutricioPlans(): Promise<NutricioPlanWithDetails[]> {
-  const { data } = await api.get<NutricioPlanWithDetails[]>('/nutricio/plans')
+export async function getNutricioPlans(atletaId?: string): Promise<NutricioPlanWithDetails[]> {
+  const { data } = await api.get<NutricioPlanWithDetails[]>('/nutricio/plans', {
+    params: atletaId ? { atleta_id: atletaId } : undefined
+  })
   return data
 }
 

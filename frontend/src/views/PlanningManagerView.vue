@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { getAtletes } from '@/api/entrenador'
 import { getAtletaCompeticionsByEntrenador } from '@/api/competicions'
+import { getNutricioPlans, type NutricioPlanWithDetails } from '@/api/nutricio'
 import type { Atleta, Competicio } from '@/types'
 import { useToast } from 'primevue/usetoast'
 import Select from 'primevue/select'
@@ -13,6 +15,7 @@ import Checkbox from 'primevue/checkbox'
 import { useI18n } from 'vue-i18n'
 
 const toast = useToast()
+const router = useRouter()
 const { t } = useI18n()
 
 const atletes = ref<any[]>([])
@@ -37,6 +40,7 @@ const periodOptions = computed(() => [
 ])
 
 const competicions = ref<Competicio[]>([])
+const nutricioPlans = ref<NutricioPlanWithDetails[]>([])
 
 const loadAtletes = async () => {
   try {
@@ -64,16 +68,32 @@ watch(filteredAtletes, (newList) => {
   if (selectedAtletaId.value && !newList.some(a => a.id === selectedAtletaId.value)) {
     selectedAtletaId.value = null
     competicions.value = []
+    nutricioPlans.value = []
   }
 })
 
-const fetchCompeticions = async () => {
-  if (!selectedAtletaId.value) return
+const fetchAthleteData = async () => {
+  if (!selectedAtletaId.value) {
+    competicions.value = []
+    nutricioPlans.value = []
+    return
+  }
   loading.value = true
   try {
-    competicions.value = await getAtletaCompeticionsByEntrenador(selectedAtletaId.value)
+    const [comps, plans] = await Promise.all([
+      getAtletaCompeticionsByEntrenador(selectedAtletaId.value).catch(err => {
+        console.error('Error carregant competicions:', err)
+        return []
+      }),
+      getNutricioPlans(selectedAtletaId.value).catch(err => {
+        console.error('Error carregant plans nutricionals:', err)
+        return []
+      })
+    ])
+    competicions.value = comps || []
+    nutricioPlans.value = plans || []
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut carregar les competicions', life: 3000 })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'han pogut carregar les dades de l\'atleta', life: 3000 })
   } finally {
     loading.value = false
   }
@@ -89,7 +109,17 @@ onMounted(() => {
 })
 
 watch([selectedAtletaId], () => {
-  fetchCompeticions()
+  fetchAthleteData()
+})
+
+const activeNutricioPlan = computed(() => {
+  if (!nutricioPlans.value || nutricioPlans.value.length === 0) return null
+  return nutricioPlans.value.find(p => p.estat === 'actiu') || nutricioPlans.value[0] || null
+})
+
+const activeNutricioRevision = computed(() => {
+  if (!activeNutricioPlan.value || !activeNutricioPlan.value.revisions || activeNutricioPlan.value.revisions.length === 0) return null
+  return activeNutricioPlan.value.revisions[0]
 })
 
 // Generate weeks from start date up to period months
@@ -133,6 +163,84 @@ const getCompeticionsForWeek = (weekStart: Date, weekEnd: Date) => {
   })
 }
 
+interface NutricioTimelineEvent {
+  id: string
+  type: 'revision_created' | 'revision_scheduled'
+  planId: string
+  planTitle: string
+  versio: number
+  ch?: number
+  sodi?: number
+  fluid?: number
+  dateStr?: string
+}
+
+const getNutricioEventsForWeek = (weekStart: Date, weekEnd: Date): NutricioTimelineEvent[] => {
+  const events: NutricioTimelineEvent[] = []
+
+  nutricioPlans.value.forEach(plan => {
+    if (!plan.revisions) return
+
+    plan.revisions.forEach(rev => {
+      // Event 1: Creation / Revision applied date
+      if (rev.created_at) {
+        const cDate = new Date(rev.created_at)
+        if (cDate >= weekStart && cDate <= weekEnd) {
+          events.push({
+            id: `created-${rev.id}`,
+            type: 'revision_created',
+            planId: plan.id,
+            planTitle: plan.titol,
+            versio: rev.versio,
+            ch: rev.objectiu_ch_g_h,
+            sodi: rev.objectiu_sodi_mg_h,
+            fluid: rev.objectiu_fluid_ml_h
+          })
+        }
+      }
+
+      // Event 2: Scheduled next revision date
+      if (rev.data_revisio) {
+        const sDate = new Date(rev.data_revisio + 'T12:00:00')
+        if (sDate >= weekStart && sDate <= weekEnd) {
+          events.push({
+            id: `scheduled-${rev.id}`,
+            type: 'revision_scheduled',
+            planId: plan.id,
+            planTitle: plan.titol,
+            versio: rev.versio,
+            ch: rev.objectiu_ch_g_h,
+            sodi: rev.objectiu_sodi_mg_h,
+            fluid: rev.objectiu_fluid_ml_h,
+            dateStr: rev.data_revisio
+          })
+        }
+      }
+    })
+  })
+
+  return events
+}
+
+const goToNutricioDetail = (planId: string) => {
+  router.push({ path: '/nutricio', query: { plan_id: planId } })
+}
+
+const formatDate = (dStr?: string) => {
+  if (!dStr) return '-'
+  const parts = dStr.split('T')[0].split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`
+  }
+  return dStr
+}
+
+const isOverdue = (dateStr?: string) => {
+  if (!dateStr) return false
+  const today = new Date().toISOString().split('T')[0]
+  return dateStr <= today
+}
+
 // Dialog
 const selectedComp = ref<Competicio | null>(null)
 const dialogVisible = ref(false)
@@ -164,10 +272,12 @@ const getTipusTagSeverity = (tipus?: string) => {
         <h1 class="page-title">{{ $t('planningManager.title') }}</h1>
         <p class="text-secondary mt-2">{{ $t('planningManager.subtitle') }}</p>
       </div>
-      <div class="flex items-center gap-4 text-xs font-medium bg-black/5 dark:bg-white/5 p-3 rounded-lg border border-border">
+      <div class="flex items-center gap-3 text-xs font-medium bg-black/5 dark:bg-white/5 p-3 rounded-lg border border-border flex-wrap">
         <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block bg-[#ef4444]"></span> Tipus A</span>
         <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block bg-[#f97316]"></span> Tipus B</span>
         <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block bg-[#22c55e]"></span> Tipus C</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block bg-[#059669]"></span> Revisió Nutrició</span>
+        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block bg-[#0284c7]"></span> Propera Revisió</span>
       </div>
     </div>
 
@@ -212,6 +322,60 @@ const getTipusTagSeverity = (tipus?: string) => {
       </div>
     </div>
 
+    <!-- Banner Resum Nutrició Activa de l'Atleta -->
+    <div v-if="selectedAtletaId && !loading" class="nutricio-summary-banner glass-card">
+      <div v-if="activeNutricioPlan && activeNutricioRevision" class="nutricio-banner-content flex justify-between items-center flex-wrap gap-4">
+        <div class="flex items-center gap-3">
+          <div class="nutri-icon-box">
+            <i class="ti ti-tools-kitchen-2 text-xl"></i>
+            <i class="ti ti-bottle text-lg -ml-1"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-bold text-primary text-base">{{ activeNutricioPlan.titol }}</span>
+              <Tag severity="success" :value="'v' + activeNutricioRevision.versio + ' ACTIVA'" class="text-xs" />
+              <Tag v-if="activeNutricioPlan.estat !== 'actiu'" severity="secondary" :value="activeNutricioPlan.estat.toUpperCase()" class="text-xs" />
+            </div>
+            <div class="flex items-center gap-3 text-xs text-secondary mt-1 flex-wrap">
+              <span v-if="activeNutricioRevision.objectiu_ch_g_h" class="text-orange-600 font-semibold flex items-center gap-1">
+                <i class="ti ti-flame"></i> {{ activeNutricioRevision.objectiu_ch_g_h }} g/h
+              </span>
+              <span v-if="activeNutricioRevision.objectiu_sodi_mg_h" class="text-purple-600 font-semibold flex items-center gap-1">
+                <i class="ti ti-atom"></i> {{ activeNutricioRevision.objectiu_sodi_mg_h }} mg/h
+              </span>
+              <span v-if="activeNutricioRevision.objectiu_fluid_ml_h" class="text-blue-600 font-semibold flex items-center gap-1">
+                <i class="ti ti-droplet"></i> {{ activeNutricioRevision.objectiu_fluid_ml_h }} ml/h
+              </span>
+              <span v-if="activeNutricioRevision.data_revisio" class="flex items-center gap-1 font-medium" :class="isOverdue(activeNutricioRevision.data_revisio) ? 'text-red-500 font-bold' : 'text-primary'">
+                <i class="ti ti-calendar-event"></i> Propera revisió: {{ formatDate(activeNutricioRevision.data_revisio) }}
+                <span v-if="isOverdue(activeNutricioRevision.data_revisio)" class="text-red-500">(Vencuda!)</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <Button
+          label="Veure Detall Nutricional"
+          icon="ti ti-arrow-right"
+          class="p-button-sm p-button-outlined p-button-accent"
+          @click="goToNutricioDetail(activeNutricioPlan.id)"
+        />
+      </div>
+
+      <div v-else class="nutricio-banner-empty flex justify-between items-center flex-wrap gap-3">
+        <div class="flex items-center gap-2 text-secondary text-sm">
+          <i class="ti ti-tools-kitchen-2 text-muted text-lg"></i>
+          <span>Aquest atleta no té cap pla nutricional registrat.</span>
+        </div>
+        <Button
+          label="Crear Pla Nutricional"
+          icon="ti ti-plus"
+          class="p-button-sm p-button-text p-button-accent"
+          @click="router.push('/nutricio')"
+        />
+      </div>
+    </div>
+
     <div v-if="selectedAtletaId" class="timeline-container glass-card p-4">
       <div v-if="loading" class="text-center py-8 text-secondary">
         <i class="ti ti-loader ti-spin text-3xl mb-2"></i>
@@ -226,6 +390,7 @@ const getTipusTagSeverity = (tipus?: string) => {
               <span class="week-date">{{ week.labelDate }}</span>
             </div>
             <div class="week-body">
+              <!-- Competicions -->
               <div 
                 v-for="comp in getCompeticionsForWeek(week.start, week.end)" 
                 :key="comp.id"
@@ -235,6 +400,21 @@ const getTipusTagSeverity = (tipus?: string) => {
               >
                 <div class="badge-type">{{ comp.tipus }}</div>
                 <div class="badge-name truncate" :title="comp.nom">{{ comp.nom }}</div>
+              </div>
+
+              <!-- Revisions Nutricionals -->
+              <div
+                v-for="nutri in getNutricioEventsForWeek(week.start, week.end)"
+                :key="nutri.id"
+                class="nutri-badge"
+                :class="nutri.type === 'revision_scheduled' ? 'badge-nutri-scheduled' : 'badge-nutri-created'"
+                @click="goToNutricioDetail(nutri.planId)"
+                :title="(nutri.type === 'revision_scheduled' ? 'Propera revisió nutricional: ' : 'Revisió nutricional: ') + nutri.planTitle + ' (v' + nutri.versio + ') - Clic per anar al detall'"
+              >
+                <div class="badge-type flex items-center justify-center gap-0.5">
+                  <i :class="nutri.type === 'revision_scheduled' ? 'ti ti-calendar-event' : 'ti ti-tools-kitchen-2'" style="font-size: 0.75rem;"></i>
+                  <span>v{{ nutri.versio }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -423,6 +603,49 @@ const getTipusTagSeverity = (tipus?: string) => {
   border: 1px dashed #d1d5db;
   box-shadow: none;
   opacity: 0.7;
+}
+
+/* Nutricio Summary Banner */
+.nutricio-summary-banner {
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  border-left: 4px solid #10b981;
+  background: var(--bg-card);
+}
+.nutri-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+/* Nutricio Badges in Timeline */
+.nutri-badge {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  text-align: center;
+}
+.nutri-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+}
+.badge-nutri-created {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: white;
+}
+.badge-nutri-scheduled {
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+  color: white;
+  border: 1px dashed rgba(255,255,255,0.8);
 }
 
 /* Dialog Details */
