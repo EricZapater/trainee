@@ -333,52 +333,54 @@ const formatDate = (dStr?: string) => {
 
     <!-- Mode 1: Detall del Pla Sencer -->
     <div v-if="selectedPlan" class="plan-detail-container">
-      <div class="detail-nav-bar glass-card mb-4 flex justify-between align-center p-3 border-round">
-        <Button
-          label="Tornar al llistat de plans"
-          icon="ti ti-arrow-left"
-          class="p-button-outlined p-button-secondary"
-          @click="closePlanDetail"
-        />
-        <div class="flex align-items-center gap-2" v-if="isEntrenadorOrAdmin">
+      <header class="header-section glass-card detail-header">
+        <div class="header-left">
+          <Button
+            label="Tornar als plans"
+            icon="ti ti-arrow-left"
+            class="p-button-outlined p-button-secondary back-btn"
+            @click="closePlanDetail"
+          />
+          <div class="header-title-box">
+            <div class="title-with-badge">
+              <h1 class="page-title">{{ selectedPlan.titol }}</h1>
+              <Tag :severity="selectedPlan.estat === 'actiu' ? 'success' : 'secondary'" :value="selectedPlan.estat.toUpperCase()" />
+            </div>
+            <p class="subtitle">
+              <span v-if="isEntrenadorOrAdmin">Atleta: <strong>{{ selectedPlan.atleta_nom }} {{ selectedPlan.atleta_cognoms }}</strong></span>
+              <span v-else>Entrenador: <strong>{{ selectedPlan.entrenador_nom }}</strong></span>
+              <span class="dot-separator">•</span>
+              <span>Creat el {{ formatDate(selectedPlan.created_at) }}</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="actions" v-if="isEntrenadorOrAdmin">
           <Button
             v-if="selectedPlan.estat === 'actiu'"
             label="Nova Revisió"
-            icon="ti ti-refresh"
-            class="p-button-accent"
+            icon="ti ti-plus"
+            class="p-button-primary"
             @click="openNewRevisionModal(selectedPlan)"
           />
           <Button
             :label="selectedPlan.estat === 'actiu' ? 'Desactivar' : 'Activar'"
             :icon="selectedPlan.estat === 'actiu' ? 'ti ti-pause' : 'ti ti-play'"
-            class="p-button-outlined"
+            severity="secondary"
+            outlined
             @click="handleTogglePlanEstat(selectedPlan)"
           />
           <Button
             icon="ti ti-trash"
-            class="p-button-outlined p-button-danger"
+            severity="danger"
+            outlined
+            title="Eliminar Pla"
             @click="handleDeletePlan(selectedPlan)"
           />
         </div>
-      </div>
+      </header>
 
       <div class="plan-card glass-card">
-        <!-- Card Header -->
-        <div class="plan-card-header">
-          <div class="header-main">
-            <div class="flex-row gap-3 align-center">
-              <h2 class="plan-title">{{ selectedPlan.titol }}</h2>
-              <Tag :severity="selectedPlan.estat === 'actiu' ? 'success' : 'secondary'" :value="selectedPlan.estat.toUpperCase()" />
-            </div>
-            <p class="plan-meta">
-              <span v-if="isEntrenadorOrAdmin">Atleta: <strong>{{ selectedPlan.atleta_nom }} {{ selectedPlan.atleta_cognoms }}</strong></span>
-              <span v-else>Entrenador: <strong>{{ selectedPlan.entrenador_nom }}</strong></span>
-              <span class="dot-separator">•</span>
-              <span>Creat: {{ formatDate(selectedPlan.created_at) }}</span>
-            </p>
-          </div>
-        </div>
-
         <!-- Current Revision details -->
         <div v-if="selectedPlan.revisions && selectedPlan.revisions.length > 0" class="current-revision-box">
           <div class="revision-header">
@@ -440,7 +442,7 @@ const formatDate = (dStr?: string) => {
               v-if="selectedPlan.estat === 'actiu'"
               label="Registrar Entrenament / Sensacions"
               icon="ti ti-message-plus"
-              class="p-button-accent p-button-sm"
+              class="p-button-primary p-button-sm"
               @click="openNewFeedbackModal(selectedPlan.revisions[0])"
             />
           </div>
@@ -557,13 +559,13 @@ const formatDate = (dStr?: string) => {
             optionValue="value"
             placeholder="Estat"
             showClear
-            style="min-width: 170px;"
+            class="estat-select"
           />
         </div>
       </div>
 
       <!-- Table Section -->
-      <div class="content-section glass-card p-4 border-round">
+      <div class="table-card glass-card">
         <DataTable
           :value="filteredPlans"
           :paginator="true"
@@ -578,19 +580,19 @@ const formatDate = (dStr?: string) => {
           responsiveLayout="scroll"
         >
           <template #empty>
-            <div class="empty-state p-4 text-center">
-              <i class="ti ti-salad text-muted text-4xl mb-2"></i>
-              <p class="text-secondary m-0">No s'ha trobat cap pla nutricional.</p>
-              <Button v-if="isEntrenadorOrAdmin" label="Crear el primer pla" icon="ti ti-plus" class="mt-3" @click="openNewPlanModal" />
+            <div class="empty-state">
+              <i class="ti ti-salad"></i>
+              <p>No s'ha trobat cap pla nutricional.</p>
+              <Button v-if="isEntrenadorOrAdmin" label="Crear el primer pla" icon="ti ti-plus" class="p-button-primary mt-3" @click="openNewPlanModal" />
             </div>
           </template>
 
           <Column field="titol" header="Títol del Pla" sortable style="min-width: 220px">
             <template #body="{ data }">
-              <div class="cursor-pointer" @click="openPlanDetail(data)">
-                <span class="font-bold text-primary hover:underline">{{ data.titol }}</span>
-                <div class="text-xs text-secondary mt-1 flex align-items-center gap-1">
-                  <i class="ti ti-calendar text-xs"></i>
+              <div class="plan-table-title-box" @click="openPlanDetail(data)">
+                <span class="plan-table-title">{{ data.titol }}</span>
+                <div class="plan-table-date">
+                  <i class="ti ti-calendar"></i>
                   <span>Creat el {{ formatDate(data.created_at) }}</span>
                 </div>
               </div>
@@ -599,18 +601,18 @@ const formatDate = (dStr?: string) => {
 
           <Column v-if="isEntrenadorOrAdmin" header="Atleta" sortable field="atleta_nom" style="min-width: 180px">
             <template #body="{ data }">
-              <div class="flex align-items-center gap-2">
+              <div class="table-user-cell">
                 <i class="ti ti-user text-secondary"></i>
-                <span class="font-medium text-primary">{{ data.atleta_nom }} {{ data.atleta_cognoms }}</span>
+                <span class="font-medium">{{ data.atleta_nom }} {{ data.atleta_cognoms }}</span>
               </div>
             </template>
           </Column>
 
           <Column v-else header="Entrenador" sortable field="entrenador_nom" style="min-width: 180px">
             <template #body="{ data }">
-              <div class="flex align-items-center gap-2">
+              <div class="table-user-cell">
                 <i class="ti ti-user-check text-secondary"></i>
-                <span class="font-medium text-primary">{{ data.entrenador_nom }}</span>
+                <span class="font-medium">{{ data.entrenador_nom }}</span>
               </div>
             </template>
           </Column>
@@ -623,11 +625,11 @@ const formatDate = (dStr?: string) => {
 
           <Column header="Versió Actual" style="min-width: 140px">
             <template #body="{ data }">
-              <div v-if="data.revisions && data.revisions.length > 0" class="flex flex-col gap-1">
-                <span class="font-semibold text-xs px-2 py-1 border-round w-fit surface-100" style="background: var(--surface-100, #f1f5f9);">
+              <div v-if="data.revisions && data.revisions.length > 0" class="version-cell">
+                <span class="version-badge">
                   Versió {{ data.revisions[0].versio }}
                 </span>
-                <span v-if="data.revisions[0].data_revisio" class="text-xs" :class="isRevisionOverdueOrToday(data.revisions[0].data_revisio) ? 'text-red-500 font-bold' : 'text-secondary'">
+                <span v-if="data.revisions[0].data_revisio" class="revisio-date-sub" :class="{ overdue: isRevisionOverdueOrToday(data.revisions[0].data_revisio) }">
                   <i class="ti ti-calendar-event"></i> {{ formatDate(data.revisions[0].data_revisio) }}
                 </span>
               </div>
@@ -637,14 +639,14 @@ const formatDate = (dStr?: string) => {
 
           <Column header="Objectius Horaris" style="min-width: 230px">
             <template #body="{ data }">
-              <div v-if="data.revisions && data.revisions.length > 0" class="flex align-items-center gap-1 flex-wrap">
-                <span class="text-xs px-2 py-1 border-round font-semibold" style="background: rgba(249, 115, 22, 0.1); color: #ea580c;" title="Carbohidrats">
+              <div v-if="data.revisions && data.revisions.length > 0" class="macros-pill-row">
+                <span class="macro-pill pill-ch" title="Carbohidrats">
                   <i class="ti ti-flame"></i> {{ data.revisions[0].objectiu_ch_g_h ?? '-' }}g/h
                 </span>
-                <span class="text-xs px-2 py-1 border-round font-semibold" style="background: rgba(168, 85, 247, 0.1); color: #9333ea;" title="Sodi">
+                <span class="macro-pill pill-sodi" title="Sodi">
                   <i class="ti ti-atom"></i> {{ data.revisions[0].objectiu_sodi_mg_h ?? '-' }}mg/h
                 </span>
-                <span class="text-xs px-2 py-1 border-round font-semibold" style="background: rgba(59, 130, 246, 0.1); color: #2563eb;" title="Hidratació">
+                <span class="macro-pill pill-fluid" title="Hidratació">
                   <i class="ti ti-droplet"></i> {{ data.revisions[0].objectiu_fluid_ml_h ?? '-' }}ml/h
                 </span>
               </div>
@@ -652,18 +654,18 @@ const formatDate = (dStr?: string) => {
             </template>
           </Column>
 
-          <Column header="Històric" style="min-width: 130px">
+          <Column header="Històric" style="min-width: 120px">
             <template #body="{ data }">
-              <div class="text-xs text-secondary flex flex-col gap-1">
+              <div class="history-cell">
                 <span><strong>{{ data.revisions?.length || 0 }}</strong> rev.</span>
-                <span><strong>{{ getTotalFeedbacks(data) }}</strong> registres</span>
+                <span><strong>{{ getTotalFeedbacks(data) }}</strong> reg.</span>
               </div>
             </template>
           </Column>
 
-          <Column header="Accions" style="min-width: 180px; text-align: right;">
+          <Column header="Accions" style="min-width: 160px; text-align: right;">
             <template #body="{ data }">
-              <div class="flex align-items-center justify-end gap-1">
+              <div class="row-actions">
                 <Button
                   icon="ti ti-eye"
                   label="Obrir"
@@ -1012,6 +1014,7 @@ const formatDate = (dStr?: string) => {
   padding-bottom: 2rem;
 }
 
+/* Header Section */
 .header-section {
   display: flex;
   justify-content: space-between;
@@ -1023,8 +1026,38 @@ const formatDate = (dStr?: string) => {
   gap: 1rem;
 }
 
+.detail-header {
+  border: 1px solid var(--border);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-title-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title-with-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .page-title {
-  font-size: 1.8rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -1036,17 +1069,29 @@ const formatDate = (dStr?: string) => {
 .subtitle {
   font-size: 0.9rem;
   color: var(--text-secondary);
-  margin: 0.25rem 0 0 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
-.detail-nav-bar {
-  border: 1px solid var(--border);
-  background: var(--bg-card);
+.dot-separator {
+  color: var(--text-muted);
+  margin: 0 0.25rem;
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Filters Bar */
 .filters-bar {
   padding: 1rem 1.25rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
   border-radius: var(--radius-lg);
 }
 
@@ -1061,89 +1106,174 @@ const formatDate = (dStr?: string) => {
   flex: 1;
   min-width: 250px;
   position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .search-input i {
   position: absolute;
-  left: 0.75rem;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 0.85rem;
   color: var(--text-muted);
+  pointer-events: none;
+  font-size: 1rem;
 }
 
-.search-input input {
-  padding-left: 2.5rem;
+.search-input :deep(.p-inputtext) {
+  padding-left: 2.4rem;
   width: 100%;
 }
 
 .atleta-select {
-  min-width: 240px;
+  min-width: 220px;
 }
 
-.loading-state, .empty-state {
-  text-align: center;
-  padding: 3rem;
+.estat-select {
+  min-width: 160px;
+}
+
+/* Table Card */
+.table-card {
+  padding: 1.25rem;
   border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.plan-table-title-box {
+  cursor: pointer;
+}
+
+.plan-table-title {
+  font-weight: 700;
+  color: var(--text-primary);
+  display: block;
+  transition: color var(--transition-fast);
+}
+
+.plan-table-title-box:hover .plan-table-title {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.plan-table-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.table-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.version-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.version-badge {
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: fit-content;
+}
+
+.revisio-date-sub {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.revisio-date-sub.overdue {
+  color: var(--accent-danger);
+  font-weight: 700;
+}
+
+.macros-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.macro-pill {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.macro-pill.pill-ch {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+}
+
+.macro-pill.pill-sodi {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+.macro-pill.pill-fluid {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.history-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
 }
 
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .empty-state i {
-  font-size: 3.5rem;
+  font-size: 3rem;
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
 
-.spin-icon {
-  animation: spin 1s linear infinite;
-  font-size: 2.5rem;
-}
-
-@keyframes spin {
-  100% { transform: rotate(360deg); }
-}
-
-/* Plan Card */
-.plans-list {
+/* Detail Mode Container & Cards */
+.plan-detail-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .plan-card {
   padding: 1.5rem;
   border-radius: var(--radius-lg);
   background: var(--bg-card);
-}
-
-.plan-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.plan-title {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.plan-meta {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin: 0.35rem 0 0 0;
-}
-
-.dot-separator {
-  margin: 0 0.5rem;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
 }
 
 /* Current Revision Box */
@@ -1596,25 +1726,20 @@ const formatDate = (dStr?: string) => {
   margin-bottom: 0.75rem;
 }
 
+.mt-3 {
+  margin-top: 0.75rem;
+}
+
 .mt-4 {
   margin-top: 1rem;
 }
 
-.flex-row {
-  display: flex;
-  flex-direction: row;
-}
-
-.align-center {
-  align-items: center;
-}
-
-.gap-3 {
-  gap: 0.75rem;
-}
-
 .font-bold {
   font-weight: 700;
+}
+
+.font-medium {
+  font-weight: 500;
 }
 
 .text-xs {
