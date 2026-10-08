@@ -1,0 +1,16 @@
+frontend/src/api/nutricio.ts
+  h_42175f19913982 75-78
+frontend/src/views/PlanningManagerView.vue
+  h_42175f19913982 3,6,18,43,71,75-80,83-94,96,112-122,166-243,275,279-280,325-378,393,404-418,608-650
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ab3eb0306c140c0c7c11d82a78f5b7f077f0b599",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
