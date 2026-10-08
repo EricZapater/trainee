@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
@@ -8,12 +9,15 @@ import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Toast from 'primevue/toast'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Accordion from 'primevue/accordion'
 import AccordionPanel from 'primevue/accordionpanel'
 import AccordionHeader from 'primevue/accordionheader'
 import AccordionContent from 'primevue/accordioncontent'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { usePaginationPreference } from '@/composables/usePaginationPreference'
 import { getAtletes } from '@/api/entrenador'
 import {
   getNutricioPlans,
@@ -29,8 +33,11 @@ import {
   type CreateNutricioFeedbackRequest
 } from '@/api/nutricio'
 
+const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const toast = useToast()
+const { pageSize, setPageSize, pageSizeOptions } = usePaginationPreference()
 
 const isEntrenadorOrAdmin = computed(() => authStore.isEntrenador || authStore.usuari?.rol === 'admin')
 
@@ -39,7 +46,15 @@ const submitting = ref(false)
 const plans = ref<NutricioPlanWithDetails[]>([])
 const atletes = ref<{ id: string; usuari_id?: string; nom: string; cognoms: string; email: string }[]>([])
 const selectedAtletaFilter = ref<string | null>(null)
+const selectedEstatFilter = ref<string | null>(null)
 const searchQuery = ref('')
+const selectedPlanId = ref<string | null>((route.query.plan_id as string) || null)
+
+const estatOptions = [
+  { label: 'Tots els estats', value: null },
+  { label: 'Actiu', value: 'actiu' },
+  { label: 'Inactiu', value: 'inactiu' }
+]
 
 // Dialog states
 const newPlanVisible = ref(false)
@@ -119,8 +134,33 @@ const atletaOptions = computed(() => {
   }))
 })
 
+const selectedPlan = computed(() => {
+  if (!selectedPlanId.value) return null
+  return plans.value.find(p => p.id === selectedPlanId.value) || null
+})
+
+const openPlanDetail = (plan: NutricioPlanWithDetails) => {
+  selectedPlanId.value = plan.id
+  router.replace({ query: { ...route.query, plan_id: plan.id } })
+}
+
+const closePlanDetail = () => {
+  selectedPlanId.value = null
+  const q = { ...route.query }
+  delete q.plan_id
+  router.replace({ query: q })
+}
+
+const getTotalFeedbacks = (plan: NutricioPlanWithDetails) => {
+  if (!plan.revisions) return 0
+  return plan.revisions.reduce((acc, r) => acc + (r.feedbacks?.length || 0), 0)
+}
+
 const filteredPlans = computed(() => {
   return plans.value.filter(p => {
+    if (selectedEstatFilter.value && p.estat !== selectedEstatFilter.value) {
+      return false
+    }
     if (selectedAtletaFilter.value) {
       const selectedAtletaObj = atletes.value.find(a => a.id === selectedAtletaFilter.value || a.usuari_id === selectedAtletaFilter.value)
       const validIds = new Set<string>([selectedAtletaFilter.value])
@@ -136,7 +176,8 @@ const filteredPlans = computed(() => {
       const q = searchQuery.value.toLowerCase()
       const titleMatch = p.titol.toLowerCase().includes(q)
       const atletaMatch = (p.atleta_nom || '').toLowerCase().includes(q) || (p.atleta_cognoms || '').toLowerCase().includes(q)
-      if (!titleMatch && !atletaMatch) return false
+      const entrenadorMatch = (p.entrenador_nom || '').toLowerCase().includes(q)
+      if (!titleMatch && !atletaMatch && !entrenadorMatch) return false
     }
     return true
   })
@@ -164,10 +205,13 @@ const handleCreatePlan = async () => {
 
   submitting.value = true
   try {
-    await createNutricioPlan(newPlanForm.value)
+    const createdPlan = await createNutricioPlan(newPlanForm.value)
     toast.add({ severity: 'success', summary: 'Èxit', detail: 'Pla nutricional creat correctament', life: 3000 })
     newPlanVisible.value = false
     await loadData()
+    if (createdPlan && createdPlan.id) {
+      openPlanDetail(createdPlan)
+    }
   } catch (e: any) {
     const errorMsg = e.response?.data?.error || 'Error al crear el pla nutricional'
     toast.add({ severity: 'error', summary: 'Error', detail: errorMsg, life: 3000 })
@@ -258,6 +302,9 @@ const handleDeletePlan = async (plan: NutricioPlanWithDetails) => {
   try {
     await deleteNutricioPlan(plan.id)
     toast.add({ severity: 'success', summary: 'Pla eliminat', detail: 'El pla nutricional s\'ha eliminat', life: 3000 })
+    if (selectedPlanId.value === plan.id) {
+      closePlanDetail()
+    }
     await loadData()
   } catch (e: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'No s\'ha pogut eliminar el pla', life: 3000 })
@@ -284,107 +331,66 @@ const formatDate = (dStr?: string) => {
   <div class="nutricio-layout">
     <Toast />
 
-    <!-- Header Section -->
-    <header class="header-section glass-card">
-      <div class="header-title-box">
-        <h1 class="page-title">
-          <i class="ti ti-salad text-accent"></i> Preparació Nutricional
-        </h1>
-        <p class="subtitle">Disseny i seguiment dels plans de nutrició per competició i entrenament</p>
-      </div>
-
-      <div class="actions" v-if="isEntrenadorOrAdmin">
-        <Button label="Nou Pla Nutricional" icon="ti ti-plus" class="p-button-primary" @click="openNewPlanModal" />
-      </div>
-    </header>
-
-    <!-- Filters Bar Card -->
-    <div class="filters-bar glass-card">
-      <div class="filter-group">
-        <div class="search-input">
-          <i class="ti ti-search"></i>
-          <InputText v-model="searchQuery" placeholder="Cercar per títol o atleta..." />
-        </div>
-
-        <Select
-          v-if="isEntrenadorOrAdmin"
-          v-model="selectedAtletaFilter"
-          :options="atletaOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Tots els atletes"
-          showClear
-          filter
-          class="atleta-select"
+    <!-- Mode 1: Detall del Pla Sencer -->
+    <div v-if="selectedPlan" class="plan-detail-container">
+      <div class="detail-nav-bar glass-card mb-4 flex justify-between align-center p-3 border-round">
+        <Button
+          label="Tornar al llistat de plans"
+          icon="ti ti-arrow-left"
+          class="p-button-outlined p-button-secondary"
+          @click="closePlanDetail"
         />
+        <div class="flex align-items-center gap-2" v-if="isEntrenadorOrAdmin">
+          <Button
+            v-if="selectedPlan.estat === 'actiu'"
+            label="Nova Revisió"
+            icon="ti ti-refresh"
+            class="p-button-accent"
+            @click="openNewRevisionModal(selectedPlan)"
+          />
+          <Button
+            :label="selectedPlan.estat === 'actiu' ? 'Desactivar' : 'Activar'"
+            :icon="selectedPlan.estat === 'actiu' ? 'ti ti-pause' : 'ti ti-play'"
+            class="p-button-outlined"
+            @click="handleTogglePlanEstat(selectedPlan)"
+          />
+          <Button
+            icon="ti ti-trash"
+            class="p-button-outlined p-button-danger"
+            @click="handleDeletePlan(selectedPlan)"
+          />
+        </div>
       </div>
-    </div>
 
-    <!-- Content Section -->
-    <div v-if="loading" class="loading-state glass-card">
-      <i class="ti ti-loader spin-icon text-accent"></i>
-      <p>Carregant plans nutricionals...</p>
-    </div>
-
-    <div v-else-if="filteredPlans.length === 0" class="empty-state glass-card">
-      <i class="ti ti-salad text-muted"></i>
-      <p>No s'ha trobat cap pla nutricional.</p>
-      <Button v-if="isEntrenadorOrAdmin" label="Crear el primer pla" icon="ti ti-plus" class="mt-4" @click="openNewPlanModal" />
-    </div>
-
-    <div v-else class="plans-list">
-      <div v-for="plan in filteredPlans" :key="plan.id" class="plan-card glass-card">
+      <div class="plan-card glass-card">
         <!-- Card Header -->
         <div class="plan-card-header">
           <div class="header-main">
             <div class="flex-row gap-3 align-center">
-              <h2 class="plan-title">{{ plan.titol }}</h2>
-              <Tag :severity="plan.estat === 'actiu' ? 'success' : 'secondary'" :value="plan.estat.toUpperCase()" />
+              <h2 class="plan-title">{{ selectedPlan.titol }}</h2>
+              <Tag :severity="selectedPlan.estat === 'actiu' ? 'success' : 'secondary'" :value="selectedPlan.estat.toUpperCase()" />
             </div>
             <p class="plan-meta">
-              <span v-if="isEntrenadorOrAdmin">Atleta: <strong>{{ plan.atleta_nom }} {{ plan.atleta_cognoms }}</strong></span>
-              <span v-else>Entrenador: <strong>{{ plan.entrenador_nom }}</strong></span>
+              <span v-if="isEntrenadorOrAdmin">Atleta: <strong>{{ selectedPlan.atleta_nom }} {{ selectedPlan.atleta_cognoms }}</strong></span>
+              <span v-else>Entrenador: <strong>{{ selectedPlan.entrenador_nom }}</strong></span>
               <span class="dot-separator">•</span>
-              <span>Creat: {{ formatDate(plan.created_at) }}</span>
+              <span>Creat: {{ formatDate(selectedPlan.created_at) }}</span>
             </p>
-          </div>
-
-          <div class="header-actions">
-            <template v-if="isEntrenadorOrAdmin">
-              <Button
-                v-if="plan.estat === 'actiu'"
-                label="Nova Revisió"
-                icon="ti ti-refresh"
-                class="p-button-sm p-button-outlined p-button-accent"
-                @click="openNewRevisionModal(plan)"
-              />
-              <Button
-                :label="plan.estat === 'actiu' ? 'Desactivar' : 'Activar'"
-                :icon="plan.estat === 'actiu' ? 'ti ti-pause' : 'ti ti-play'"
-                class="p-button-sm p-button-text"
-                @click="handleTogglePlanEstat(plan)"
-              />
-              <Button
-                icon="ti ti-trash"
-                class="p-button-sm p-button-text p-button-danger"
-                @click="handleDeletePlan(plan)"
-              />
-            </template>
           </div>
         </div>
 
         <!-- Current Revision details -->
-        <div v-if="plan.revisions && plan.revisions.length > 0" class="current-revision-box">
+        <div v-if="selectedPlan.revisions && selectedPlan.revisions.length > 0" class="current-revision-box">
           <div class="revision-header">
             <div class="badge-versio">
               <i class="ti ti-shield-check text-accent"></i>
-              <span>Versió {{ plan.revisions[0].versio }} (Actual)</span>
+              <span>Versió {{ selectedPlan.revisions[0].versio }} (Actual)</span>
             </div>
 
-            <div v-if="plan.revisions[0].data_revisio" class="revision-date-tag" :class="{ overdue: isRevisionOverdueOrToday(plan.revisions[0].data_revisio) }">
+            <div v-if="selectedPlan.revisions[0].data_revisio" class="revision-date-tag" :class="{ overdue: isRevisionOverdueOrToday(selectedPlan.revisions[0].data_revisio) }">
               <i class="ti ti-calendar-event"></i>
-              <span>Propera revisió: <strong>{{ formatDate(plan.revisions[0].data_revisio) }}</strong></span>
-              <span v-if="isRevisionOverdueOrToday(plan.revisions[0].data_revisio)" class="revisio-alert"> (Revisió pendent!)</span>
+              <span>Propera revisió: <strong>{{ formatDate(selectedPlan.revisions[0].data_revisio) }}</strong></span>
+              <span v-if="isRevisionOverdueOrToday(selectedPlan.revisions[0].data_revisio)" class="revisio-alert"> (Revisió pendent!)</span>
             </div>
           </div>
 
@@ -394,7 +400,7 @@ const formatDate = (dStr?: string) => {
               <div class="macro-icon ch"><i class="ti ti-flame"></i></div>
               <div class="macro-info">
                 <span class="macro-label">Carbohidrats</span>
-                <span class="macro-value">{{ plan.revisions[0].objectiu_ch_g_h ?? '-' }} <small>g/h</small></span>
+                <span class="macro-value">{{ selectedPlan.revisions[0].objectiu_ch_g_h ?? '-' }} <small>g/h</small></span>
               </div>
             </div>
 
@@ -402,7 +408,7 @@ const formatDate = (dStr?: string) => {
               <div class="macro-icon sodi"><i class="ti ti-atom"></i></div>
               <div class="macro-info">
                 <span class="macro-label">Sodi</span>
-                <span class="macro-value">{{ plan.revisions[0].objectiu_sodi_mg_h ?? '-' }} <small>mg/h</small></span>
+                <span class="macro-value">{{ selectedPlan.revisions[0].objectiu_sodi_mg_h ?? '-' }} <small>mg/h</small></span>
               </div>
             </div>
 
@@ -410,32 +416,32 @@ const formatDate = (dStr?: string) => {
               <div class="macro-icon fluid"><i class="ti ti-droplet"></i></div>
               <div class="macro-info">
                 <span class="macro-label">Hidratació</span>
-                <span class="macro-value">{{ plan.revisions[0].objectiu_fluid_ml_h ?? '-' }} <small>ml/h</small></span>
+                <span class="macro-value">{{ selectedPlan.revisions[0].objectiu_fluid_ml_h ?? '-' }} <small>ml/h</small></span>
               </div>
             </div>
           </div>
 
           <!-- Products & Instructions -->
           <div class="plan-details-grid">
-            <div class="details-box" v-if="plan.revisions[0].productes_propostes">
+            <div class="details-box" v-if="selectedPlan.revisions[0].productes_propostes">
               <h4><i class="ti ti-box text-accent"></i> Productes i Suplements Proposts</h4>
-              <p class="whitespace-pre-line">{{ plan.revisions[0].productes_propostes }}</p>
+              <p class="whitespace-pre-line">{{ selectedPlan.revisions[0].productes_propostes }}</p>
             </div>
 
-            <div class="details-box" v-if="plan.revisions[0].instruccions">
+            <div class="details-box" v-if="selectedPlan.revisions[0].instruccions">
               <h4><i class="ti ti-notes text-accent"></i> Instruccions / Estratègia</h4>
-              <p class="whitespace-pre-line">{{ plan.revisions[0].instruccions }}</p>
+              <p class="whitespace-pre-line">{{ selectedPlan.revisions[0].instruccions }}</p>
             </div>
           </div>
 
-          <!-- Add Feedback button (Athlete or Trainer) -->
+          <!-- Add Feedback button -->
           <div class="button-right-wrapper">
             <Button
-              v-if="plan.estat === 'actiu'"
+              v-if="selectedPlan.estat === 'actiu'"
               label="Registrar Entrenament / Sensacions"
               icon="ti ti-message-plus"
               class="p-button-accent p-button-sm"
-              @click="openNewFeedbackModal(plan.revisions[0])"
+              @click="openNewFeedbackModal(selectedPlan.revisions[0])"
             />
           </div>
         </div>
@@ -443,7 +449,7 @@ const formatDate = (dStr?: string) => {
         <!-- History of Revisions and Feedbacks -->
         <div class="revisions-history">
           <Accordion :value="['0']" multiple>
-            <AccordionPanel v-for="rev in plan.revisions" :key="rev.id" :value="`rev-${rev.id}`">
+            <AccordionPanel v-for="rev in selectedPlan.revisions" :key="rev.id" :value="`rev-${rev.id}`">
               <AccordionHeader>
                 <div class="accordion-header-content">
                   <div class="rev-title-group">
@@ -505,6 +511,191 @@ const formatDate = (dStr?: string) => {
             </AccordionPanel>
           </Accordion>
         </div>
+      </div>
+    </div>
+
+    <!-- Mode 2: Llistat de Plans en format Taula -->
+    <div v-else class="plans-list-container">
+      <!-- Header Section -->
+      <header class="header-section glass-card">
+        <div class="header-title-box">
+          <h1 class="page-title">
+            <i class="ti ti-salad text-accent"></i> Preparació Nutricional
+          </h1>
+          <p class="subtitle">Disseny i seguiment dels plans de nutrició per competició i entrenament</p>
+        </div>
+
+        <div class="actions" v-if="isEntrenadorOrAdmin">
+          <Button label="Nou Pla Nutricional" icon="ti ti-plus" class="p-button-primary" @click="openNewPlanModal" />
+        </div>
+      </header>
+
+      <!-- Filters Bar Card -->
+      <div class="filters-bar glass-card">
+        <div class="filter-group">
+          <div class="search-input">
+            <i class="ti ti-search"></i>
+            <InputText v-model="searchQuery" placeholder="Cercar per títol o atleta..." />
+          </div>
+
+          <Select
+            v-if="isEntrenadorOrAdmin"
+            v-model="selectedAtletaFilter"
+            :options="atletaOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Tots els atletes"
+            showClear
+            filter
+            class="atleta-select"
+          />
+
+          <Select
+            v-model="selectedEstatFilter"
+            :options="estatOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Estat"
+            showClear
+            style="min-width: 170px;"
+          />
+        </div>
+      </div>
+
+      <!-- Table Section -->
+      <div class="content-section glass-card p-4 border-round">
+        <DataTable
+          :value="filteredPlans"
+          :paginator="true"
+          :rows="pageSize"
+          :rowsPerPageOptions="pageSizeOptions"
+          @update:rows="setPageSize"
+          :loading="loading"
+          selectionMode="single"
+          @row-select="(e) => openPlanDetail(e.data)"
+          class="nutricio-table"
+          stripedRows
+          responsiveLayout="scroll"
+        >
+          <template #empty>
+            <div class="empty-state p-4 text-center">
+              <i class="ti ti-salad text-muted text-4xl mb-2"></i>
+              <p class="text-secondary m-0">No s'ha trobat cap pla nutricional.</p>
+              <Button v-if="isEntrenadorOrAdmin" label="Crear el primer pla" icon="ti ti-plus" class="mt-3" @click="openNewPlanModal" />
+            </div>
+          </template>
+
+          <Column field="titol" header="Títol del Pla" sortable style="min-width: 220px">
+            <template #body="{ data }">
+              <div class="cursor-pointer" @click="openPlanDetail(data)">
+                <span class="font-bold text-primary hover:underline">{{ data.titol }}</span>
+                <div class="text-xs text-secondary mt-1 flex align-items-center gap-1">
+                  <i class="ti ti-calendar text-xs"></i>
+                  <span>Creat el {{ formatDate(data.created_at) }}</span>
+                </div>
+              </div>
+            </template>
+          </Column>
+
+          <Column v-if="isEntrenadorOrAdmin" header="Atleta" sortable field="atleta_nom" style="min-width: 180px">
+            <template #body="{ data }">
+              <div class="flex align-items-center gap-2">
+                <i class="ti ti-user text-secondary"></i>
+                <span class="font-medium text-primary">{{ data.atleta_nom }} {{ data.atleta_cognoms }}</span>
+              </div>
+            </template>
+          </Column>
+
+          <Column v-else header="Entrenador" sortable field="entrenador_nom" style="min-width: 180px">
+            <template #body="{ data }">
+              <div class="flex align-items-center gap-2">
+                <i class="ti ti-user-check text-secondary"></i>
+                <span class="font-medium text-primary">{{ data.entrenador_nom }}</span>
+              </div>
+            </template>
+          </Column>
+
+          <Column field="estat" header="Estat" sortable style="min-width: 110px">
+            <template #body="{ data }">
+              <Tag :severity="data.estat === 'actiu' ? 'success' : 'secondary'" :value="data.estat.toUpperCase()" />
+            </template>
+          </Column>
+
+          <Column header="Versió Actual" style="min-width: 140px">
+            <template #body="{ data }">
+              <div v-if="data.revisions && data.revisions.length > 0" class="flex flex-col gap-1">
+                <span class="font-semibold text-xs px-2 py-1 border-round w-fit surface-100" style="background: var(--surface-100, #f1f5f9);">
+                  Versió {{ data.revisions[0].versio }}
+                </span>
+                <span v-if="data.revisions[0].data_revisio" class="text-xs" :class="isRevisionOverdueOrToday(data.revisions[0].data_revisio) ? 'text-red-500 font-bold' : 'text-secondary'">
+                  <i class="ti ti-calendar-event"></i> {{ formatDate(data.revisions[0].data_revisio) }}
+                </span>
+              </div>
+              <span v-else class="text-xs text-muted">-</span>
+            </template>
+          </Column>
+
+          <Column header="Objectius Horaris" style="min-width: 230px">
+            <template #body="{ data }">
+              <div v-if="data.revisions && data.revisions.length > 0" class="flex align-items-center gap-1 flex-wrap">
+                <span class="text-xs px-2 py-1 border-round font-semibold" style="background: rgba(249, 115, 22, 0.1); color: #ea580c;" title="Carbohidrats">
+                  <i class="ti ti-flame"></i> {{ data.revisions[0].objectiu_ch_g_h ?? '-' }}g/h
+                </span>
+                <span class="text-xs px-2 py-1 border-round font-semibold" style="background: rgba(168, 85, 247, 0.1); color: #9333ea;" title="Sodi">
+                  <i class="ti ti-atom"></i> {{ data.revisions[0].objectiu_sodi_mg_h ?? '-' }}mg/h
+                </span>
+                <span class="text-xs px-2 py-1 border-round font-semibold" style="background: rgba(59, 130, 246, 0.1); color: #2563eb;" title="Hidratació">
+                  <i class="ti ti-droplet"></i> {{ data.revisions[0].objectiu_fluid_ml_h ?? '-' }}ml/h
+                </span>
+              </div>
+              <span v-else class="text-xs text-muted">-</span>
+            </template>
+          </Column>
+
+          <Column header="Històric" style="min-width: 130px">
+            <template #body="{ data }">
+              <div class="text-xs text-secondary flex flex-col gap-1">
+                <span><strong>{{ data.revisions?.length || 0 }}</strong> rev.</span>
+                <span><strong>{{ getTotalFeedbacks(data) }}</strong> registres</span>
+              </div>
+            </template>
+          </Column>
+
+          <Column header="Accions" style="min-width: 180px; text-align: right;">
+            <template #body="{ data }">
+              <div class="flex align-items-center justify-end gap-1">
+                <Button
+                  icon="ti ti-eye"
+                  label="Obrir"
+                  class="p-button-sm p-button-outlined p-button-accent"
+                  @click.stop="openPlanDetail(data)"
+                  title="Veure pla complet"
+                />
+                <Button
+                  v-if="isEntrenadorOrAdmin && data.estat === 'actiu'"
+                  icon="ti ti-refresh"
+                  class="p-button-sm p-button-text p-button-secondary"
+                  @click.stop="openNewRevisionModal(data)"
+                  title="Nova revisió"
+                />
+                <Button
+                  v-if="isEntrenadorOrAdmin"
+                  :icon="data.estat === 'actiu' ? 'ti ti-pause' : 'ti ti-play'"
+                  class="p-button-sm p-button-text p-button-secondary"
+                  @click.stop="handleTogglePlanEstat(data)"
+                  :title="data.estat === 'actiu' ? 'Desactivar' : 'Activar'"
+                />
+                <Button
+                  v-if="isEntrenadorOrAdmin"
+                  icon="ti ti-trash"
+                  class="p-button-sm p-button-text p-button-danger"
+                  @click.stop="handleDeletePlan(data)"
+                  title="Eliminar pla"
+                />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
       </div>
     </div>
 
@@ -846,6 +1037,11 @@ const formatDate = (dStr?: string) => {
   font-size: 0.9rem;
   color: var(--text-secondary);
   margin: 0.25rem 0 0 0;
+}
+
+.detail-nav-bar {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
 }
 
 .filters-bar {
