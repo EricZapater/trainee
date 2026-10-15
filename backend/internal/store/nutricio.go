@@ -224,6 +224,15 @@ func (s *PostgresStore) GetNutricioPlanDetails(ctx context.Context, planID strin
 	return &p, nil
 }
 
+func (s *PostgresStore) GetNutricioPlanByRevisionID(ctx context.Context, revisionID string) (*models.NutricioPlanWithDetails, error) {
+	var planID string
+	err := s.pool.QueryRow(ctx, `SELECT plan_id FROM nutricio_revisions WHERE id = $1`, revisionID).Scan(&planID)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetNutricioPlanDetails(ctx, planID)
+}
+
 func (s *PostgresStore) ListNutricioPlansByAtleta(ctx context.Context, atletaID string) ([]models.NutricioPlanWithDetails, error) {
 	query := `
 		SELECT p.id 

@@ -158,6 +158,7 @@ type Store interface {
 	CreateNutricioRevision(ctx context.Context, planID string, req models.CreateNutricioRevisionRequest) (*models.NutricioRevision, error)
 	AddNutricioFeedback(ctx context.Context, revisionID, atletaID string, req models.CreateNutricioFeedbackRequest) (*models.NutricioFeedback, error)
 	GetNutricioPlanDetails(ctx context.Context, planID string) (*models.NutricioPlanWithDetails, error)
+	GetNutricioPlanByRevisionID(ctx context.Context, revisionID string) (*models.NutricioPlanWithDetails, error)
 	ListNutricioPlansByAtleta(ctx context.Context, atletaID string) ([]models.NutricioPlanWithDetails, error)
 	ListNutricioPlansByEntrenador(ctx context.Context, entrenadorID string) ([]models.NutricioPlanWithDetails, error)
 	ListAllNutricioPlans(ctx context.Context) ([]models.NutricioPlanWithDetails, error)

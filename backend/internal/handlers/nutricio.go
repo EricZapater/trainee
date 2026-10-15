@@ -254,9 +254,11 @@ func (h *Handler) AddNutricioFeedback(c *gin.Context) {
 	userRole := getUserRole(c)
 
 	var atletaID string
+	var atletaEntrenadorID string
 	atleta, err := h.Store.GetAtletaByUsuariID(c.Request.Context(), userID)
 	if err == nil && atleta != nil {
 		atletaID = atleta.ID
+		atletaEntrenadorID = atleta.EntrenadorID
 	} else if userRole == "admin" || userRole == "entrenador" {
 		atletaID = userID
 	} else {
@@ -270,36 +272,78 @@ func (h *Handler) AddNutricioFeedback(c *gin.Context) {
 		return
 	}
 
-	// Notify coach via email
-	go func() {
-		ctx := context.Background()
-		usr, _ := h.Store.GetUsuariByID(ctx, userID)
-		atletaNom := "Un atleta"
-		if usr != nil {
-			atletaNom = usr.Nom
-		}
+	// Notify only the athlete's coach via email when an athlete submits feedback
+	if userRole == "atleta" || atleta != nil {
+		go func(coachID, authorID string, feedbackReq models.CreateNutricioFeedbackRequest) {
+			ctx := context.Background()
 
-		coaches, err := h.Store.ListAllUsuaris(ctx)
-		if err == nil {
-			sens := "-"
-			if req.Sensacions != nil {
-				sens = *req.Sensacions
-			}
-			for _, coach := range coaches {
-				if coach.Rol == "entrenador" && coach.Actiu {
-					_ = h.Mailer.SendNutricioFeedbackNotification(
-						coach.Email,
-						coach.Nom,
-						atletaNom,
-						"Pla Nutricional",
-						req.DataSortida,
-						sens,
-						coach.Idioma,
-					)
+			planDetails, err := h.Store.GetNutricioPlanByRevisionID(ctx, revisionID)
+			planTitol := "Pla Nutricional"
+			targetCoachID := coachID
+			if planDetails != nil {
+				if planDetails.Titol != "" {
+					planTitol = planDetails.Titol
+				}
+				if targetCoachID == "" {
+					targetCoachID = planDetails.EntrenadorID
 				}
 			}
-		}
-	}()
+
+			if targetCoachID == "" {
+				log.Printf("[NUTRICIO MAIL] No s'ha pogut determinar l'entrenador per al registre de feedback de l'usuari %s", authorID)
+				return
+			}
+
+			coach, err := h.Store.GetUsuariByEntrenadorID(ctx, targetCoachID)
+			if err != nil || coach == nil {
+				log.Printf("[NUTRICIO MAIL] No s'ha trobat l'usuari entrenador per ID %s: %v", targetCoachID, err)
+				return
+			}
+
+			if !coach.Actiu {
+				log.Printf("[NUTRICIO MAIL] L'entrenador %s està inactiu, no s'envia correu", coach.Email)
+				return
+			}
+
+			if coach.ID == authorID {
+				return
+			}
+
+			usr, _ := h.Store.GetUsuariByID(ctx, authorID)
+			atletaNom := "Un atleta"
+			if usr != nil {
+				atletaNom = usr.Nom
+				if usr.Cognoms != "" {
+					atletaNom += " " + usr.Cognoms
+				}
+			} else if planDetails != nil && planDetails.AtletaNom != "" {
+				atletaNom = planDetails.AtletaNom
+				if planDetails.AtletaCognoms != "" {
+					atletaNom += " " + planDetails.AtletaCognoms
+				}
+			}
+
+			sens := "-"
+			if feedbackReq.Sensacions != nil && *feedbackReq.Sensacions != "" {
+				sens = *feedbackReq.Sensacions
+			}
+
+			errMail := h.Mailer.SendNutricioFeedbackNotification(
+				coach.Email,
+				coach.Nom,
+				atletaNom,
+				planTitol,
+				feedbackReq.DataSortida,
+				sens,
+				coach.Idioma,
+			)
+			if errMail != nil {
+				log.Printf("[NUTRICIO MAIL ERROR] Error enviant notificació feedback nutrició a %s: %v", coach.Email, errMail)
+			} else {
+				log.Printf("[NUTRICIO MAIL SUCCESS] Notificació feedback nutrició enviada a l'entrenador %s (pla: %s)", coach.Email, planTitol)
+			}
+		}(atletaEntrenadorID, userID, req)
+	}
 
 	c.JSON(http.StatusCreated, fb)
 }
