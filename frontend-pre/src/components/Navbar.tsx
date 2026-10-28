@@ -71,7 +71,7 @@ export const Navbar: React.FC = () => {
   const trainingPaths = ['/calendar', '/wellness', '/informe', '/nutricio']
   const racesPaths = ['/competicions/atleta', '/team-races']
   const clubPaths = ['/anuncis', '/material', '/feedback']
-  const coachPaths = ['/dashboard', '/planning', '/atletes', '/tests', '/competicions/entrenador', '/weeks']
+  const coachPaths = ['/dashboard', '/planning', '/atletes', '/tests', '/competicions/entrenador', '/weeks', '/entrenador/forms', '/forms']
   const adminPaths = ['/admin', '/activitats', '/forms', '/settings', '/logs']
 
   return (
@@ -364,6 +364,19 @@ export const Navbar: React.FC = () => {
                     <div>
                       <p className="font-bold text-text-primary leading-tight">Gestor de Setmanes</p>
                       <p className="text-[11px] text-text-muted">Obertura i tancament</p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/entrenador/forms"
+                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
+                      isActive('/entrenador/forms') || isActive('/forms') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
+                    <div>
+                      <p className="font-bold text-text-primary leading-tight">Formularis Dinàmics</p>
+                      <p className="text-[11px] text-text-muted">Qüestionaris d'alta & respostes</p>
                     </div>
                   </Link>
                 </div>
@@ -665,6 +678,14 @@ export const Navbar: React.FC = () => {
                 }`}
               >
                 <Clock className="w-4 h-4 text-slate-500" /> Gestor de Setmanes
+              </Link>
+              <Link
+                to="/entrenador/forms"
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/entrenador/forms') || isActive('/forms') ? 'bg-blue-50 text-blue-700' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <FileSpreadsheet className="w-4 h-4 text-indigo-500" /> Formularis Dinàmics
               </Link>
             </div>
           )}

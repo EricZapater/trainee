@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Navbar } from './components/Navbar'
 import { LoginPage } from './pages/LoginPage'
@@ -23,6 +23,9 @@ import { SettingsPage } from './pages/SettingsPage'
 import { MaterialManagerPage } from './pages/MaterialManagerPage'
 import { NutricioManagerPage } from './pages/NutricioManagerPage'
 import { FormsManagerPage } from './pages/FormsManagerPage'
+import { FormBuilderPage } from './pages/FormBuilderPage'
+import { FormResponsesPage } from './pages/FormResponsesPage'
+import { PublicFormPage } from './pages/PublicFormPage'
 import { SystemLogsPage } from './pages/SystemLogsPage'
 import { AlertTriangle, Undo2 } from 'lucide-react'
 
@@ -75,6 +78,20 @@ const ImpersonationBanner: React.FC = () => {
 
 const AppContent: React.FC = () => {
   const { isEntrenador } = useAuth()
+  const location = useLocation()
+
+  // Detect standalone public form route e.g. /forms/:id (excluding builder and responses)
+  const isPublicFormView = /^\/forms\/[^/]+$/.test(location.pathname) && 
+    !location.pathname.endsWith('/edit') && 
+    !location.pathname.endsWith('/responses')
+
+  if (isPublicFormView) {
+    return (
+      <Routes>
+        <Route path="/forms/:id" element={<PublicFormPage />} />
+      </Routes>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-bg-base text-text-primary flex flex-col">
@@ -244,11 +261,52 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
+          {/* Dynamic Forms Routes */}
           <Route
             path="/forms"
             element={
               <ProtectedRoute>
                 <FormsManagerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/entrenador/forms"
+            element={
+              <ProtectedRoute>
+                <FormsManagerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forms/:id/edit"
+            element={
+              <ProtectedRoute>
+                <FormBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/entrenador/forms/:id/edit"
+            element={
+              <ProtectedRoute>
+                <FormBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forms/:id/responses"
+            element={
+              <ProtectedRoute>
+                <FormResponsesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/entrenador/forms/:id/responses"
+            element={
+              <ProtectedRoute>
+                <FormResponsesPage />
               </ProtectedRoute>
             }
           />
