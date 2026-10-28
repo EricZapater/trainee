@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { 
   Clock, 
@@ -10,7 +10,10 @@ import {
   Lock, 
   Unlock,
   ChevronLeft,
-  X
+  X,
+  Search,
+  Filter,
+  RotateCcw
 } from 'lucide-react'
 import { getEntrenadorWeeks, createWeek, updateWeek, type ManagedWeekWithCount } from '../api/entrenador'
 
@@ -21,6 +24,11 @@ export const WeeksManagerPage: React.FC = () => {
   const [newWeekDate, setNewWeekDate] = useState('')
   const [creating, setCreating] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Filters
+  const [statusFilter, setStatusFilter] = useState<'all' | 'oberta' | 'tancada' | 'traspassada'>('all')
+  const [yearFilter, setYearFilter] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     loadWeeks()
@@ -91,6 +99,56 @@ export const WeeksManagerPage: React.FC = () => {
     return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`
   }
 
+  // Available years from weeks
+  const availableYears = useMemo(() => {
+    const years = new Set<string>()
+    weeks.forEach(w => {
+      if (w.week_start) {
+        years.add(w.week_start.slice(0, 4))
+      }
+    })
+    return Array.from(years).sort().reverse()
+  }, [weeks])
+
+  // Summary counts
+  const counts = useMemo(() => {
+    return {
+      all: weeks.length,
+      oberta: weeks.filter(w => w.estat === 'oberta').length,
+      tancada: weeks.filter(w => w.estat === 'tancada').length,
+      traspassada: weeks.filter(w => w.estat === 'traspassada').length,
+    }
+  }, [weeks])
+
+  // Filtered weeks
+  const filteredWeeks = useMemo(() => {
+    return weeks.filter(w => {
+      // Status filter
+      if (statusFilter !== 'all' && w.estat !== statusFilter) return false
+
+      // Year filter
+      if (yearFilter !== 'all' && !w.week_start.startsWith(yearFilter)) return false
+
+      // Search query (matches formatted date or raw date)
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim()
+        const formatted = `${formatDate(w.week_start)} - ${formatDate(w.week_start, 6)}`.toLowerCase()
+        const raw = w.week_start.toLowerCase()
+        if (!formatted.includes(q) && !raw.includes(q)) return false
+      }
+
+      return true
+    })
+  }, [weeks, statusFilter, yearFilter, searchQuery])
+
+  const hasActiveFilters = statusFilter !== 'all' || yearFilter !== 'all' || searchQuery.trim() !== ''
+
+  const resetFilters = () => {
+    setStatusFilter('all')
+    setYearFilter('all')
+    setSearchQuery('')
+  }
+
   return (
     <div className="space-y-6 pb-20">
       {/* Toast Feedback */}
@@ -110,7 +168,7 @@ export const WeeksManagerPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Link
             to="/dashboard"
-            className="p-2 rounded-xl bg-white/70 hover:bg-white text-text-muted hover:text-text-primary border border-border-light shadow-sm transition-colors"
+            className="p-2 rounded-xl bg-white/70 hover:bg-white text-text-muted hover:text-text-primary border border-border shadow-sm transition-colors"
             title="Tornar a la Matriu"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -133,31 +191,150 @@ export const WeeksManagerPage: React.FC = () => {
         </button>
       </div>
 
+      {/* KPI Cards / Quick Filter Tabs */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            statusFilter === 'all'
+              ? 'bg-brand-50/80 border-brand-300 shadow-sm'
+              : 'glass-card hover:border-slate-300'
+          }`}
+        >
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wider block">Totes</span>
+          <span className="text-2xl font-black text-text-primary mt-1 block">{counts.all}</span>
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('oberta')}
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            statusFilter === 'oberta'
+              ? 'bg-emerald-50 border-emerald-300 shadow-sm'
+              : 'glass-card hover:border-slate-300'
+          }`}
+        >
+          <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider block">Obertes</span>
+          <span className="text-2xl font-black text-emerald-700 mt-1 block">{counts.oberta}</span>
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('tancada')}
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            statusFilter === 'tancada'
+              ? 'bg-amber-50 border-amber-300 shadow-sm'
+              : 'glass-card hover:border-slate-300'
+          }`}
+        >
+          <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider block">Tancades</span>
+          <span className="text-2xl font-black text-amber-700 mt-1 block">{counts.tancada}</span>
+        </button>
+
+        <button
+          onClick={() => setStatusFilter('traspassada')}
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
+            statusFilter === 'traspassada'
+              ? 'bg-slate-100 border-slate-300 shadow-sm'
+              : 'glass-card hover:border-slate-300'
+          }`}
+        >
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider block">Arxivades</span>
+          <span className="text-2xl font-black text-slate-700 mt-1 block">{counts.traspassada}</span>
+        </button>
+      </div>
+
+      {/* Filter Toolbar Card */}
+      <div className="glass-card p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+          {/* Search box */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cercar per data (ex: 26/10 o 2026)..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-bg-surface border border-border rounded-xl pl-9 pr-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500"
+            />
+          </div>
+
+          {/* Year selector */}
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-text-muted shrink-0" />
+            <select
+              value={yearFilter}
+              onChange={e => setYearFilter(e.target.value)}
+              className="bg-bg-surface border border-border rounded-xl px-3 py-2 text-xs font-semibold text-text-primary focus:outline-none focus:border-brand-500"
+            >
+              <option value="all">Tots els anys</option>
+              {availableYears.map(year => (
+                <option key={year} value={year}>Any {year}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status selector */}
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value as any)}
+            className="bg-bg-surface border border-border rounded-xl px-3 py-2 text-xs font-semibold text-text-primary focus:outline-none focus:border-brand-500"
+          >
+            <option value="all">Tots els estats</option>
+            <option value="oberta">Només Obertes</option>
+            <option value="tancada">Només Tancades</option>
+            <option value="traspassada">Només Arxivades</option>
+          </select>
+        </div>
+
+        {hasActiveFilters && (
+          <button
+            onClick={resetFilters}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-text-muted hover:text-brand-600 hover:bg-brand-50 transition-colors self-end sm:self-auto border border-border"
+            title="Netejar filtres"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Restablir filtres</span>
+          </button>
+        )}
+      </div>
+
       {/* Weeks Table / Cards */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-text-muted text-sm font-medium">Carregant setmanes...</p>
         </div>
-      ) : weeks.length === 0 ? (
-        <div className="glass-card p-12 text-center text-text-muted">
-          <Calendar className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-          <p className="font-semibold text-sm">No hi ha cap setmana registrada.</p>
+      ) : filteredWeeks.length === 0 ? (
+        <div className="glass-card p-12 text-center text-text-muted space-y-2">
+          <Calendar className="w-10 h-10 mx-auto text-slate-300" />
+          <p className="font-semibold text-sm text-text-primary">No s'ha trobat cap setmana</p>
+          <p className="text-xs">
+            {hasActiveFilters 
+              ? 'Cap setmana coincideix amb els filtres aplicats.' 
+              : 'Encara no hi ha cap setmana registrada.'}
+          </p>
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              className="mt-3 px-3.5 py-1.5 rounded-xl bg-bg-surface border border-border text-xs font-semibold text-text-primary hover:border-brand-500 transition-colors"
+            >
+              Netejar filtres
+            </button>
+          )}
         </div>
       ) : (
         <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
               <thead>
-                <tr className="border-b border-border-light text-text-muted font-bold uppercase text-[11px] bg-bg-surface/50">
+                <tr className="border-b border-border text-text-muted font-bold uppercase text-[11px] bg-bg-surface/50">
                   <th className="py-3 px-4">Setmana (Dilluns - Diumenge)</th>
                   <th className="py-3 px-4 text-center">Estat Actual</th>
                   <th className="py-3 px-4 text-center">Respostes Atletes</th>
                   <th className="py-3 px-4 text-right">Accions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-light">
-                {weeks.map(w => (
+              <tbody className="divide-y divide-border">
+                {filteredWeeks.map(w => (
                   <tr key={w.id} className="hover:bg-bg-hover/50 transition-colors">
                     <td className="py-3.5 px-4 font-bold text-text-primary flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-brand-500 shrink-0" />
@@ -218,45 +395,47 @@ export const WeeksManagerPage: React.FC = () => {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="glass-card bg-white p-5 sm:p-7 rounded-2xl max-w-md w-full shadow-2xl space-y-4 animate-scale-up">
-            <div className="flex items-center justify-between pb-2 border-b border-border-light">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
-                <Plus className="w-5 h-5 text-brand-500" /> Crear Nova Setmana
+                <Clock className="w-5 h-5 text-brand-500" /> Crear Nova Setmana
               </h3>
               <button 
                 onClick={() => setShowCreateModal(false)}
-                className="text-text-muted hover:text-text-primary"
+                className="text-text-muted hover:text-text-primary p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateWeek} className="space-y-4 text-xs sm:text-sm">
+            <form onSubmit={handleCreateWeek} className="space-y-4">
               <div>
-                <label className="block font-bold text-text-primary mb-1">Data d'inici de la setmana (Dilluns) *</label>
-                <input
+                <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">
+                  Data d'Inici (Dilluns)
+                </label>
+                <input 
                   type="date"
                   required
                   value={newWeekDate}
-                  onChange={(e) => setNewWeekDate(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-border-light focus:ring-2 focus:ring-brand-500/30 outline-none"
+                  onChange={e => setNewWeekDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-bg-surface text-text-primary text-sm focus:outline-none focus:border-brand-500"
                 />
                 <p className="text-[11px] text-text-muted mt-1">
-                  Recomanat: Selecciona sempre el dilluns de la setmana a planificar.
+                  Recomanat seleccionar sempre el dilluns de la setmana a programar.
                 </p>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-border-light">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-xs font-bold text-text-secondary hover:text-text-primary rounded-xl"
+                  className="px-4 py-2 rounded-xl border border-border text-text-secondary hover:bg-bg-hover text-sm font-semibold transition-colors"
                 >
                   Cancel·lar
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="btn-primary text-xs py-2 px-5 disabled:opacity-50"
+                  className="btn-primary text-sm py-2 px-5 font-semibold flex items-center gap-1.5"
                 >
                   {creating ? 'Creant...' : 'Crear Setmana'}
                 </button>

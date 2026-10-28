@@ -15,7 +15,8 @@ import {
   FileText, 
   Eye, 
   Check, 
-  X
+  X,
+  XCircle
 } from 'lucide-react'
 import { 
   getFormResponses, 
@@ -127,7 +128,7 @@ export const FormResponsesPage: React.FC = () => {
       await updateFormResponseDetails(selectedResponse.id, { comentari: commentText.trim() || null })
       setResponses(prev => prev.map(item => item.id === selectedResponse.id ? { ...item, comentari: commentText.trim() || null } : item))
       setSelectedResponse(prev => prev ? { ...prev, comentari: commentText.trim() || null } : null)
-      showToast('Observacions guardades')
+      showToast('Observacions desades')
     } catch {
       showToast('Error en desar les observacions', 'error')
     } finally {
@@ -179,44 +180,41 @@ export const FormResponsesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Toast */}
+      {/* Toast Feedback */}
       {toast && (
-        <div className={`p-4 rounded-xl text-sm flex items-center justify-between shadow-lg transition-all border ${
+        <div className={`fixed top-20 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 border animate-fade-in ${
           toast.type === 'success' 
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-            : 'bg-red-500/10 border-red-500/30 text-red-400'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+            : 'bg-rose-50 border-rose-200 text-rose-800'
         }`}>
-          <div className="flex items-center gap-2">
-            {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-            <span>{toast.message}</span>
-          </div>
-          <button onClick={() => setToast(null)} className="opacity-70 hover:opacity-100 font-bold">&times;</button>
+          {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertCircle className="w-5 h-5 text-rose-600" />}
+          <span className="text-sm font-semibold">{toast.message}</span>
         </div>
       )}
 
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-6 rounded-2xl border border-slate-800 backdrop-blur-md">
+      <div className="glass-card p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Link
             to="/entrenador/forms"
-            className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-white transition mb-2"
+            className="inline-flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition mb-1 font-semibold"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Tornar a Formularis</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <span>Respostes de {form?.titol || 'Formulari'}</span>
+          <h1 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
+            Respostes: {form?.titol || 'Formulari'}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-text-muted mt-0.5">
             Revisió de candidatures, estat del contacte i respostes dels aspirants.
           </p>
         </div>
 
         <Link
           to={`/entrenador/forms/${id}/edit`}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-bg-surface hover:bg-bg-hover text-text-primary border border-border rounded-xl text-xs font-bold transition shadow-sm self-start sm:self-auto"
         >
-          <FileText className="w-4 h-4 text-indigo-400" />
+          <FileText className="w-4 h-4 text-brand-500" />
           <span>Editar Preguntes</span>
         </Link>
       </div>
@@ -225,99 +223,99 @@ export const FormResponsesPage: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <button
           onClick={() => setStatusFilter('all')}
-          className={`p-4 rounded-xl border text-left transition-all ${
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
             statusFilter === 'all' 
-              ? 'bg-indigo-600/10 border-indigo-500/40 text-white' 
-              : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+              ? 'bg-brand-50 border-brand-300 shadow-sm' 
+              : 'glass-card hover:border-slate-300'
           }`}
         >
-          <span className="text-xs uppercase tracking-wider font-semibold block text-slate-400">Tots</span>
-          <span className="text-2xl font-black text-white mt-1 block">{stats.total}</span>
+          <span className="text-xs uppercase tracking-wider font-semibold block text-text-muted">Tots</span>
+          <span className="text-2xl font-black text-text-primary mt-1 block">{stats.total}</span>
         </button>
 
         <button
           onClick={() => setStatusFilter('pendent')}
-          className={`p-4 rounded-xl border text-left transition-all ${
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
             statusFilter === 'pendent' 
-              ? 'bg-amber-500/10 border-amber-500/40 text-white' 
-              : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+              ? 'bg-amber-50 border-amber-300 shadow-sm' 
+              : 'glass-card hover:border-slate-300'
           }`}
         >
-          <span className="text-xs uppercase tracking-wider font-semibold block text-amber-400">Pendents</span>
-          <span className="text-2xl font-black text-amber-400 mt-1 block">{stats.pendent}</span>
+          <span className="text-xs uppercase tracking-wider font-semibold block text-amber-700">Pendents</span>
+          <span className="text-2xl font-black text-amber-700 mt-1 block">{stats.pendent}</span>
         </button>
 
         <button
           onClick={() => setStatusFilter('contactat')}
-          className={`p-4 rounded-xl border text-left transition-all ${
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
             statusFilter === 'contactat' 
-              ? 'bg-blue-500/10 border-blue-500/40 text-white' 
-              : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+              ? 'bg-blue-50 border-blue-300 shadow-sm' 
+              : 'glass-card hover:border-slate-300'
           }`}
         >
-          <span className="text-xs uppercase tracking-wider font-semibold block text-blue-400">Contactats</span>
-          <span className="text-2xl font-black text-blue-400 mt-1 block">{stats.contactat}</span>
+          <span className="text-xs uppercase tracking-wider font-semibold block text-blue-700">Contactats</span>
+          <span className="text-2xl font-black text-blue-700 mt-1 block">{stats.contactat}</span>
         </button>
 
         <button
           onClick={() => setStatusFilter('acceptat')}
-          className={`p-4 rounded-xl border text-left transition-all ${
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
             statusFilter === 'acceptat' 
-              ? 'bg-emerald-500/10 border-emerald-500/40 text-white' 
-              : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+              ? 'bg-emerald-50 border-emerald-300 shadow-sm' 
+              : 'glass-card hover:border-slate-300'
           }`}
         >
-          <span className="text-xs uppercase tracking-wider font-semibold block text-emerald-400">Acceptats</span>
-          <span className="text-2xl font-black text-emerald-400 mt-1 block">{stats.acceptat}</span>
+          <span className="text-xs uppercase tracking-wider font-semibold block text-emerald-700">Acceptats</span>
+          <span className="text-2xl font-black text-emerald-700 mt-1 block">{stats.acceptat}</span>
         </button>
 
         <button
           onClick={() => setStatusFilter('descartat')}
-          className={`p-4 rounded-xl border text-left transition-all ${
+          className={`p-3.5 rounded-2xl border text-left transition-all ${
             statusFilter === 'descartat' 
-              ? 'bg-rose-500/10 border-rose-500/40 text-white' 
-              : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700'
+              ? 'bg-rose-50 border-rose-300 shadow-sm' 
+              : 'glass-card hover:border-slate-300'
           }`}
         >
-          <span className="text-xs uppercase tracking-wider font-semibold block text-rose-400">Descartats</span>
-          <span className="text-2xl font-black text-rose-400 mt-1 block">{stats.descartat}</span>
+          <span className="text-xs uppercase tracking-wider font-semibold block text-rose-700">Descartats</span>
+          <span className="text-2xl font-black text-rose-700 mt-1 block">{stats.descartat}</span>
         </button>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="glass-card p-4 flex flex-col md:flex-row items-center justify-between gap-3">
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Cercar per nom, email o telèfon..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            className="w-full bg-bg-surface border border-border rounded-xl pl-9 pr-3 py-2 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
           <button
             onClick={() => setAssignFilter('all')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-              assignFilter === 'all' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              assignFilter === 'all' ? 'bg-brand-500 text-white shadow-sm' : 'bg-bg-surface text-text-secondary border border-border hover:bg-bg-hover'
             }`}
           >
             Totes les respostes
           </button>
           <button
             onClick={() => setAssignFilter('mine')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-              assignFilter === 'mine' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              assignFilter === 'mine' ? 'bg-brand-500 text-white shadow-sm' : 'bg-bg-surface text-text-secondary border border-border hover:bg-bg-hover'
             }`}
           >
             Els meus formularis
           </button>
           <button
             onClick={() => setAssignFilter('unassigned')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-              assignFilter === 'unassigned' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+              assignFilter === 'unassigned' ? 'bg-brand-500 text-white shadow-sm' : 'bg-bg-surface text-text-secondary border border-border hover:bg-bg-hover'
             }`}
           >
             Sense assignar
@@ -325,42 +323,42 @@ export const FormResponsesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Responses Table / Cards */}
+      {/* Responses Table */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-20 space-y-3">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-          <p className="text-slate-400 text-sm">Carregant llista de respostes...</p>
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+          <p className="text-text-muted text-sm font-medium">Carregant respostes...</p>
         </div>
       ) : filteredResponses.length === 0 ? (
-        <div className="p-16 text-center bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400 space-y-2">
-          <p className="text-base font-medium text-white">No s'ha trobat cap resposta</p>
-          <p className="text-xs">Prova de canviar els filtres o comprova l'enllaç públic del formulari.</p>
+        <div className="glass-card p-12 text-center text-text-muted space-y-2">
+          <p className="text-base font-bold text-text-primary">No s'ha trobat cap resposta</p>
+          <p className="text-xs">Prova de canviar els filtres o comprova l'enllaç del formulari.</p>
         </div>
       ) : (
-        <div className="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden shadow-sm">
+        <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800 font-semibold">
-                <tr>
-                  <th className="py-3.5 px-4 w-12 text-center">★</th>
-                  <th className="py-3.5 px-4">Candidat / Atleta</th>
-                  <th className="py-3.5 px-4">Contacte</th>
-                  <th className="py-3.5 px-4">Data enviament</th>
-                  <th className="py-3.5 px-4">Entrenador assignat</th>
-                  <th className="py-3.5 px-4">Estat</th>
-                  <th className="py-3.5 px-4 text-right">Accions</th>
+            <table className="w-full text-left text-xs sm:text-sm">
+              <thead>
+                <tr className="border-b border-border text-text-muted font-bold uppercase text-[11px] bg-bg-surface/50">
+                  <th className="py-3 px-3 w-10 text-center">★</th>
+                  <th className="py-3 px-4">Candidat / Atleta</th>
+                  <th className="py-3 px-4">Contacte</th>
+                  <th className="py-3 px-4">Data enviament</th>
+                  <th className="py-3 px-4">Entrenador assignat</th>
+                  <th className="py-3 px-4">Estat</th>
+                  <th className="py-3 px-4 text-right">Accions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-normal">
+              <tbody className="divide-y divide-border">
                 {filteredResponses.map(r => (
-                  <tr key={r.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-3.5 px-4 text-center">
+                  <tr key={r.id} className="hover:bg-bg-hover/50 transition-colors">
+                    <td className="py-3 px-3 text-center">
                       <button
                         onClick={() => handleToggleInteresting(r)}
                         className={`p-1 rounded-md transition ${
                           r.is_interesting 
-                            ? 'text-amber-400 hover:text-amber-300' 
-                            : 'text-slate-600 hover:text-slate-400'
+                            ? 'text-amber-500 hover:text-amber-600' 
+                            : 'text-slate-300 hover:text-slate-500'
                         }`}
                         title="Marcar com a interessant"
                       >
@@ -368,38 +366,38 @@ export const FormResponsesPage: React.FC = () => {
                       </button>
                     </td>
 
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-white">{r.nom_candidat}</div>
+                    <td className="py-3 px-4">
+                      <div className="font-bold text-text-primary">{r.nom_candidat}</div>
                       {r.comentari && (
-                        <div className="text-[11px] text-indigo-400 italic mt-0.5 line-clamp-1">
+                        <div className="text-[11px] text-brand-600 italic mt-0.5 line-clamp-1">
                           Nota: {r.comentari}
                         </div>
                       )}
                     </td>
 
-                    <td className="py-3.5 px-4">
-                      <div className="flex flex-col gap-1 text-xs">
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col gap-0.5 text-xs">
                         <a 
                           href={`mailto:${r.email_candidat}`} 
-                          className="text-slate-300 hover:text-indigo-400 transition flex items-center gap-1.5"
+                          className="text-text-secondary hover:text-brand-600 transition flex items-center gap-1.5"
                         >
-                          <Mail className="w-3.5 h-3.5 text-slate-500" />
+                          <Mail className="w-3.5 h-3.5 text-text-muted" />
                           <span>{r.email_candidat}</span>
                         </a>
                         {r.telefon_candidat && (
                           <div className="flex items-center gap-2">
                             <a 
                               href={`tel:${r.telefon_candidat}`} 
-                              className="text-slate-300 hover:text-indigo-400 transition flex items-center gap-1.5"
+                              className="text-text-secondary hover:text-brand-600 transition flex items-center gap-1.5"
                             >
-                              <Phone className="w-3.5 h-3.5 text-slate-500" />
+                              <Phone className="w-3.5 h-3.5 text-text-muted" />
                               <span>{r.telefon_candidat}</span>
                             </a>
                             <a
                               href={`https://wa.me/${r.telefon_candidat.replace(/[^0-9]/g, '')}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-emerald-400 hover:text-emerald-300"
+                              className="text-emerald-600 hover:text-emerald-700"
                               title="Obrir WhatsApp"
                             >
                               <MessageCircle className="w-3.5 h-3.5" />
@@ -409,55 +407,55 @@ export const FormResponsesPage: React.FC = () => {
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-xs text-slate-400 whitespace-nowrap">
+                    <td className="py-3 px-4 text-xs text-text-muted whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                        <Calendar className="w-3.5 h-3.5 text-text-muted" />
                         <span>{new Date(r.created_at).toLocaleDateString('ca-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                       </div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-xs whitespace-nowrap">
+                    <td className="py-3 px-4 text-xs whitespace-nowrap">
                       {r.entrenador_nom ? (
-                        <span className="inline-flex items-center gap-1 text-indigo-300 font-medium">
-                          <UserCheck className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center gap-1 text-text-primary font-bold">
+                          <UserCheck className="w-3.5 h-3.5 text-brand-500" />
                           <span>{r.entrenador_nom}</span>
                         </span>
                       ) : (
-                        <span className="text-slate-500 italic">Sense assignar</span>
+                        <span className="text-text-muted italic">Sense assignar</span>
                       )}
                     </td>
 
-                    <td className="py-3.5 px-4 whitespace-nowrap">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <select
                         value={r.estat}
                         onChange={e => handleStatusChange(r.id, e.target.value)}
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-lg border focus:outline-none cursor-pointer ${
-                          r.estat === 'pendent' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
-                          r.estat === 'contactat' ? 'bg-blue-500/10 text-blue-400 border-blue-500/30' :
-                          r.estat === 'acceptat' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                          'bg-rose-500/10 text-rose-400 border-rose-500/30'
+                        className={`text-xs font-bold px-2.5 py-1 rounded-lg border focus:outline-none cursor-pointer ${
+                          r.estat === 'pendent' ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                          r.estat === 'contactat' ? 'bg-blue-50 text-blue-800 border-blue-300' :
+                          r.estat === 'acceptat' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                          'bg-rose-50 text-rose-800 border-rose-300'
                         }`}
                       >
-                        <option value="pendent" className="bg-slate-900 text-amber-400">Pendent</option>
-                        <option value="contactat" className="bg-slate-900 text-blue-400">Contactat</option>
-                        <option value="acceptat" className="bg-slate-900 text-emerald-400">Acceptat</option>
-                        <option value="descartat" className="bg-slate-900 text-rose-400">Descartat</option>
+                        <option value="pendent">Pendent</option>
+                        <option value="contactat">Contactat</option>
+                        <option value="acceptat">Acceptat</option>
+                        <option value="descartat">Descartat</option>
                       </select>
                     </td>
 
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="py-3 px-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
                         {r.entrenador_id === user?.id ? (
                           <button
                             onClick={() => handleAssign(r, false)}
-                            className="px-2.5 py-1 text-xs text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition"
+                            className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition font-semibold"
                           >
                             Desassignar
                           </button>
                         ) : (
                           <button
                             onClick={() => handleAssign(r, true)}
-                            className="px-2.5 py-1 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-lg transition"
+                            className="px-2.5 py-1 text-xs text-brand-600 hover:bg-brand-50 rounded-lg transition font-semibold"
                           >
                             Assignar-me
                           </button>
@@ -465,7 +463,7 @@ export const FormResponsesPage: React.FC = () => {
 
                         <button
                           onClick={() => openDetailModal(r)}
-                          className="flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition"
+                          className="btn-primary flex items-center gap-1 text-xs py-1 px-3 font-bold"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Veure</span>
@@ -482,25 +480,25 @@ export const FormResponsesPage: React.FC = () => {
 
       {/* Detail Modal */}
       {selectedResponse && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="glass-card bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-800 flex items-start justify-between gap-4">
+            <div className="p-5 border-b border-border flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-white">{selectedResponse.nom_candidat}</h3>
+                  <h3 className="text-lg font-bold text-text-primary">{selectedResponse.nom_candidat}</h3>
                   <button
                     onClick={() => handleToggleInteresting(selectedResponse)}
                     className={`p-1 rounded-md transition ${
                       selectedResponse.is_interesting 
-                        ? 'text-amber-400 hover:text-amber-300' 
-                        : 'text-slate-600 hover:text-slate-400'
+                        ? 'text-amber-500 hover:text-amber-600' 
+                        : 'text-slate-300 hover:text-slate-500'
                     }`}
                   >
-                    <Star className={`w-5 h-5 ${selectedResponse.is_interesting ? 'fill-current' : ''}`} />
+                    <Star className={`w-4 h-4 ${selectedResponse.is_interesting ? 'fill-current' : ''}`} />
                   </button>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted mt-0.5">
                   <span>Enviat: {new Date(selectedResponse.created_at).toLocaleString('ca-ES')}</span>
                   <span>•</span>
                   <span>Assignat: {selectedResponse.entrenador_nom || 'Sense assignar'}</span>
@@ -509,26 +507,26 @@ export const FormResponsesPage: React.FC = () => {
 
               <button
                 onClick={() => setSelectedResponse(null)}
-                className="text-slate-400 hover:text-white font-bold text-2xl leading-none"
+                className="text-text-muted hover:text-text-primary p-1 rounded-lg"
               >
-                &times;
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 divide-y divide-slate-800/80">
+            <div className="p-5 overflow-y-auto space-y-5 divide-y divide-border">
               {/* Contact info bar */}
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <span className="text-xs text-slate-400 uppercase font-semibold">Dades de contacte</span>
-                  <div className="flex items-center gap-4 text-sm">
-                    <a href={`mailto:${selectedResponse.email_candidat}`} className="text-indigo-400 hover:underline flex items-center gap-1.5">
-                      <Mail className="w-4 h-4" />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-[11px] text-text-muted uppercase font-bold">Contacte</span>
+                  <div className="flex items-center gap-3 text-xs">
+                    <a href={`mailto:${selectedResponse.email_candidat}`} className="text-brand-600 font-semibold hover:underline flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5" />
                       <span>{selectedResponse.email_candidat}</span>
                     </a>
                     {selectedResponse.telefon_candidat && (
-                      <a href={`tel:${selectedResponse.telefon_candidat}`} className="text-slate-300 hover:underline flex items-center gap-1.5">
-                        <Phone className="w-4 h-4" />
+                      <a href={`tel:${selectedResponse.telefon_candidat}`} className="text-text-secondary font-semibold hover:underline flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5" />
                         <span>{selectedResponse.telefon_candidat}</span>
                       </a>
                     )}
@@ -540,7 +538,7 @@ export const FormResponsesPage: React.FC = () => {
                     href={`https://wa.me/${selectedResponse.telefon_candidat.replace(/[^0-9]/g, '')}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-sm"
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
                     <span>WhatsApp</span>
@@ -549,37 +547,37 @@ export const FormResponsesPage: React.FC = () => {
               </div>
 
               {/* Questions & Answers */}
-              <div className="pt-6 space-y-4">
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+              <div className="pt-4 space-y-3">
+                <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                   Respostes del Qüestionari
                 </h4>
 
                 {form?.questions?.map((q, idx) => {
                   const ans = selectedResponse.answers?.find(a => a.question_id === q.id)
                   return (
-                    <div key={q.id} className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-1.5">
+                    <div key={q.id} className="p-3.5 rounded-xl bg-bg-surface border border-border space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-indigo-400">P{idx + 1}.</span>
-                        <span className="text-xs font-semibold text-slate-300">{q.pregunta}</span>
+                        <span className="text-xs font-bold text-brand-600">P{idx + 1}.</span>
+                        <span className="text-xs font-bold text-text-primary">{q.pregunta}</span>
                       </div>
 
-                      <div className="pl-5 text-sm font-medium text-white">
+                      <div className="pl-4 text-xs font-medium text-text-secondary">
                         {ans?.valor ? (
                           q.tipus === 'boolean' ? (
                             ans.valor === 'true' || ans.valor === '1' ? (
-                              <span className="inline-flex items-center gap-1 text-emerald-400">
-                                <Check className="w-4 h-4" /> Sí
+                              <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                                <Check className="w-3.5 h-3.5" /> Sí
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-rose-400">
-                                <X className="w-4 h-4" /> No
+                              <span className="inline-flex items-center gap-1 text-rose-700 font-bold">
+                                <XCircle className="w-3.5 h-3.5" /> No
                               </span>
                             )
                           ) : (
-                            <span className="whitespace-pre-line">{ans.valor}</span>
+                            <span className="whitespace-pre-line text-text-primary">{ans.valor}</span>
                           )
                         ) : (
-                          <span className="text-slate-500 italic text-xs">Sense resposta</span>
+                          <span className="text-text-muted italic text-[11px]">Sense resposta</span>
                         )}
                       </div>
                     </div>
@@ -588,22 +586,22 @@ export const FormResponsesPage: React.FC = () => {
               </div>
 
               {/* Coach Observations */}
-              <div className="pt-6 space-y-3">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <div className="pt-4 space-y-2">
+                <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider">
                   Anotacions internes de l'entrenador
                 </label>
                 <textarea
                   rows={3}
                   value={commentText}
                   onChange={e => setCommentText(e.target.value)}
-                  placeholder="Notes sobre la trucada, perfil esportiu, disponibilitat..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                  placeholder="Notes privades sobre el perfil, disponibilitat, trucada..."
+                  className="w-full bg-bg-surface border border-border rounded-xl px-3 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-xs"
                 />
                 <div className="flex justify-end">
                   <button
                     onClick={handleSaveComment}
                     disabled={savingComment}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-surface hover:bg-bg-hover text-text-primary border border-border rounded-xl text-xs font-bold transition shadow-sm"
                   >
                     {savingComment && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     <span>Desar observacions</span>
@@ -613,13 +611,13 @@ export const FormResponsesPage: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between">
+            <div className="p-4 bg-bg-surface border-t border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Estat:</span>
+                <span className="text-xs text-text-muted font-medium">Estat:</span>
                 <select
                   value={selectedResponse.estat}
                   onChange={e => handleStatusChange(selectedResponse.id, e.target.value)}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white focus:outline-none"
+                  className="text-xs font-bold px-3 py-1.5 rounded-xl border border-border bg-bg-surface text-text-primary focus:outline-none"
                 >
                   <option value="pendent">Pendent</option>
                   <option value="contactat">Contactat</option>
@@ -630,7 +628,7 @@ export const FormResponsesPage: React.FC = () => {
 
               <button
                 onClick={() => setSelectedResponse(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition"
+                className="px-4 py-2 bg-bg-hover hover:bg-slate-200 text-text-primary rounded-xl text-xs font-bold transition border border-border"
               >
                 Tancar
               </button>

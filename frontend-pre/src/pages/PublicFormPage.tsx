@@ -108,7 +108,7 @@ export const PublicFormPage: React.FC = () => {
 
       setSubmitted(true)
     } catch (err: any) {
-      setSubmitError(err.response?.data?.error || 'S\'ha produït un error en enviar les teves respostes. Si us plau, torna-ho a provar.')
+      setSubmitError(err.response?.data?.error || 'S\'ha produït un error en enviar les teves respostes. Torna-ho a provar.')
     } finally {
       setSubmitting(false)
     }
@@ -116,22 +116,22 @@ export const PublicFormPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-slate-400">
-        <Loader2 className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
-        <p className="text-sm">Carregant formulari...</p>
+      <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-6 text-text-muted">
+        <Loader2 className="w-10 h-10 text-brand-500 animate-spin mb-4" />
+        <p className="text-sm font-medium">Carregant formulari...</p>
       </div>
     )
   }
 
   if (errorMsg || !form) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
-          <div className="w-14 h-14 bg-rose-500/10 text-rose-400 rounded-2xl flex items-center justify-center mx-auto">
+      <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-6">
+        <div className="max-w-md w-full glass-card p-8 text-center space-y-4 shadow-xl">
+          <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto border border-rose-200">
             <AlertCircle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-white">Formulari No Disponible</h2>
-          <p className="text-sm text-slate-400">{errorMsg}</p>
+          <h2 className="text-xl font-bold text-text-primary">Formulari No Disponible</h2>
+          <p className="text-sm text-text-muted">{errorMsg}</p>
         </div>
       </div>
     )
@@ -139,27 +139,27 @@ export const PublicFormPage: React.FC = () => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6">
-        <div className="max-w-lg w-full bg-slate-900/90 border border-emerald-500/30 rounded-3xl p-8 text-center space-y-5 shadow-2xl backdrop-blur-xl">
-          <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-3xl flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/10 animate-in zoom-in">
+      <div className="min-h-screen bg-bg-base flex flex-col items-center justify-center p-6">
+        <div className="max-w-lg w-full glass-card p-8 text-center space-y-5 shadow-2xl animate-scale-up">
+          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto border border-emerald-200 shadow-sm">
             <CheckCircle2 className="w-10 h-10" />
           </div>
 
-          <div className="space-y-2">
-            <h2 className="text-2xl font-black text-white tracking-tight">Formulari Enviat!</h2>
-            <p className="text-slate-300 text-sm">
+          <div className="space-y-1.5">
+            <h2 className="text-2xl font-bold text-text-primary tracking-tight">Formulari Enviat!</h2>
+            <p className="text-text-secondary text-sm">
               Gràcies pel teu temps, <strong>{candidatNom}</strong>. Hem registrat les teves respostes correctament.
             </p>
           </div>
 
-          <p className="text-xs text-slate-400 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
-            L'equip d'entrenadors de TrainEE revisarà la teva sol·licitud i es posarà en contacte amb tu al correu <strong>{candidatEmail}</strong> el més aviat possible.
+          <p className="text-xs text-text-muted bg-bg-hover/80 p-4 rounded-2xl border border-border">
+            L'equip tècnic de TrainEE revisarà la teva sol·licitud i es posarà en contacte amb tu al correu <strong>{candidatEmail}</strong> el més aviat possible.
           </p>
 
           <div className="pt-2">
             <a
               href="/"
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition"
+              className="btn-primary inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold"
             >
               <span>Tornar a TrainEE</span>
             </a>
@@ -170,17 +170,17 @@ export const PublicFormPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 py-12 px-4 sm:px-6">
+    <div className="min-h-screen bg-bg-base py-12 px-4 sm:px-6">
       <div className="max-w-2xl mx-auto space-y-8">
         {/* Header Branding */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-xs font-semibold text-indigo-400">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-50 border border-brand-200 rounded-full text-xs font-bold text-brand-600 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
             <span>TrainEE • Formulari Oficial</span>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">{form.titol}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary tracking-tight">{form.titol}</h1>
           {form.descripcio && (
-            <p className="text-sm text-slate-400 max-w-xl mx-auto whitespace-pre-line">
+            <p className="text-xs sm:text-sm text-text-muted max-w-xl mx-auto whitespace-pre-line leading-relaxed">
               {form.descripcio}
             </p>
           )}
@@ -188,23 +188,23 @@ export const PublicFormPage: React.FC = () => {
 
         {/* Error Alert */}
         {submitError && (
-          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <span>{submitError}</span>
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
+            <span className="font-semibold">{submitError}</span>
           </div>
         )}
 
-        {/* Form Form Card */}
-        <form onSubmit={handleSubmit} className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 sm:p-8 backdrop-blur-xl space-y-8 shadow-2xl">
+        {/* Form Card */}
+        <form onSubmit={handleSubmit} className="glass-card p-6 sm:p-8 space-y-8 shadow-xl">
           {/* Section 1: Candidate Contact */}
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-800 pb-2">
+            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider border-b border-border pb-2">
               Dades de Contacte
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1.5">
                   Nom i Cognoms *
                 </label>
                 <input
@@ -213,12 +213,12 @@ export const PublicFormPage: React.FC = () => {
                   placeholder="Ex: Marc Soler i Puig"
                   value={candidatNom}
                   onChange={e => setCandidatNom(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                  className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1.5">
                   Correu Electrònic *
                 </label>
                 <input
@@ -227,12 +227,12 @@ export const PublicFormPage: React.FC = () => {
                   placeholder="nom@exemple.cat"
                   value={candidatEmail}
                   onChange={e => setCandidatEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                  className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1.5">
                   Telèfon (opcional)
                 </label>
                 <input
@@ -240,7 +240,7 @@ export const PublicFormPage: React.FC = () => {
                   placeholder="+34 600 000 000"
                   value={candidatTelefon}
                   onChange={e => setCandidatTelefon(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                  className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm font-semibold"
                 />
               </div>
             </div>
@@ -248,19 +248,19 @@ export const PublicFormPage: React.FC = () => {
 
           {/* Section 2: Dynamic Questions */}
           <div className="space-y-6 pt-2">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-800 pb-2">
+            <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider border-b border-border pb-2">
               Preguntes del Formulari
             </h3>
 
             {form.questions.map((q, idx) => {
               const opts = q.tipus === 'select' && q.opcions ? q.opcions.split(',').map(s => s.trim()).filter(Boolean) : []
               return (
-                <div key={q.id} className="space-y-2">
+                <div key={q.id} className="space-y-1.5">
                   <div className="flex items-baseline justify-between gap-2">
-                    <label className="text-sm font-medium text-white flex items-center gap-2">
-                      <span className="text-xs text-indigo-400 font-bold">{idx + 1}.</span>
+                    <label className="text-sm font-bold text-text-primary flex items-center gap-1.5">
+                      <span className="text-xs text-brand-500 font-bold">{idx + 1}.</span>
                       <span>{q.pregunta}</span>
-                      {q.obligatori && <span className="text-rose-400 text-xs">*</span>}
+                      {q.obligatori && <span className="text-rose-500 text-xs">*</span>}
                     </label>
                   </div>
 
@@ -272,7 +272,7 @@ export const PublicFormPage: React.FC = () => {
                       value={answers[q.id] || ''}
                       onChange={e => handleAnswerChange(q.id, e.target.value)}
                       placeholder="La teva resposta..."
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                      className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm"
                     />
                   )}
 
@@ -283,7 +283,7 @@ export const PublicFormPage: React.FC = () => {
                       value={answers[q.id] || ''}
                       onChange={e => handleAnswerChange(q.id, e.target.value)}
                       placeholder="Escriu la teva resposta aquí..."
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                      className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm"
                     />
                   )}
 
@@ -294,7 +294,7 @@ export const PublicFormPage: React.FC = () => {
                       value={answers[q.id] || ''}
                       onChange={e => handleAnswerChange(q.id, e.target.value)}
                       placeholder="0"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                      className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm"
                     />
                   )}
 
@@ -303,11 +303,11 @@ export const PublicFormPage: React.FC = () => {
                       required={q.obligatori}
                       value={answers[q.id] || ''}
                       onChange={e => handleAnswerChange(q.id, e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm"
+                      className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-brand-500 text-sm font-semibold"
                     >
                       <option value="">Selecciona una opció...</option>
                       {opts.map((opt, i) => (
-                        <option key={i} value={opt} className="bg-slate-900 text-white">
+                        <option key={i} value={opt}>
                           {opt}
                         </option>
                       ))}
@@ -315,14 +315,14 @@ export const PublicFormPage: React.FC = () => {
                   )}
 
                   {q.tipus === 'boolean' && (
-                    <div className="flex items-center gap-3 pt-1">
+                    <div className="flex items-center gap-2.5 pt-1">
                       <button
                         type="button"
                         onClick={() => handleAnswerChange(q.id, true)}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold border transition ${
+                        className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
                           answers[q.id] === true 
-                            ? 'bg-indigo-600 border-indigo-500 text-white' 
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                            ? 'bg-brand-500 border-brand-500 text-white shadow-sm' 
+                            : 'bg-bg-surface border-border text-text-secondary hover:bg-bg-hover'
                         }`}
                       >
                         Sí
@@ -330,10 +330,10 @@ export const PublicFormPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleAnswerChange(q.id, false)}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold border transition ${
+                        className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
                           answers[q.id] === false 
-                            ? 'bg-slate-800 border-slate-700 text-white' 
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                            ? 'bg-slate-700 border-slate-700 text-white shadow-sm' 
+                            : 'bg-bg-surface border-border text-text-secondary hover:bg-bg-hover'
                         }`}
                       >
                         No
@@ -346,11 +346,11 @@ export const PublicFormPage: React.FC = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="pt-4 border-t border-slate-800">
+          <div className="pt-4 border-t border-border">
             <button
               type="submit"
               disabled={submitting}
-              className="w-full flex items-center justify-center gap-2 py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition shadow-lg shadow-indigo-600/25 disabled:opacity-50 active:scale-95 text-sm"
+              className="btn-primary w-full flex items-center justify-center gap-2 py-3 px-6 text-sm font-bold shadow-md disabled:opacity-50"
             >
               {submitting ? (
                 <>
@@ -367,7 +367,7 @@ export const PublicFormPage: React.FC = () => {
           </div>
         </form>
 
-        <div className="text-center text-xs text-slate-600">
+        <div className="text-center text-xs text-text-muted">
           <p>© {new Date().getFullYear()} TrainEE • Plataforma Integral d'Entrenament</p>
         </div>
       </div>

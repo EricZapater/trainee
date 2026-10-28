@@ -16,7 +16,10 @@ import {
   AlertCircle, 
   CheckCircle2, 
   HelpCircle,
-  Users
+  Users,
+  Settings,
+  FileQuestion,
+  X
 } from 'lucide-react'
 import { 
   getFormDetails, 
@@ -97,7 +100,7 @@ export const FormBuilderPage: React.FC = () => {
         notificar_entrenadors: notify,
         imatges: form.imatges || []
       })
-      showToast('Canvis guardats correctament!')
+      showToast('Configuració desada correctament!')
       setForm(prev => prev ? { ...prev, titol: title.trim(), descripcio: desc.trim() || null, actiu, notificar_entrenadors: notify } : null)
     } catch {
       showToast('Error en actualitzar el formulari', 'error')
@@ -215,52 +218,49 @@ export const FormBuilderPage: React.FC = () => {
     const publicUrl = `${window.location.origin}/forms/${form.id}`
     navigator.clipboard.writeText(publicUrl)
     setCopied(true)
-    showToast('Enllaç públic copiat!')
+    showToast('Enllaç públic copiat al porta-retalls!')
     setTimeout(() => setCopied(false), 2500)
   }
 
   if (loading || !form) {
     return (
       <div className="flex flex-col items-center justify-center p-24 space-y-4">
-        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-        <p className="text-slate-400 text-sm">Carregant formulari...</p>
+        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+        <p className="text-text-muted text-sm font-medium">Carregant formulari...</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16">
-      {/* Toast */}
+      {/* Toast Feedback */}
       {toast && (
-        <div className={`p-4 rounded-xl text-sm flex items-center justify-between shadow-lg transition-all border ${
+        <div className={`fixed top-20 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 border animate-fade-in ${
           toast.type === 'success' 
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-            : 'bg-red-500/10 border-red-500/30 text-red-400'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+            : 'bg-rose-50 border-rose-200 text-rose-800'
         }`}>
-          <div className="flex items-center gap-2">
-            {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-            <span>{toast.message}</span>
-          </div>
-          <button onClick={() => setToast(null)} className="opacity-70 hover:opacity-100 font-bold">&times;</button>
+          {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertCircle className="w-5 h-5 text-rose-600" />}
+          <span className="text-sm font-semibold">{toast.message}</span>
         </div>
       )}
 
       {/* Top Bar Navigation */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <Link
           to="/entrenador/forms"
-          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition"
+          className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition font-semibold"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Tornar a Formularis</span>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
+            className="flex items-center gap-1.5 px-3 py-2 bg-bg-surface hover:bg-bg-hover text-text-primary border border-border rounded-xl text-xs font-semibold shadow-sm transition"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-text-muted" />}
             <span>{copied ? 'Copiat!' : 'Copiar Link'}</span>
           </button>
 
@@ -268,15 +268,15 @@ export const FormBuilderPage: React.FC = () => {
             href={`/forms/${form.id}`}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
+            className="flex items-center gap-1.5 px-3 py-2 bg-bg-surface hover:bg-bg-hover text-text-primary border border-border rounded-xl text-xs font-semibold shadow-sm transition"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-3.5 h-3.5 text-text-muted" />
             <span>Previsualitzar</span>
           </a>
 
           <Link
             to={`/entrenador/forms/${form.id}/responses`}
-            className="flex items-center gap-2 px-3 py-2 bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 rounded-xl text-xs font-semibold transition"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-xl text-xs font-bold transition shadow-sm"
           >
             <Users className="w-3.5 h-3.5" />
             <span>Respostes ({form.responses_count || 0})</span>
@@ -286,24 +286,24 @@ export const FormBuilderPage: React.FC = () => {
 
       {/* Read Only Alert Banner if responses exist */}
       {isReadOnly && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="glass-card bg-amber-50/90 border border-amber-300 p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-amber-500/20 rounded-xl text-amber-400 mt-0.5">
+            <div className="p-2 bg-amber-100 text-amber-800 rounded-xl shrink-0 mt-0.5">
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-amber-300">
-                Estructura de preguntes bloquejada ({form.responses_count} respostes rebudes)
+              <h4 className="text-sm font-bold text-amber-900">
+                Estructura de preguntes protegida ({form.responses_count} respostes rebudes)
               </h4>
-              <p className="text-xs text-amber-200/70 mt-1 max-w-xl">
-                Com que aquest formulari ja té respostes guardades, les preguntes no es poden modificar ni esborrar per garantir la integritat de les dades. Si vols fer canvis a les preguntes, pots crear una nova versió clonada.
+              <p className="text-xs text-amber-800/80 mt-1 max-w-xl">
+                Com que aquest formulari ja té respostes guardades, les preguntes estan bloquejades per preservar la integritat de les dades històriques. Si necessites afegir o canviar preguntes, clona el formulari per crear una nova versió.
               </p>
             </div>
           </div>
 
           <button
             onClick={handleCloneAndEdit}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition whitespace-nowrap shadow-lg active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs transition whitespace-nowrap shadow-sm active:scale-95"
           >
             <CopyCheck className="w-4 h-4" />
             <span>Clonar i editar nova versió</span>
@@ -312,64 +312,72 @@ export const FormBuilderPage: React.FC = () => {
       )}
 
       {/* Form Settings Card */}
-      <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 backdrop-blur-md">
-        <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-          <span>Configuració del Formulari</span>
-        </h2>
+      <div className="glass-card p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-3">
+          <h2 className="text-base font-bold text-text-primary flex items-center gap-2">
+            <Settings className="w-4 h-4 text-brand-500" />
+            <span>Configuració del Formulari</span>
+          </h2>
+          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+            actiu ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-slate-100 text-slate-700 border border-slate-300'
+          }`}>
+            {actiu ? 'Actiu' : 'Esborrany'}
+          </span>
+        </div>
 
         <form onSubmit={handleSaveHeader} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                Títol *
+              <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1.5">
+                Títol del Formulari *
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm font-medium"
+                className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm font-semibold"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                Descripció de benvinguda
+              <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1.5">
+                Descripció o Missatge de Benvinguda
               </label>
               <textarea
                 rows={3}
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
-                placeholder="Instruccions o detalls del formulari..."
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                placeholder="Explica als candidats el propòsit d'aquest qüestionari..."
+                className="w-full bg-bg-surface border border-border rounded-xl px-4 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm"
               />
             </div>
 
-            <div className="flex items-center gap-3 p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <div className="flex items-center gap-3 p-3 bg-bg-hover/60 rounded-xl border border-border">
               <input
                 type="checkbox"
                 id="actiu-check"
                 checked={actiu}
                 onChange={e => setActiu(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded bg-slate-900 border-slate-700 focus:ring-0"
+                className="w-4 h-4 text-brand-500 rounded border-border focus:ring-0"
               />
-              <label htmlFor="actiu-check" className="text-xs cursor-pointer">
-                <span className="font-semibold text-white block">Formulari Actiu</span>
-                <span className="text-slate-400">Accepta noves respostes públiques.</span>
+              <label htmlFor="actiu-check" className="text-xs cursor-pointer select-none">
+                <span className="font-bold text-text-primary block">Formulari Actiu</span>
+                <span className="text-text-muted">Accepta noves respostes públiques immediatament.</span>
               </label>
             </div>
 
-            <div className="flex items-center gap-3 p-3 bg-slate-950/60 rounded-xl border border-slate-800/80">
+            <div className="flex items-center gap-3 p-3 bg-bg-hover/60 rounded-xl border border-border">
               <input
                 type="checkbox"
                 id="notify-check"
                 checked={notify}
                 onChange={e => setNotify(e.target.checked)}
-                className="w-4 h-4 text-indigo-600 rounded bg-slate-900 border-slate-700 focus:ring-0"
+                className="w-4 h-4 text-brand-500 rounded border-border focus:ring-0"
               />
-              <label htmlFor="notify-check" className="text-xs cursor-pointer">
-                <span className="font-semibold text-white block">Notificar Entrenadors</span>
-                <span className="text-slate-400">Envia un email cada vegada que s'envia.</span>
+              <label htmlFor="notify-check" className="text-xs cursor-pointer select-none">
+                <span className="font-bold text-text-primary block">Notificar Entrenadors</span>
+                <span className="text-text-muted">Envia un avís per correu a cada nova inscripció.</span>
               </label>
             </div>
           </div>
@@ -378,7 +386,7 @@ export const FormBuilderPage: React.FC = () => {
             <button
               type="submit"
               disabled={savingForm || !title.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition disabled:opacity-50 shadow-md active:scale-95"
+              className="btn-primary flex items-center gap-2 text-xs py-2 px-5 font-bold disabled:opacity-50"
             >
               {savingForm ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               <span>Desar Configuració</span>
@@ -391,16 +399,19 @@ export const FormBuilderPage: React.FC = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Preguntes del Formulari</h2>
-            <p className="text-xs text-slate-400">
-              Defineix els camps i preguntes personalitzades que haurà d'emplenar el candidat.
+            <h2 className="text-lg font-bold text-text-primary tracking-tight flex items-center gap-2">
+              <FileQuestion className="w-5 h-5 text-brand-500" />
+              <span>Preguntes del Formulari ({form.questions?.length || 0})</span>
+            </h2>
+            <p className="text-xs text-text-muted">
+              Defineix els camps que han d'emplenar els atletes o aspirants.
             </p>
           </div>
 
           <button
             onClick={openAddQuestion}
             disabled={isReadOnly}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold transition shadow-md active:scale-95"
+            className="btn-primary flex items-center gap-1.5 text-xs py-2 px-4 font-bold disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4" />
             <span>Afegir Pregunta</span>
@@ -409,49 +420,49 @@ export const FormBuilderPage: React.FC = () => {
 
         {/* Questions List */}
         {(!form.questions || form.questions.length === 0) ? (
-          <div className="p-12 text-center bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400 space-y-3">
-            <HelpCircle className="w-10 h-10 mx-auto text-slate-600" />
-            <h4 className="text-sm font-semibold text-white">Cap pregunta afegida</h4>
+          <div className="glass-card p-12 text-center text-text-muted space-y-3">
+            <HelpCircle className="w-10 h-10 mx-auto text-slate-300" />
+            <h4 className="text-sm font-bold text-text-primary">Cap pregunta afegida</h4>
             <p className="text-xs max-w-sm mx-auto">
-              Afegeix la teva primera pregunta (text curt, text llarg, número, desplegable o sí/no).
+              Afegeix la teva primera pregunta al qüestionari (text curt, paràgraf, número, desplegable o sí/no).
             </p>
             <button
               onClick={openAddQuestion}
               disabled={isReadOnly}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold"
+              className="btn-primary inline-flex items-center gap-1.5 text-xs py-1.5 px-3.5 font-bold"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Afegir pregunta</span>
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {form.questions.map((q, idx) => (
               <div
                 key={q.id}
-                className="bg-slate-900/80 rounded-2xl border border-slate-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-700 transition"
+                className="glass-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-brand-200 transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-300 shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-lg bg-bg-hover flex items-center justify-center text-xs font-bold text-text-secondary shrink-0 mt-0.5 border border-border">
                     {idx + 1}
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-sm font-bold text-white">{q.pregunta}</h4>
+                      <h4 className="text-sm font-bold text-text-primary">{q.pregunta}</h4>
                       {q.obligatori ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-semibold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold">
                           Obligatori
                         </span>
                       ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-semibold">
                           Opcional
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs text-slate-400">
-                      <span className="capitalize font-medium text-indigo-400">
+                    <div className="flex items-center gap-3 text-xs text-text-muted">
+                      <span className="font-semibold text-brand-600">
                         {q.tipus === 'text' && 'Text curt'}
                         {q.tipus === 'textarea' && 'Text llarg (Paràgraf)'}
                         {q.tipus === 'number' && 'Número'}
@@ -460,7 +471,7 @@ export const FormBuilderPage: React.FC = () => {
                       </span>
 
                       {q.tipus === 'select' && q.opcions && (
-                        <span className="text-slate-500 truncate max-w-xs">
+                        <span className="text-text-muted truncate max-w-xs">
                           Opcions: {q.opcions}
                         </span>
                       )}
@@ -474,8 +485,8 @@ export const FormBuilderPage: React.FC = () => {
                     <button
                       onClick={() => handleMoveQuestion(idx, 'up')}
                       disabled={idx === 0}
-                      className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 hover:bg-slate-800 rounded-lg transition"
-                      title="Pujar"
+                      className="p-1.5 text-text-muted hover:text-text-primary hover:bg-bg-hover rounded-lg transition disabled:opacity-20"
+                      title="Pujar pregunta"
                     >
                       <ArrowUp className="w-4 h-4" />
                     </button>
@@ -483,22 +494,22 @@ export const FormBuilderPage: React.FC = () => {
                     <button
                       onClick={() => handleMoveQuestion(idx, 'down')}
                       disabled={idx === (form.questions?.length || 0) - 1}
-                      className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 hover:bg-slate-800 rounded-lg transition"
-                      title="Baixar"
+                      className="p-1.5 text-text-muted hover:text-text-primary hover:bg-bg-hover rounded-lg transition disabled:opacity-20"
+                      title="Baixar pregunta"
                     >
                       <ArrowDown className="w-4 h-4" />
                     </button>
 
                     <button
                       onClick={() => openEditQuestion(q)}
-                      className="px-2.5 py-1 text-xs text-indigo-400 hover:bg-indigo-500/10 rounded-lg font-medium transition"
+                      className="px-2.5 py-1 text-xs text-brand-600 hover:bg-brand-50 rounded-lg font-bold transition"
                     >
                       Editar
                     </button>
 
                     <button
                       onClick={() => handleDeleteQuestion(q.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                      className="p-1.5 text-text-muted hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                       title="Eliminar pregunta"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -513,23 +524,23 @@ export const FormBuilderPage: React.FC = () => {
 
       {/* Add / Edit Question Modal */}
       {questionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-base font-bold text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="glass-card bg-white p-6 rounded-2xl max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <h3 className="text-base font-bold text-text-primary">
                 {editingQuestion ? 'Editar Pregunta' : 'Afegir Nova Pregunta'}
               </h3>
               <button 
                 onClick={() => setQuestionModalOpen(false)}
-                className="text-slate-400 hover:text-white font-bold text-xl leading-none"
+                className="text-text-muted hover:text-text-primary p-1 rounded-lg"
               >
-                &times;
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveQuestion} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">
                   Enunciat de la Pregunta *
                 </label>
                 <input
@@ -538,18 +549,18 @@ export const FormBuilderPage: React.FC = () => {
                   placeholder="Ex: Quants dies pots entrenar a la setmana?"
                   value={qPregunta}
                   onChange={e => setQPregunta(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                  className="w-full bg-bg-surface border border-border rounded-xl px-3.5 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">
                   Tipus de Resposta *
                 </label>
                 <select
                   value={qTipus}
                   onChange={e => setQTipus(e.target.value as any)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm"
+                  className="w-full bg-bg-surface border border-border rounded-xl px-3.5 py-2 text-text-primary focus:outline-none focus:border-brand-500 text-sm font-semibold"
                 >
                   <option value="text">Text curt (una línia)</option>
                   <option value="textarea">Text llarg (paràgraf)</option>
@@ -561,7 +572,7 @@ export const FormBuilderPage: React.FC = () => {
 
               {qTipus === 'select' && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">
                     Opcions del Desplegable (separades per comes) *
                   </label>
                   <textarea
@@ -570,43 +581,43 @@ export const FormBuilderPage: React.FC = () => {
                     placeholder="Matí, Tarda, Vespre, Flexible"
                     value={qOpcions}
                     onChange={e => setQOpcions(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm"
+                    className="w-full bg-bg-surface border border-border rounded-xl px-3.5 py-2 text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500 text-sm"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Introdueix les opcions separades per comes, ex: "Trail, Asfalt, Pista, Ultratrail".
+                  <p className="text-[11px] text-text-muted mt-1">
+                    Escriu les opcions separades per comes, ex: "Trail, Asfalt, Pista, Ultratrail".
                   </p>
                 </div>
               )}
 
-              <div className="pt-2">
-                <label className="flex items-center gap-3 cursor-pointer">
+              <div className="pt-1">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={qObligatori}
                     onChange={e => setQObligatori(e.target.checked)}
-                    className="w-4 h-4 text-indigo-600 rounded bg-slate-950 border-slate-800 focus:ring-0"
+                    className="w-4 h-4 text-brand-500 rounded border-border focus:ring-0"
                   />
                   <div>
-                    <span className="text-sm font-medium text-white">Pregunta Obligatòria</span>
-                    <p className="text-xs text-slate-400">El candidat no podrà enviar el formulari sense respondre.</p>
+                    <span className="text-sm font-bold text-text-primary">Pregunta Obligatòria</span>
+                    <p className="text-xs text-text-muted">El candidat no podrà enviar el formulari sense respondre-la.</p>
                   </div>
                 </label>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setQuestionModalOpen(false)}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                  className="px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-bg-hover rounded-xl border border-border transition"
                 >
                   Cancel·lar
                 </button>
                 <button
                   type="submit"
                   disabled={savingQuestion || !qPregunta.trim()}
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition flex items-center gap-2"
+                  className="btn-primary px-5 py-2 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  {savingQuestion && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {savingQuestion && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{editingQuestion ? 'Actualitzar' : 'Afegir'}</span>
                 </button>
               </div>
