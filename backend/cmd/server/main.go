@@ -160,6 +160,15 @@ func main() {
 
 		authenticated.POST("/submissions", h.CreateSubmission)
 		authenticated.GET("/submissions/me", h.GetMySubmission)
+		authenticated.POST("/submissions/wellness", h.SubmitWellness)
+		authenticated.GET("/submissions/wellness/me", h.GetMyWellness)
+
+		// Curses d'Equip / Team Race Hub (Autenticats)
+		authenticated.GET("/competicions/equip", h.ListTeamCompetitions)
+		authenticated.POST("/competicions/equip", h.CreateTeamCompetition)
+		authenticated.POST("/competicions/equip/:id/join", h.JoinTeamCompetition)
+		authenticated.DELETE("/competicions/equip/:id/leave", h.LeaveTeamCompetition)
+		authenticated.POST("/competicions/equip/upload-gpx", h.UploadTeamCompetitionGPX)
 
 		// Material Catàleg i Comandes (Autenticats)
 		authenticated.GET("/material/productes", h.ListMaterialProductes)
@@ -193,6 +202,7 @@ func main() {
 	entrenadorRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireConsent(s, "v1.0"), middleware.RequireRole("entrenador"))
 	{
 		entrenadorRoutes.GET("/submissions", h.GetEntrenadorSubmissions)
+		entrenadorRoutes.GET("/wellness/overview", h.GetEntrenadorWellnessOverview)
 		entrenadorRoutes.PATCH("/submissions/:id/gestionat", h.ToggleSubmissionGestionat)
 		entrenadorRoutes.GET("/atletes", h.ListAtletes)
 		entrenadorRoutes.GET("/atletes/:id/informe", h.GetInformeAtleta)

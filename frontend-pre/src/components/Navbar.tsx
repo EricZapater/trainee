@@ -1,0 +1,189 @@
+import React, { useState } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { 
+  Trophy, 
+  Activity, 
+  HeartPulse, 
+  Calendar, 
+  LogOut, 
+  Menu, 
+  X,
+  Sparkles
+} from 'lucide-react'
+
+export const Navbar: React.FC = () => {
+  const { user, isAuthenticated, isEntrenador, logout } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  if (!isAuthenticated) return null
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
+  const isActive = (path: string) => location.pathname === path
+
+  return (
+    <header className="sticky top-0 z-50 px-4 py-3 max-w-7xl mx-auto w-full">
+      <div className="glass-card px-4 py-2.5 flex items-center justify-between">
+        {/* Brand & Badge */}
+        <Link to="/" className="flex items-center gap-3 group">
+          <img src="/logo.png" alt="Logo" className="h-9 w-auto transition-transform group-hover:scale-105" />
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg text-text-primary tracking-tight">TrainEE</span>
+            <span className="bg-brand-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
+              <Sparkles className="w-3 h-3" /> PRE
+            </span>
+          </div>
+        </Link>
+
+        {/* Desktop Navigation Links */}
+        <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
+          {isEntrenador ? (
+            <>
+              <Link 
+                to="/dashboard" 
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/dashboard') || isActive('/') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <Activity className="w-4 h-4" /> Panell
+              </Link>
+              <Link 
+                to="/wellness" 
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/wellness') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <HeartPulse className="w-4 h-4 text-emerald-500" /> Wellness & RPE
+              </Link>
+              <Link 
+                to="/team-races" 
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/team-races') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <Trophy className="w-4 h-4 text-amber-500" /> Curses d'Equip
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link 
+                to="/calendar" 
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/calendar') || isActive('/') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <Calendar className="w-4 h-4" /> Calendari
+              </Link>
+              <Link 
+                to="/wellness" 
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/wellness') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <HeartPulse className="w-4 h-4 text-emerald-500" /> El meu Wellness
+              </Link>
+              <Link 
+                to="/team-races" 
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/team-races') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <Trophy className="w-4 h-4 text-amber-500" /> Curses del Club
+              </Link>
+            </>
+          )}
+        </nav>
+
+        {/* User Profile & Actions */}
+        <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center gap-2 pl-3 border-l border-border">
+            <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 font-bold text-xs flex items-center justify-center border border-brand-200">
+              {user?.nom?.charAt(0) || 'U'}
+            </div>
+            <div className="text-left text-xs">
+              <p className="font-semibold text-text-primary leading-tight">{user?.nom}</p>
+              <p className="text-text-muted capitalize">{user?.rol}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            title="Tancar sessió"
+            className="p-1.5 text-text-muted hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Mobile menu button */}
+        <button 
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="md:hidden p-2 text-text-secondary hover:bg-bg-hover rounded-lg"
+        >
+          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="md:hidden glass-card mt-2 p-4 flex flex-col gap-2">
+          <div className="pb-3 mb-2 border-b border-border flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 font-bold text-sm flex items-center justify-center">
+              {user?.nom?.charAt(0)}
+            </div>
+            <div>
+              <p className="font-bold text-sm text-text-primary">{user?.nom} {user?.cognoms}</p>
+              <p className="text-xs text-text-muted">{user?.email}</p>
+            </div>
+          </div>
+
+          <Link
+            to={isEntrenador ? "/dashboard" : "/calendar"}
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+          >
+            <Activity className="w-4 h-4 text-brand-500" /> {isEntrenador ? "Panell d'Entrenador" : "El meu Calendari"}
+          </Link>
+          <Link
+            to="/wellness"
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+          >
+            <HeartPulse className="w-4 h-4 text-emerald-500" /> Mòdul Wellness & RPE
+          </Link>
+          <Link
+            to="/team-races"
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+          >
+            <Trophy className="w-4 h-4 text-amber-500" /> Curses d'Equip (Team Hub)
+          </Link>
+
+          <button
+            onClick={handleLogout}
+            className="mt-2 pt-2 border-t border-border text-left px-3 py-2 text-sm text-rose-600 font-semibold hover:bg-rose-50 rounded-lg flex items-center gap-2"
+          >
+            <LogOut className="w-4 h-4" /> Tancar Sessió
+          </button>
+        </div>
+      )}
+    </header>
+  )
+}

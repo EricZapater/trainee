@@ -4,6 +4,19 @@ on:
   push:
     branches:
       - main
+      - pre
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Entorn a desplegar'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+          - auto
+          - pre
+          - pro
+          - all
 
 env:
   REGISTRY: ghcr.io
@@ -15,6 +28,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      build_pre: ${{ steps.flags.outputs.build_pre }}
+      build_pro: ${{ steps.flags.outputs.build_pro }}
 
     steps:
       - name: Checkout repository
@@ -27,47 +43,78 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # BACKEND
-      - name: Extract metadata (tags, labels) for Backend
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
+      - name: Compute environment flags
+        id: flags
+        run: |
+          TARGET="${{ github.event.inputs.target || 'auto' }}"
+          REF="${{ github.ref }}"
+          
+          BUILD_PRE=false
+          BUILD_PRO=false
+          
+          if [ "$TARGET" = "pre" ]; then
+            BUILD_PRE=true
+          elif [ "$TARGET" = "pro" ]; then
+            BUILD_PRO=true
+          elif [ "$TARGET" = "all" ]; then
+            BUILD_PRE=true
+            BUILD_PRO=true
+          elif [ "$REF" = "refs/heads/pre" ]; then
+            BUILD_PRE=true
+          elif [ "$REF" = "refs/heads/main" ]; then
+            BUILD_PRO=true
+          fi
+          
+          echo "build_pre=$BUILD_PRE" >> $GITHUB_OUTPUT
+          echo "build_pro=$BUILD_PRO" >> $GITHUB_OUTPUT
+          echo "Target=$TARGET, Ref=$REF => BUILD_PRE=$BUILD_PRE, BUILD_PRO=$BUILD_PRO"
 
-      - name: Build and push Backend Docker image
+      # ============================================================
+      # IMATGES PRO (Branques main / target pro / all)
+      # ============================================================
+      - name: Build and push Backend Docker image (PRO)
+        if: steps.flags.outputs.build_pro == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
 
-      # FRONTEND
-      - name: Extract metadata (tags, labels) for Frontend
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=ref,event=branch
-
-      - name: Build and push Frontend Docker image
+      - name: Build and push Frontend Docker image (PRO)
+        if: steps.flags.outputs.build_pro == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+
+      # ============================================================
+      # IMATGES PRE (Branques pre / target pre / all)
+      # ============================================================
+      - name: Build and push Backend Docker image (PRE)
+        if: steps.flags.outputs.build_pre == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend-pre:latest
+
+      - name: Build and push Frontend Docker image (PRE - React)
+        if: steps.flags.outputs.build_pre == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend-pre
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend-pre:latest
 
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-push-images
     
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -75,25 +122,22 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            # Navegar a la carpeta del projecte (s'assumeix que hi ha el docker-compose.yml allà o bé el creem via comandes)
-            # IMPORTANT: El repositori o almenys l'arxiu docker-compose.yml ha d'existir prèviament al VPS
-            # per exemple a /opt/trainee o /home/trainee/app
-            cd /opt/trainee || cd ~/trainee
+            cd /opt/trainee 2>/dev/null || cd ~/trainee
             
             # Fer login al Github Container Registry des del VPS
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # Assegurar-nos d'estirar l'última versió de la branca main (si el projecte està clonat)
-            # O només fer docker compose pull si només tenim el fitxer .yml sol.
+            SERVICES=""
+            if [ "${{ needs.build-and-push-images.outputs.build_pro }}" = "true" ]; then
+              SERVICES="$SERVICES trainee-backend trainee-frontend"
+            fi
+            if [ "${{ needs.build-and-push-images.outputs.build_pre }}" = "true" ]; then
+              SERVICES="$SERVICES trainee-backend-pre trainee-frontend-pre"
+            fi
             
-            # Si fas servir export per a les variables dins d'un .env. Aquest .env ja ha d'estar
-            # creat i configurat al VPS manualment com has esmentat: "el .env de backend i el .env de front els podem tindre al vps".
-            
-            # Descarregar noves imatges
-            docker compose pull
-            
-            # Reiniciar contenidors
-            docker compose up -d
-            
-            # Netejar imatges antigues (prune) per no omplir el disc del VPS
-            docker image prune -af
+            if [ -n "$SERVICES" ]; then
+              echo "Pulling and starting services: $SERVICES"
+              docker compose pull $SERVICES
+              docker compose up -d --no-deps $SERVICES
+              docker image prune -af
+            fi

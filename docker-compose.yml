@@ -32,15 +32,59 @@ services:
       - web
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.trainee-frontend.rule=Host(`trainee.entrenadortrail.es`)"
+      # Router 1
+      - "traefik.http.routers.trainee-frontend.rule=Host(`trainee.ericzapater.cat`)"
       - "traefik.http.routers.trainee-frontend.entrypoints=websecure"
       - "traefik.http.routers.trainee-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.trainee-frontend.service=trainee-frontend"
+      # Router 2
+      - "traefik.http.routers.trainee-frontend-alt.rule=Host(`trainee.entrenadortrail.es`)"
+      - "traefik.http.routers.trainee-frontend-alt.entrypoints=websecure"
+      - "traefik.http.routers.trainee-frontend-alt.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.trainee-frontend-alt.service=trainee-frontend"
+      # Service (compartit pels dos routers)
       - "traefik.http.services.trainee-frontend.loadbalancer.server.port=80"
+      - "traefik.docker.network=web"
+
+  trainee-backend-pre:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-ericzapater}/trainee-backend-pre:latest
+    container_name: trainee-backend-pre
+    restart: unless-stopped
+    env_file:
+      - .env.backend.pre
+    environment:
+      - TZ=Europe/Madrid
+    volumes:
+      - backend_uploads_pre:/app/uploads
+    networks:
+      - postgres-network
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trainee-backend-pre.rule=Host(`pre.api.trainee.ericzapater.cat`)"
+      - "traefik.http.routers.trainee-backend-pre.entrypoints=websecure"
+      - "traefik.http.routers.trainee-backend-pre.tls.certresolver=letsencrypt"
+      - "traefik.http.services.trainee-backend-pre.loadbalancer.server.port=8080"
+      - "traefik.docker.network=web"
+
+  trainee-frontend-pre:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-ericzapater}/trainee-frontend-pre:latest
+    container_name: trainee-frontend-pre
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trainee-frontend-pre.rule=Host(`pre.trainee.ericzapater.cat`)"
+      - "traefik.http.routers.trainee-frontend-pre.entrypoints=websecure"
+      - "traefik.http.routers.trainee-frontend-pre.tls.certresolver=letsencrypt"
+      - "traefik.http.services.trainee-frontend-pre.loadbalancer.server.port=80"
       - "traefik.docker.network=web"
 
 volumes:
   postgres_data:
   backend_uploads:
+  backend_uploads_pre:
 
 networks:
   web:

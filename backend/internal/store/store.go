@@ -164,6 +164,17 @@ type Store interface {
 	ListAllNutricioPlans(ctx context.Context) ([]models.NutricioPlanWithDetails, error)
 	UpdateNutricioPlanEstat(ctx context.Context, planID, estat string) error
 	DeleteNutricioPlan(ctx context.Context, planID string) error
+
+	// Wellness
+	SubmitWellness(ctx context.Context, atletaID string, req models.SubmitWellnessRequest) error
+	GetWellnessByAtletaAndWeek(ctx context.Context, atletaID, weekStart string) (*models.WellnessData, error)
+	GetEntrenadorWellnessOverview(ctx context.Context, entrenadorID, weekStart string) (*models.EntrenadorWellnessOverviewResponse, error)
+
+	// Team Competitions
+	ListTeamCompetitions(ctx context.Context, currentUserID string) ([]models.TeamCompetition, error)
+	CreateTeamCompetition(ctx context.Context, usuariID string, req models.CreateTeamCompetitionRequest) (*models.TeamCompetition, error)
+	JoinTeamCompetition(ctx context.Context, teamCompetitionID, usuariID string, req models.JoinTeamCompetitionRequest) error
+	LeaveTeamCompetition(ctx context.Context, teamCompetitionID, usuariID string) error
 }
 
 
