@@ -1,0 +1,92 @@
+.github/workflows/deploy.yml
+  h_42175f19913982 7-19,31-33,46-70,72-76,81,83-85,87-89,91-95,98-106,108,115-117,125,130-136,138-143
+.npmrc
+  h_42175f19913982 1
+backend/cmd/server/main.go
+  h_42175f19913982 163-171,205
+backend/internal/handlers/team_competitions.go
+  h_42175f19913982 1-91
+backend/internal/handlers/wellness.go
+  h_42175f19913982 1-76
+backend/internal/models/team_competitions.go
+  h_42175f19913982 1-59
+backend/internal/models/wellness.go
+  h_42175f19913982 1-43
+backend/internal/store/store.go
+  h_42175f19913982 167-177
+backend/internal/store/team_competitions.go
+  h_42175f19913982 1-163
+backend/internal/store/wellness.go
+  h_42175f19913982 1-171
+backend/migrations/000040_add_wellness_to_weekly_submissions.down.sql
+  h_42175f19913982 1-11
+backend/migrations/000040_add_wellness_to_weekly_submissions.up.sql
+  h_42175f19913982 1-11
+backend/migrations/000041_create_team_competitions.down.sql
+  h_42175f19913982 1-2
+backend/migrations/000041_create_team_competitions.up.sql
+  h_42175f19913982 1-34
+docker-compose.yml
+  h_42175f19913982 41-75,79
+frontend-pre/.gitignore
+  h_42175f19913982 1-24
+frontend-pre/.npmrc
+  h_42175f19913982 1
+frontend-pre/Dockerfile
+  h_42175f19913982 1-28
+frontend-pre/index.html
+  h_42175f19913982 1-18
+frontend-pre/nginx.conf
+  h_42175f19913982 1-33
+frontend-pre/package-lock.json
+  h_42175f19913982 1-3192
+frontend-pre/package.json
+  h_42175f19913982 1-31
+frontend-pre/postcss.config.js
+  h_42175f19913982 1-6
+frontend-pre/src/App.tsx
+  h_42175f19913982 1-92
+frontend-pre/src/api/client.ts
+  h_42175f19913982 1-34
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 1-189
+frontend-pre/src/context/AuthContext.tsx
+  h_42175f19913982 1-94
+frontend-pre/src/index.css
+  h_42175f19913982 1-53
+frontend-pre/src/lib/utils.ts
+  h_42175f19913982 1-6
+frontend-pre/src/main.tsx
+  h_42175f19913982 1-10
+frontend-pre/src/pages/DashboardPage.tsx
+  h_42175f19913982 1-82
+frontend-pre/src/pages/LoginPage.tsx
+  h_42175f19913982 1-126
+frontend-pre/src/pages/TeamRacesPage.tsx
+  h_42175f19913982 1-374
+frontend-pre/src/pages/WellnessPage.tsx
+  h_42175f19913982 1-401
+frontend-pre/src/types/index.ts
+  h_42175f19913982 1-53
+frontend-pre/src/vite-env.d.ts
+  h_42175f19913982 1
+frontend-pre/tailwind.config.js
+  h_42175f19913982 1-46
+frontend-pre/tsconfig.json
+  h_42175f19913982 1-29
+frontend-pre/tsconfig.tsbuildinfo
+  h_42175f19913982 1
+frontend-pre/vite.config.ts
+  h_42175f19913982 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "77f8a088ee7718c0ffcd57f021deef87cf4f8ee8",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
