@@ -9,7 +9,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
@@ -99,6 +100,16 @@ export const Navbar: React.FC = () => {
                 <HeartPulse className="w-4 h-4 text-emerald-500" /> El meu Wellness
               </Link>
               <Link 
+                to="/competicions/atleta" 
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/competicions/atleta') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <Trophy className="w-4 h-4 text-rose-500" /> Les meves Curses
+              </Link>
+              <Link 
                 to="/team-races" 
                 className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                   isActive('/team-races') 
@@ -106,7 +117,7 @@ export const Navbar: React.FC = () => {
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                 }`}
               >
-                <Trophy className="w-4 h-4 text-amber-500" /> Curses del Club
+                <Users className="w-4 h-4 text-amber-500" /> Curses del Club
               </Link>
             </>
           )}
@@ -168,12 +179,21 @@ export const Navbar: React.FC = () => {
           >
             <HeartPulse className="w-4 h-4 text-emerald-500" /> Mòdul Wellness & RPE
           </Link>
+          {!isEntrenador && (
+            <Link
+              to="/competicions/atleta"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+            >
+              <Trophy className="w-4 h-4 text-rose-500" /> Les meves Curses
+            </Link>
+          )}
           <Link
             to="/team-races"
             onClick={() => setMobileOpen(false)}
             className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
           >
-            <Trophy className="w-4 h-4 text-amber-500" /> Curses d'Equip (Team Hub)
+            <Users className="w-4 h-4 text-amber-500" /> Curses d'Equip (Team Hub)
           </Link>
 
           <button

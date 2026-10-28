@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { Navbar } from './components/Navbar'
 import { LoginPage } from './pages/LoginPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { CalendarPage } from './pages/CalendarPage'
+import { AthleteCompetitionsPage } from './pages/AthleteCompetitionsPage'
 import { WellnessPage } from './pages/WellnessPage'
 import { TeamRacesPage } from './pages/TeamRacesPage'
 
@@ -29,7 +31,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-bg-base text-text-primary flex flex-col">
       <Navbar />
-      <main className="flex-1 pb-12">
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-4 sm:py-6 w-full">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route
@@ -52,7 +54,7 @@ const AppContent: React.FC = () => {
             path="/calendar"
             element={
               <ProtectedRoute>
-                <DashboardPage />
+                <CalendarPage />
               </ProtectedRoute>
             }
           />
@@ -61,6 +63,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <WellnessPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/competicions/atleta"
+            element={
+              <ProtectedRoute>
+                <AthleteCompetitionsPage />
               </ProtectedRoute>
             }
           />

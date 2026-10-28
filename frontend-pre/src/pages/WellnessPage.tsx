@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
+import { getOpenWeeks } from '../api/calendar'
+import type { Week } from '../types'
 import { 
   HeartPulse, 
   Moon, 
@@ -11,7 +14,9 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Save, 
-  Users
+  Users,
+  Calendar,
+  ArrowRight
 } from 'lucide-react'
 
 const ZONES_MOLESTIA = [
@@ -30,30 +35,122 @@ const ZONES_MOLESTIA = [
 export const WellnessPage: React.FC = () => {
   const { isEntrenador } = useAuth()
 
-  // Form states for Athlete
+  // Weeks state
+  const [weeks, setWeeks] = useState<Week[]>([])
+  const [currentWeekStart, setCurrentWeekStart] = useState<string>('')
+
+  // Form states for Athlete (Hooper & Foster protocol 1-5)
+  const [fatiga, setFatiga] = useState<number>(2)
   const [son, setSon] = useState<number>(4)
-  const [estres, setEstres] = useState<number>(2)
   const [dolor, setDolor] = useState<number>(2)
-  const [anim, setAnim] = useState<number>(4)
+  const [estres, setEstres] = useState<number>(2)
+  const [humor, setHumor] = useState<number>(4)
   const [rpe, setRpe] = useState<number>(6)
   const [selectedZones, setSelectedZones] = useState<string[]>([])
-  const [comentari, setComentari] = useState<string>('')
+  const [notes, setNotes] = useState<string>('')
+  
+  const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
 
   // Coach state: athletes wellness overview
   const [athletesWellness, setAthletesWellness] = useState<any[]>([])
 
-  // Calculate live score: ((son + (6 - estres) + (6 - dolor) + anim) / 20) * 100
-  const score = Math.round(((son + (6 - estres) + (6 - dolor) + anim) / 20) * 100)
-  
-  const getStatus = (sc: number, d: number, zones: string[]) => {
-    if (sc < 50 || d === 5 || zones.length >= 2) return { label: 'Alerta Fatiga/Lesió', color: 'text-rose-600 bg-rose-50 border-rose-200', dot: 'bg-rose-500' }
-    if (sc < 70 || d >= 4) return { label: 'Alerta Moderada', color: 'text-amber-600 bg-amber-50 border-amber-200', dot: 'bg-amber-500' }
-    return { label: 'Recuperació Òptima', color: 'text-emerald-600 bg-emerald-50 border-emerald-200', dot: 'bg-emerald-500' }
+  useEffect(() => {
+    loadWeeksAndData()
+  }, [isEntrenador])
+
+  useEffect(() => {
+    if (currentWeekStart && !isEntrenador) {
+      loadMyWellness(currentWeekStart)
+    } else if (currentWeekStart && isEntrenador) {
+      loadCoachData(currentWeekStart)
+    }
+  }, [currentWeekStart])
+
+  const loadWeeksAndData = async () => {
+    setIsLoading(true)
+    try {
+      const openWeeks = await getOpenWeeks()
+      setWeeks(openWeeks)
+      if (openWeeks.length > 0) {
+        const defaultWeek = openWeeks.find(w => w.estat === 'oberta') || openWeeks[0]
+        setCurrentWeekStart(defaultWeek.week_start)
+      } else {
+        const d = new Date()
+        const day = d.getDay()
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+        const monday = new Date(d.setDate(diff)).toISOString().split('T')[0]
+        setCurrentWeekStart(monday)
+      }
+    } catch (err) {
+      console.error('Error carregant setmanes:', err)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const currentStatus = getStatus(score, dolor, selectedZones)
+  const loadMyWellness = async (weekStart: string) => {
+    try {
+      const res = await api.get(`/submissions/wellness/me?week_start=${weekStart}`)
+      if (res.data) {
+        setFatiga(res.data.fatiga || 2)
+        setSon(res.data.son_qualitat || 4)
+        setDolor(res.data.dolor_muscular || 2)
+        setEstres(res.data.estres || 2)
+        setHumor(res.data.humor || 4)
+        setRpe(res.data.rpe_setmanal || 6)
+        setNotes(res.data.notes || '')
+        if (Array.isArray(res.data.zones_dolor)) {
+          setSelectedZones(res.data.zones_dolor)
+        }
+      }
+    } catch (err) {
+      console.error('No hi ha dades prèvies de wellness per aquesta setmana:', err)
+    }
+  }
+
+  const loadCoachData = async (weekStart: string) => {
+    try {
+      const res = await api.get(`/entrenador/wellness/overview?week_start=${weekStart}`)
+      setAthletesWellness(res.data?.atletes || [])
+    } catch (e) {
+      console.error('Error carregant overview entrenador:', e)
+    }
+  }
+
+  // Calculate live score: 5 items (fatiga, son, dolor, estres, humor), sum from 5 to 25
+  const hooperScore = fatiga + (6 - son) + dolor + estres + (6 - humor)
+  // Normalized 0-100 score where 100 is best recovery
+  const recoveryScore = Math.max(0, Math.min(100, Math.round(((25 - hooperScore) / 20) * 100)))
+  
+  const getStatus = (rScore: number, d: number, zones: string[], rpeVal: number) => {
+    if (rScore < 45 || d >= 4 || zones.length >= 2 || rpeVal >= 9) {
+      return { 
+        label: 'Alerta Fatiga / Risc Lesió', 
+        color: 'text-rose-600 bg-rose-50 border-rose-200', 
+        dot: 'bg-rose-500',
+        recommendation: 'Es recomana reduir intensitat, vigilar zones afectades i comunicar-ho a l’entrenador.'
+      }
+    }
+    if (rScore < 70 || d >= 3 || zones.length > 0 || rpeVal >= 7) {
+      return { 
+        label: 'Estat Moderat / Fatiga Acumulada', 
+        color: 'text-amber-600 bg-amber-50 border-amber-200', 
+        dot: 'bg-amber-500',
+        recommendation: 'Càrrega acceptable però convé prioritzar son, hidratació i mobilitat articular.'
+      }
+    }
+    return { 
+      label: 'Recuperació Òptima', 
+      color: 'text-emerald-600 bg-emerald-50 border-emerald-200', 
+      dot: 'bg-emerald-500',
+      recommendation: 'Bona adaptació a la càrrega! Tot a punt per seguir el pla previst.'
+    }
+  }
+
+  const currentStatus = getStatus(recoveryScore, dolor, selectedZones, rpe)
 
   const toggleZone = (z: string) => {
     if (selectedZones.includes(z)) {
@@ -63,338 +160,431 @@ export const WellnessPage: React.FC = () => {
     }
   }
 
-  useEffect(() => {
-    if (isEntrenador) {
-      loadCoachData()
-    }
-  }, [isEntrenador])
-
-  const loadCoachData = async () => {
-    try {
-      const res = await api.get('/entrenador/wellness/overview')
-      setAthletesWellness(res.data || [])
-    } catch (e) {
-      // Fallback demo/initial data for pre preview if backend table is pending migration
-      setAthletesWellness([
-        { id: '1', nom: 'Marc Puig', email: 'marc@trainee.cat', score: 85, status: 'optim', rpe: 6, zones: [] },
-        { id: '2', nom: 'Laura Morales', email: 'laura@trainee.cat', score: 60, status: 'moderat', rpe: 8, zones: ['Tendó d\'Aquil·les'] },
-        { id: '3', nom: 'Jordi Segura', email: 'jordi@trainee.cat', score: 45, status: 'alerta', rpe: 9, zones: ['Bessons / Sòleus', 'Lumbars'], comentari: 'Sobrecàrrega forta després de les sèries de dissabte.' }
-      ])
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSaving(true)
     setSaveSuccess(false)
+    setFeedbackError(null)
 
     try {
       await api.post('/submissions/wellness', {
-        qualitat_son: son,
-        nivell_estres: estres,
+        week_start: currentWeekStart,
+        fatiga,
+        son_qualitat: son,
         dolor_muscular: dolor,
-        estat_anim: anim,
-        rpe_global: rpe,
-        zones_molestia: selectedZones,
-        comentari_molestia: comentari
+        estres,
+        humor,
+        rpe_setmanal: rpe,
+        zones_dolor: selectedZones,
+        notes
       })
       setSaveSuccess(true)
-    } catch (err) {
-      // Allow visual test in PRE
-      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 5000)
+    } catch (err: any) {
+      console.error('Error guardant wellness:', err)
+      setFeedbackError(err.response?.data?.error || 'Error en guardar el check-in de wellness.')
     } finally {
       setIsSaving(false)
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-text-muted font-medium">Carregant protocol wellness...</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Header */}
-      <div className="glass-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="glass-card p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold mb-2">
-            <HeartPulse className="w-3.5 h-3.5" /> Mòdul de Salut & Càrrega Interna
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-0.5 rounded-full border border-brand-200">
+              Check-in Setmanal
+            </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-text-primary">Wellness, RPE i Prevenció de Lesions</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Qüestionari setmanal basat en el protocol Hooper/Foster per avaluar la fatiga i anticipar sobrecàrregues.
+          <h2 className="text-xl sm:text-2xl font-bold text-text-primary flex items-center gap-2.5 mt-1">
+            <HeartPulse className="w-6 h-6 text-brand-500" />
+            {isEntrenador ? 'Panell de Wellness i Prevenció' : 'El meu Estat de Benestar i Recuperació'}
+          </h2>
+          <p className="text-xs sm:text-sm text-text-muted mt-0.5">
+            Protocol científic Hooper & Foster per monitorar la fatiga i prevenir sobreentrenament.
           </p>
         </div>
 
-        {/* Live Score pill for Athlete */}
-        {!isEntrenador && (
-          <div className={`p-4 rounded-2xl border flex items-center gap-3 ${currentStatus.color}`}>
-            <div className="text-right">
-              <p className="text-xs font-bold uppercase tracking-wider">Wellness Score</p>
-              <p className="text-3xl font-extrabold">{score}<span className="text-base font-normal">/100</span></p>
-            </div>
-            <span className={`w-3.5 h-3.5 rounded-full ${currentStatus.dot} animate-pulse`} />
+        {/* Week Selector */}
+        {weeks.length > 0 && (
+          <div className="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-xl border border-border-light shadow-sm">
+            <Calendar className="w-4 h-4 text-brand-500" />
+            <select
+              value={currentWeekStart}
+              onChange={(e) => setCurrentWeekStart(e.target.value)}
+              className="text-xs font-bold bg-transparent text-text-primary focus:outline-none cursor-pointer"
+            >
+              {weeks.map(w => (
+                <option key={w.id} value={w.week_start}>
+                  Setmana {w.week_start} ({w.estat})
+                </option>
+              ))}
+            </select>
           </div>
         )}
       </div>
 
       {isEntrenador ? (
-        /* COACH VIEW: Athletes wellness table & traffic light */
-        <div className="space-y-4">
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
-                  <Users className="w-5 h-5 text-brand-500" /> Resum de Càrrega i Fatiga dels Atletes
-                </h2>
-                <p className="text-xs text-text-muted mt-0.5">Estat registrat al tancament de la darrera setmana</p>
-              </div>
-            </div>
+        /* ============================================================ */
+        /* COACH VIEW: TRAFFIC LIGHT OVERVIEW FOR ATHLETES              */
+        /* ============================================================ */
+        <div className="space-y-6">
+          <div className="glass-card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-bold text-text-primary flex items-center gap-2 mb-4">
+              <Users className="w-5 h-5 text-brand-500" />
+              Semàfor de Benestar de l'Equip (Setmana {currentWeekStart})
+            </h3>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs uppercase tracking-wider text-text-muted font-bold">
-                    <th className="pb-3">Atleta</th>
-                    <th className="pb-3 text-center">Wellness Score</th>
-                    <th className="pb-3 text-center">RPE Setmana</th>
-                    <th className="pb-3">Zones de Molèstia</th>
-                    <th className="pb-3">Comentari</th>
-                    <th className="pb-3 text-right">Estat</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {athletesWellness.map((a) => {
-                    const st = getStatus(a.score, 0, a.zones || [])
-                    return (
-                      <tr key={a.id} className="hover:bg-bg-hover/50 transition-colors">
-                        <td className="py-3 font-semibold text-text-primary flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-brand-50 text-brand-600 font-bold text-xs flex items-center justify-center">
-                            {a.nom.charAt(0)}
-                          </div>
-                          {a.nom}
-                        </td>
-                        <td className="py-3 text-center font-bold text-base">{a.score}/100</td>
-                        <td className="py-3 text-center">
-                          <span className="font-semibold bg-bg-hover px-2 py-0.5 rounded text-xs">
-                            {a.rpe}/10
-                          </span>
-                        </td>
-                        <td className="py-3">
-                          {a.zones && a.zones.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {a.zones.map((z: string) => (
-                                <span key={z} className="text-[11px] bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-md font-semibold">
-                                  ⚠️ {z}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-text-muted">Cap molèstia</span>
-                          )}
-                        </td>
-                        <td className="py-3 text-xs text-text-secondary italic max-w-xs truncate">
-                          {a.comentari || '-'}
-                        </td>
-                        <td className="py-3 text-right">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${st.color}`}>
-                            <span className={`w-2 h-2 rounded-full ${st.dot}`} />
-                            {st.label}
-                          </span>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ATHLETE VIEW: Interactive Form */
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {saveSuccess && (
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center gap-2 font-medium">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              Estat de Wellness desat correctament per a la teva setmana!
-            </div>
-          )}
+            {athletesWellness.length === 0 ? (
+              <p className="text-sm text-text-muted italic py-6 text-center">
+                Cap atleta ha registrat el check-in de wellness per a aquesta setmana encara.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs sm:text-sm">
+                  <thead>
+                    <tr className="border-b border-border-light text-text-muted font-bold uppercase text-[11px]">
+                      <th className="py-3 px-3">Atleta</th>
+                      <th className="py-3 px-3">Estat</th>
+                      <th className="py-3 px-3">Score</th>
+                      <th className="py-3 px-3">RPE</th>
+                      <th className="py-3 px-3">Zones de Dolor</th>
+                      <th className="py-3 px-3">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light">
+                    {athletesWellness.map(ath => {
+                      const alertColor = 
+                        ath.alerta === 'vermell' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                        ath.alerta === 'groc' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                        ath.alerta === 'verd' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                        'bg-slate-100 text-slate-600 border-slate-300'
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Metric 1: Qualitat del son */}
-            <div className="glass-card p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-sm text-text-primary flex items-center gap-2">
-                  <Moon className="w-4 h-4 text-indigo-500" /> Qualitat del son i descans
-                </label>
-                <span className="text-sm font-bold text-indigo-600">{son} / 5</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                step="1"
-                value={son}
-                onChange={(e) => setSon(Number(e.target.value))}
-                className="w-full accent-brand-500"
-              />
-              <div className="flex justify-between text-[11px] text-text-muted">
-                <span>1 - Pèssim</span>
-                <span>3 - Normal</span>
-                <span>5 - Òptim</span>
-              </div>
-            </div>
-
-            {/* Metric 2: Nivell d'estrès */}
-            <div className="glass-card p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-sm text-text-primary flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-amber-500" /> Nivell d'estrès (laboral/personal)
-                </label>
-                <span className="text-sm font-bold text-amber-600">{estres} / 5</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                step="1"
-                value={estres}
-                onChange={(e) => setEstres(Number(e.target.value))}
-                className="w-full accent-brand-500"
-              />
-              <div className="flex justify-between text-[11px] text-text-muted">
-                <span>1 - Molt baix</span>
-                <span>3 - Moderat</span>
-                <span>5 - Molt alt</span>
-              </div>
-            </div>
-
-            {/* Metric 3: Dolor muscular */}
-            <div className="glass-card p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-sm text-text-primary flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-rose-500" /> Dolor muscular / Fatiga (DOMS)
-                </label>
-                <span className="text-sm font-bold text-rose-600">{dolor} / 5</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                step="1"
-                value={dolor}
-                onChange={(e) => setDolor(Number(e.target.value))}
-                className="w-full accent-brand-500"
-              />
-              <div className="flex justify-between text-[11px] text-text-muted">
-                <span>1 - Cames fresques</span>
-                <span>3 - Cansat</span>
-                <span>5 - Molt dolorit</span>
-              </div>
-            </div>
-
-            {/* Metric 4: Estat d'ànim */}
-            <div className="glass-card p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="font-bold text-sm text-text-primary flex items-center gap-2">
-                  <Smile className="w-4 h-4 text-emerald-500" /> Estat d'ànim i motivació
-                </label>
-                <span className="text-sm font-bold text-emerald-600">{anim} / 5</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="5"
-                step="1"
-                value={anim}
-                onChange={(e) => setAnim(Number(e.target.value))}
-                className="w-full accent-brand-500"
-              />
-              <div className="flex justify-between text-[11px] text-text-muted">
-                <span>1 - Desmotivat</span>
-                <span>3 - Neutral</span>
-                <span>5 - Molt motivat</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Metric 5: RPE Global (Escala Borg 1-10) */}
-          <div className="glass-card p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="font-bold text-sm text-text-primary flex items-center gap-2">
-                <Flame className="w-4 h-4 text-brand-500" /> Esforç Percebut Global de la Setmana (RPE - Escala Borg CR-10)
-              </label>
-              <span className="text-base font-extrabold text-brand-500">{rpe} / 10</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              step="1"
-              value={rpe}
-              onChange={(e) => setRpe(Number(e.target.value))}
-              className="w-full accent-brand-500"
-            />
-            <div className="flex justify-between text-[11px] text-text-muted">
-              <span>1 - Molt suau</span>
-              <span>4 - Moderat</span>
-              <span>7 - Molt dur</span>
-              <span>10 - Màxim absolut</span>
-            </div>
-          </div>
-
-          {/* Anatomical Zones of Discomfort */}
-          <div className="glass-card p-5 space-y-4">
-            <div>
-              <label className="font-bold text-sm text-text-primary flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" /> Zones de molèstia o dolor (opcional)
-              </label>
-              <p className="text-xs text-text-muted mt-1">Clica a les zones on hagis sentit molèsties durant la setmana:</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {ZONES_MOLESTIA.map((zone) => {
-                const selected = selectedZones.includes(zone)
-                return (
-                  <button
-                    key={zone}
-                    type="button"
-                    onClick={() => toggleZone(zone)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                      selected
-                        ? 'bg-rose-50 text-rose-700 border-rose-300 shadow-sm'
-                        : 'bg-white text-text-secondary border-border hover:border-text-muted'
-                    }`}
-                  >
-                    {selected ? '⚠️ ' : ''}{zone}
-                  </button>
-                )
-              })}
-            </div>
-
-            {selectedZones.length > 0 && (
-              <div className="pt-2">
-                <label className="block text-xs font-semibold text-text-secondary mb-1">
-                  Descriu la molèstia (intensitat, moment d'aparició...):
-                </label>
-                <textarea
-                  value={comentari}
-                  onChange={(e) => setComentari(e.target.value)}
-                  placeholder="Ex: Punxada a l'Aquil·les esquerre en baixades pedregoses..."
-                  rows={2}
-                  className="w-full p-3 bg-white border border-border rounded-xl text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                />
+                      return (
+                        <tr key={ath.atleta_id} className="hover:bg-bg-hover/50 transition-colors">
+                          <td className="py-3 px-3 font-bold text-text-primary">
+                            {ath.nom} {ath.cognoms}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border uppercase ${alertColor}`}>
+                              {ath.alerta || 'Pendent'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-semibold">
+                            {ath.score ? `${ath.score}/25` : '-'}
+                          </td>
+                          <td className="py-3 px-3 font-semibold">
+                            {ath.rpe_setmanal ? `${ath.rpe_setmanal}/10` : '-'}
+                          </td>
+                          <td className="py-3 px-3">
+                            {ath.zones_dolor && ath.zones_dolor.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {ath.zones_dolor.map((z: string, i: number) => (
+                                  <span key={i} className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                                    {z}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-text-muted text-xs">Cap molèstia</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-text-muted italic max-w-xs truncate">
+                            {ath.notes || '-'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
+        </div>
+      ) : (
+        /* ============================================================ */
+        /* ATHLETE VIEW: INTERACTIVE FORM & VISUAL SCORE               */
+        /* ============================================================ */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Form */}
+          <div className="lg:col-span-2 space-y-6">
+            <form onSubmit={handleSubmit} className="glass-card p-4 sm:p-6 space-y-6">
+              {saveSuccess && (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3 animate-scale-up">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div className="text-xs sm:text-sm font-semibold">
+                    El teu check-in de Wellness s'ha guardat amb èxit! El teu entrenador ja el pot consultar.
+                  </div>
+                </div>
+              )}
 
-          {/* Submit button */}
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl transition-all shadow-md flex items-center gap-2 text-sm uppercase tracking-wider"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Guardant...' : 'Desar Wellness Setmanal'}
-            </button>
+              {feedbackError && (
+                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <div className="text-xs sm:text-sm font-semibold">{feedbackError}</div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <h3 className="text-base font-bold text-text-primary border-b border-border-light pb-2">
+                  1. Escala Hooper (Estat Psicofísic 1-5)
+                </h3>
+
+                {/* Qualitat del son */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs sm:text-sm">
+                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                      <Moon className="w-4 h-4 text-indigo-500" /> Qualitat del son
+                    </span>
+                    <span className="font-bold text-brand-600">{son} / 5</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    step="1"
+                    value={son}
+                    onChange={(e) => setSon(parseInt(e.target.value))}
+                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-muted">
+                    <span>Molt dolent (1)</span>
+                    <span>Excel·lent i reparador (5)</span>
+                  </div>
+                </div>
+
+                {/* Nivell de Fatiga */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs sm:text-sm">
+                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-amber-500" /> Sensació de fatiga acumulada
+                    </span>
+                    <span className="font-bold text-brand-600">{fatiga} / 5</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    step="1"
+                    value={fatiga}
+                    onChange={(e) => setFatiga(parseInt(e.target.value))}
+                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-muted">
+                    <span>Frescor total (1)</span>
+                    <span>Esgotament extrem (5)</span>
+                  </div>
+                </div>
+
+                {/* Dolor / Pesadesa muscular */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs sm:text-sm">
+                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                      <Activity className="w-4 h-4 text-rose-500" /> Dolor o pesadesa muscular (DOMS)
+                    </span>
+                    <span className="font-bold text-brand-600">{dolor} / 5</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    step="1"
+                    value={dolor}
+                    onChange={(e) => setDolor(parseInt(e.target.value))}
+                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-muted">
+                    <span>Cap dolor (1)</span>
+                    <span>Agulletes / dolor molt intens (5)</span>
+                  </div>
+                </div>
+
+                {/* Estrès general */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs sm:text-sm">
+                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                      <Flame className="w-4 h-4 text-orange-500" /> Estrès diari (laboral / personal)
+                    </span>
+                    <span className="font-bold text-brand-600">{estres} / 5</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    step="1"
+                    value={estres}
+                    onChange={(e) => setEstres(parseInt(e.target.value))}
+                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-muted">
+                    <span>Molt relaxat (1)</span>
+                    <span>Molt estressat (5)</span>
+                  </div>
+                </div>
+
+                {/* Estat d'ànim */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs sm:text-sm">
+                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                      <Smile className="w-4 h-4 text-emerald-500" /> Estat d'ànim i motivació
+                    </span>
+                    <span className="font-bold text-brand-600">{humor} / 5</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    step="1"
+                    value={humor}
+                    onChange={(e) => setHumor(parseInt(e.target.value))}
+                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-muted">
+                    <span>Desmotivat / trist (1)</span>
+                    <span>Amb moltes ganes i energia (5)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* RPE Setmanal (Borg 1-10) */}
+              <div className="space-y-3 pt-2 border-t border-border-light">
+                <h3 className="text-base font-bold text-text-primary">
+                  2. RPE Global de la Setmana (Escala Borg 1-10)
+                </h3>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs sm:text-sm">
+                    <span className="text-text-muted">Duresa percebuda de la suma dels teus entrenaments:</span>
+                    <span className="font-extrabold text-base text-brand-600">{rpe} / 10</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={rpe}
+                    onChange={(e) => setRpe(parseInt(e.target.value))}
+                    className="w-full accent-brand-500 cursor-pointer h-2.5 bg-slate-200 rounded-lg"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-muted font-medium">
+                    <span>Molt suau (1)</span>
+                    <span>Moderat (5)</span>
+                    <span>Esforç màxim (10)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Zones de Dolor (Mapa Tàctil) */}
+              <div className="space-y-3 pt-2 border-t border-border-light">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-text-primary">
+                    3. Zones amb molèstia o dolor localitzat
+                  </h3>
+                  <span className="text-xs text-text-muted">Tria si en tens alguna:</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {ZONES_MOLESTIA.map(zone => {
+                    const isSelected = selectedZones.includes(zone)
+                    return (
+                      <button
+                        type="button"
+                        key={zone}
+                        onClick={() => toggleZone(zone)}
+                        className={`p-2.5 rounded-xl text-xs font-semibold text-left transition-all border ${
+                          isSelected
+                            ? 'bg-rose-50 border-rose-300 text-rose-800 ring-2 ring-rose-500/20'
+                            : 'bg-white/60 border-border-light text-text-secondary hover:bg-white'
+                        }`}
+                      >
+                        {zone}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Comentaris de recuperació */}
+              <div className="space-y-2 pt-2 border-t border-border-light">
+                <label className="block text-sm font-bold text-text-primary">
+                  Notes de recuperació o incidències per a l'entrenador
+                </label>
+                <textarea
+                  rows={2}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ex: Dissabte vaig notar el quàdriceps dret carregat a la baixada, però amb estiraments va millorar..."
+                  className="w-full text-xs sm:text-sm p-3 rounded-xl border border-border-light focus:ring-2 focus:ring-brand-500/20 outline-none"
+                />
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="btn-primary text-sm py-3 px-6 shadow-md flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  {isSaving ? 'Guardant...' : 'Desar Check-in de Wellness'}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
+
+          {/* Live Recovery Score Sidebar */}
+          <div className="space-y-4">
+            <div className="glass-card p-5 sm:p-6 space-y-4 border border-border-light">
+              <h3 className="font-bold text-base text-text-primary">Estat Calculat</h3>
+              
+              <div className="text-center py-4 space-y-2">
+                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-brand-500/20 bg-brand-50/50">
+                  <span className="text-3xl font-extrabold text-brand-600">{recoveryScore}%</span>
+                </div>
+                <div className="text-xs text-text-muted font-semibold">Índex de Recuperació Global</div>
+              </div>
+
+              <div className={`p-3.5 rounded-xl border flex items-start gap-2.5 ${currentStatus.color}`}>
+                <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${currentStatus.dot}`} />
+                <div>
+                  <h4 className="font-bold text-xs uppercase tracking-wide">{currentStatus.label}</h4>
+                  <p className="text-[11px] mt-1 leading-relaxed opacity-90">{currentStatus.recommendation}</p>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-border-light space-y-2 text-xs text-text-muted">
+                <div className="flex justify-between">
+                  <span>Puntuació Hooper (5-25):</span>
+                  <span className="font-bold text-text-primary">{hooperScore} / 25</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Esforç RPE Borg:</span>
+                  <span className="font-bold text-text-primary">{rpe} / 10</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Zones dolor marcades:</span>
+                  <span className="font-bold text-text-primary">{selectedZones.length}</span>
+                </div>
+              </div>
+
+              <Link
+                to="/calendar"
+                className="w-full py-2.5 px-3 rounded-xl bg-white border border-border-light hover:border-brand-500/40 text-text-primary text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all"
+              >
+                Tornar al Calendari Setmanal <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
