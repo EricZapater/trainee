@@ -1,0 +1,38 @@
+frontend-pre/src/App.tsx
+  h_42175f19913982 21-26,215-262
+frontend-pre/src/api/forms.ts
+  h_42175f19913982 1-73
+frontend-pre/src/api/logs.ts
+  h_42175f19913982 1-17
+frontend-pre/src/api/material.ts
+  h_42175f19913982 1-107
+frontend-pre/src/api/nutricio.ts
+  h_42175f19913982 1-73
+frontend-pre/src/api/settings.ts
+  h_42175f19913982 1-22
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 21-28,34,220-307,442-495
+frontend-pre/src/pages/ActivitatsManagerPage.tsx
+  h_42175f19913982 1-369
+frontend-pre/src/pages/FormsManagerPage.tsx
+  h_42175f19913982 1-269
+frontend-pre/src/pages/MaterialManagerPage.tsx
+  h_42175f19913982 1-653
+frontend-pre/src/pages/NutricioManagerPage.tsx
+  h_42175f19913982 1-610
+frontend-pre/src/pages/SettingsPage.tsx
+  h_42175f19913982 1-285
+frontend-pre/src/pages/SystemLogsPage.tsx
+  h_42175f19913982 1-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ce568a030d5ea220ffe57a0daf396ffe3f449217",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
