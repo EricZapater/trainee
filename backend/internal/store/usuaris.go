@@ -2,8 +2,10 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"trainee-backend/internal/models"
 )
 
@@ -226,6 +228,31 @@ func (s *PostgresStore) GetAtletaByUsuariID(ctx context.Context, usuariID string
 		usuariID,
 	).Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Cognoms, &a.Email, &a.Actiu)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Si l'usuari és admin, garantim que tingui un perfil d'atleta associat
+			var rol string
+			_ = s.pool.QueryRow(ctx, `SELECT rol FROM usuaris WHERE id = $1`, usuariID).Scan(&rol)
+			if rol == "admin" {
+				var primerEntrenadorID string
+				_ = s.pool.QueryRow(ctx, `SELECT id FROM entrenadors ORDER BY created_at ASC LIMIT 1`).Scan(&primerEntrenadorID)
+				if primerEntrenadorID != "" {
+					_, _ = s.pool.Exec(ctx,
+						`INSERT INTO atletes (usuari_id, entrenador_id) VALUES ($1, $2) ON CONFLICT (usuari_id) DO NOTHING`,
+						usuariID, primerEntrenadorID,
+					)
+					errRetry := s.pool.QueryRow(ctx,
+						`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.cognoms, u.email, u.actiu
+						 FROM atletes a
+						 JOIN usuaris u ON u.id = a.usuari_id
+						 WHERE a.usuari_id = $1`,
+						usuariID,
+					).Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Cognoms, &a.Email, &a.Actiu)
+					if errRetry == nil {
+						return &a, nil
+					}
+				}
+			}
+		}
 		return nil, err
 	}
 	return &a, nil

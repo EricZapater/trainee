@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 import { getOpenWeeks } from '../api/calendar'
@@ -15,8 +14,7 @@ import {
   CheckCircle2, 
   Save, 
   Users,
-  Calendar,
-  ArrowRight
+  Calendar
 } from 'lucide-react'
 
 const ZONES_MOLESTIA = [
@@ -33,7 +31,13 @@ const ZONES_MOLESTIA = [
 ]
 
 export const WellnessPage: React.FC = () => {
-  const { isEntrenador } = useAuth()
+  const { isEntrenador, isAdmin, user } = useAuth()
+  const canSeeTeamOverview = isEntrenador || isAdmin
+
+  // Active view: admin and athletes default to their personal check-in
+  const [activeTab, setActiveTab] = useState<'my_checkin' | 'team_overview'>(
+    user?.rol === 'entrenador' ? 'team_overview' : 'my_checkin'
+  )
 
   // Weeks state
   const [weeks, setWeeks] = useState<Week[]>([])
@@ -59,15 +63,16 @@ export const WellnessPage: React.FC = () => {
 
   useEffect(() => {
     loadWeeksAndData()
-  }, [isEntrenador])
+  }, [])
 
   useEffect(() => {
-    if (currentWeekStart && !isEntrenador) {
+    if (!currentWeekStart) return
+    if (activeTab === 'my_checkin') {
       loadMyWellness(currentWeekStart)
-    } else if (currentWeekStart && isEntrenador) {
+    } else {
       loadCoachData(currentWeekStart)
     }
-  }, [currentWeekStart])
+  }, [currentWeekStart, activeTab])
 
   const loadWeeksAndData = async () => {
     setIsLoading(true)
@@ -209,7 +214,7 @@ export const WellnessPage: React.FC = () => {
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-text-primary flex items-center gap-2.5 mt-1">
             <HeartPulse className="w-6 h-6 text-brand-500" />
-            {isEntrenador ? 'Panell de Wellness i Prevenció' : 'El meu Estat de Benestar i Recuperació'}
+            {activeTab === 'my_checkin' ? 'El meu Estat de Benestar i Recuperació' : 'Semàfor de Benestar de l\'Equip'}
           </h2>
           <p className="text-xs sm:text-sm text-text-muted mt-0.5">
             Protocol científic Hooper & Foster per monitorar la fatiga i prevenir sobreentrenament.
@@ -218,7 +223,7 @@ export const WellnessPage: React.FC = () => {
 
         {/* Week Selector */}
         {weeks.length > 0 && (
-          <div className="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-xl border border-border-light shadow-sm">
+          <div className="flex items-center gap-2 bg-white/70 px-3 py-1.5 rounded-xl border border-border shadow-sm">
             <Calendar className="w-4 h-4 text-brand-500" />
             <select
               value={currentWeekStart}
@@ -235,7 +240,36 @@ export const WellnessPage: React.FC = () => {
         )}
       </div>
 
-      {isEntrenador ? (
+      {/* Role Navigation Tabs (if Coach or Admin) */}
+      {canSeeTeamOverview && (
+        <div className="glass-card p-1.5 flex items-center gap-2 max-w-md">
+          <button
+            onClick={() => setActiveTab('my_checkin')}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'my_checkin'
+                ? 'bg-brand-500 text-white shadow-sm'
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+          >
+            <HeartPulse className="w-4 h-4" />
+            <span>El meu Check-in (Atleta)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('team_overview')}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'team_overview'
+                ? 'bg-brand-500 text-white shadow-sm'
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Semàfor Equip (Entrenador)</span>
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'team_overview' ? (
         /* ============================================================ */
         /* COACH VIEW: TRAFFIC LIGHT OVERVIEW FOR ATHLETES              */
         /* ============================================================ */
@@ -254,54 +288,55 @@ export const WellnessPage: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm">
                   <thead>
-                    <tr className="border-b border-border-light text-text-muted font-bold uppercase text-[11px]">
+                    <tr className="border-b border-border text-text-muted font-bold uppercase text-[11px]">
                       <th className="py-3 px-3">Atleta</th>
                       <th className="py-3 px-3">Estat</th>
                       <th className="py-3 px-3">Score</th>
+                      <th className="py-3 px-3">Fatiga</th>
+                      <th className="py-3 px-3">Son</th>
+                      <th className="py-3 px-3">Dolor</th>
                       <th className="py-3 px-3">RPE</th>
-                      <th className="py-3 px-3">Zones de Dolor</th>
-                      <th className="py-3 px-3">Notes</th>
+                      <th className="py-3 px-3">Zones Molèstia</th>
+                      <th className="py-3 px-3 text-right">Data enviament</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border-light">
-                    {athletesWellness.map(ath => {
-                      const alertColor = 
-                        ath.alerta === 'vermell' ? 'bg-rose-100 text-rose-800 border-rose-300' :
-                        ath.alerta === 'groc' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                        ath.alerta === 'verd' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                        'bg-slate-100 text-slate-600 border-slate-300'
+                  <tbody className="divide-y divide-border">
+                    {athletesWellness.map((item, idx) => {
+                      const isDanger = item.score <= 12 || (item.dolor || 0) >= 4 || (item.zones_dolor?.length || 0) >= 2 || (item.rpe || 0) >= 9
+                      const isWarning = item.score < 18 || (item.dolor || 0) >= 3 || (item.zones_dolor?.length || 0) > 0 || (item.rpe || 0) >= 7
+
+                      const badge = isDanger
+                        ? { label: 'Risc Alt', class: 'bg-rose-100 text-rose-800 border-rose-300' }
+                        : isWarning
+                        ? { label: 'Alerta', class: 'bg-amber-100 text-amber-800 border-amber-300' }
+                        : { label: 'Òptim', class: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
 
                       return (
-                        <tr key={ath.atleta_id} className="hover:bg-bg-hover/50 transition-colors">
-                          <td className="py-3 px-3 font-bold text-text-primary">
-                            {ath.nom} {ath.cognoms}
+                        <tr key={idx} className="hover:bg-bg-hover/50 transition-colors">
+                          <td className="py-3 px-3 font-bold text-text-primary whitespace-nowrap">
+                            {item.atleta_nom}
                           </td>
                           <td className="py-3 px-3">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border uppercase ${alertColor}`}>
-                              {ath.alerta || 'Pendent'}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.class}`}>
+                              {badge.label}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-semibold">
-                            {ath.score ? `${ath.score}/25` : '-'}
+                          <td className="py-3 px-3 font-semibold text-text-primary">
+                            {item.score || '-'} / 25
                           </td>
-                          <td className="py-3 px-3 font-semibold">
-                            {ath.rpe_setmanal ? `${ath.rpe_setmanal}/10` : '-'}
-                          </td>
-                          <td className="py-3 px-3">
-                            {ath.zones_dolor && ath.zones_dolor.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {ath.zones_dolor.map((z: string, i: number) => (
-                                  <span key={i} className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                                    {z}
-                                  </span>
-                                ))}
-                              </div>
+                          <td className="py-3 px-3">{item.fatiga || '-'}</td>
+                          <td className="py-3 px-3">{item.son || '-'}</td>
+                          <td className="py-3 px-3">{item.dolor || '-'}</td>
+                          <td className="py-3 px-3 font-semibold">{item.rpe || '-'} / 10</td>
+                          <td className="py-3 px-3 text-text-muted">
+                            {item.zones_dolor && item.zones_dolor.length > 0 ? (
+                              <span className="text-rose-600 font-semibold">{item.zones_dolor.join(', ')}</span>
                             ) : (
-                              <span className="text-text-muted text-xs">Cap molèstia</span>
+                              'Cap'
                             )}
                           </td>
-                          <td className="py-3 px-3 text-text-muted italic max-w-xs truncate">
-                            {ath.notes || '-'}
+                          <td className="py-3 px-3 text-right text-text-muted text-xs">
+                            {item.submitted_at ? new Date(item.submitted_at).toLocaleDateString('ca-ES') : 'Pendent'}
                           </td>
                         </tr>
                       )
@@ -314,63 +349,45 @@ export const WellnessPage: React.FC = () => {
         </div>
       ) : (
         /* ============================================================ */
-        /* ATHLETE VIEW: INTERACTIVE FORM & VISUAL SCORE               */
+        /* ATHLETE VIEW: HOOPER & FOSTER WEEKLY CHECK-IN FORM           */
         /* ============================================================ */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
+          {/* Main Assessment Form */}
           <div className="lg:col-span-2 space-y-6">
-            <form onSubmit={handleSubmit} className="glass-card p-4 sm:p-6 space-y-6">
-              {saveSuccess && (
-                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-3 animate-scale-up">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <div className="text-xs sm:text-sm font-semibold">
-                    El teu check-in de Wellness s'ha guardat amb èxit! El teu entrenador ja el pot consultar.
-                  </div>
+            {feedbackError && (
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600" />
+                <span>{feedbackError}</span>
+              </div>
+            )}
+
+            {saveSuccess && (
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+                <span className="font-semibold">Check-in de wellness desat correctament! L'entrenador podrà visualitzar el teu estat.</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Hooper Scale Cards */}
+              <div className="glass-card p-4 sm:p-6 space-y-5">
+                <div className="border-b border-border pb-3">
+                  <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-brand-500" />
+                    Balanç de Recuperació (Escala Hooper 1 a 5)
+                  </h3>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    1 = Molt baix / Pèssim, 5 = Molt alt / Òptim.
+                  </p>
                 </div>
-              )}
 
-              {feedbackError && (
-                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-                  <div className="text-xs sm:text-sm font-semibold">{feedbackError}</div>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <h3 className="text-base font-bold text-text-primary border-b border-border-light pb-2">
-                  1. Escala Hooper (Estat Psicofísic 1-5)
-                </h3>
-
-                {/* Qualitat del son */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs sm:text-sm">
-                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
-                      <Moon className="w-4 h-4 text-indigo-500" /> Qualitat del son
+                {/* 1. Fatiga General */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text-primary flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-amber-500" /> Nivell de Fatiga Acumulada
                     </span>
-                    <span className="font-bold text-brand-600">{son} / 5</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    step="1"
-                    value={son}
-                    onChange={(e) => setSon(parseInt(e.target.value))}
-                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
-                  />
-                  <div className="flex justify-between text-[10px] text-text-muted">
-                    <span>Molt dolent (1)</span>
-                    <span>Excel·lent i reparador (5)</span>
-                  </div>
-                </div>
-
-                {/* Nivell de Fatiga */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs sm:text-sm">
-                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
-                      <Zap className="w-4 h-4 text-amber-500" /> Sensació de fatiga acumulada
-                    </span>
-                    <span className="font-bold text-brand-600">{fatiga} / 5</span>
+                    <span className="font-extrabold text-brand-600">{fatiga} / 5</span>
                   </div>
                   <input
                     type="range"
@@ -378,22 +395,47 @@ export const WellnessPage: React.FC = () => {
                     max="5"
                     step="1"
                     value={fatiga}
-                    onChange={(e) => setFatiga(parseInt(e.target.value))}
-                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                    onChange={(e) => setFatiga(Number(e.target.value))}
+                    className="w-full accent-brand-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-text-muted">
-                    <span>Frescor total (1)</span>
-                    <span>Esgotament extrem (5)</span>
+                    <span>Molt descansat (1)</span>
+                    <span>Moderat (3)</span>
+                    <span>Extremadament cansat (5)</span>
                   </div>
                 </div>
 
-                {/* Dolor / Pesadesa muscular */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs sm:text-sm">
-                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
-                      <Activity className="w-4 h-4 text-rose-500" /> Dolor o pesadesa muscular (DOMS)
+                {/* 2. Qualitat del Son */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text-primary flex items-center gap-1.5">
+                      <Moon className="w-4 h-4 text-indigo-500" /> Qualitat i Hores de Son
                     </span>
-                    <span className="font-bold text-brand-600">{dolor} / 5</span>
+                    <span className="font-extrabold text-brand-600">{son} / 5</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    step="1"
+                    value={son}
+                    onChange={(e) => setSon(Number(e.target.value))}
+                    className="w-full accent-brand-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-text-muted">
+                    <span>Insomni / Molt dolent (1)</span>
+                    <span>Normal (3)</span>
+                    <span>Profund i reparador (5)</span>
+                  </div>
+                </div>
+
+                {/* 3. Dolor Muscular */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text-primary flex items-center gap-1.5">
+                      <Flame className="w-4 h-4 text-rose-500" /> Agulletes / Dolor Muscular General (DOMS)
+                    </span>
+                    <span className="font-extrabold text-brand-600">{dolor} / 5</span>
                   </div>
                   <input
                     type="range"
@@ -401,22 +443,23 @@ export const WellnessPage: React.FC = () => {
                     max="5"
                     step="1"
                     value={dolor}
-                    onChange={(e) => setDolor(parseInt(e.target.value))}
-                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                    onChange={(e) => setDolor(Number(e.target.value))}
+                    className="w-full accent-brand-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-text-muted">
-                    <span>Cap dolor (1)</span>
-                    <span>Agulletes / dolor molt intens (5)</span>
+                    <span>Gens de dolor (1)</span>
+                    <span>Molèsties típiques (3)</span>
+                    <span>Dolor agut / Dificultat per moure's (5)</span>
                   </div>
                 </div>
 
-                {/* Estrès general */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs sm:text-sm">
-                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
-                      <Flame className="w-4 h-4 text-orange-500" /> Estrès diari (laboral / personal)
+                {/* 4. Estrès Psicològic */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text-primary flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-orange-500" /> Nivell d'Estrès (Laboral, personal, acadèmic)
                     </span>
-                    <span className="font-bold text-brand-600">{estres} / 5</span>
+                    <span className="font-extrabold text-brand-600">{estres} / 5</span>
                   </div>
                   <input
                     type="range"
@@ -424,22 +467,23 @@ export const WellnessPage: React.FC = () => {
                     max="5"
                     step="1"
                     value={estres}
-                    onChange={(e) => setEstres(parseInt(e.target.value))}
-                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                    onChange={(e) => setEstres(Number(e.target.value))}
+                    className="w-full accent-brand-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-text-muted">
                     <span>Molt relaxat (1)</span>
-                    <span>Molt estressat (5)</span>
+                    <span>Moderat (3)</span>
+                    <span>Molt angoixat / Alt estrès (5)</span>
                   </div>
                 </div>
 
-                {/* Estat d'ànim */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs sm:text-sm">
-                    <span className="font-semibold text-text-primary flex items-center gap-1.5">
-                      <Smile className="w-4 h-4 text-emerald-500" /> Estat d'ànim i motivació
+                {/* 5. Estat d'Ànim */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text-primary flex items-center gap-1.5">
+                      <Smile className="w-4 h-4 text-emerald-500" /> Estat d'Ànim i Motivació
                     </span>
-                    <span className="font-bold text-brand-600">{humor} / 5</span>
+                    <span className="font-extrabold text-brand-600">{humor} / 5</span>
                   </div>
                   <input
                     type="range"
@@ -447,25 +491,33 @@ export const WellnessPage: React.FC = () => {
                     max="5"
                     step="1"
                     value={humor}
-                    onChange={(e) => setHumor(parseInt(e.target.value))}
-                    className="w-full accent-brand-500 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                    onChange={(e) => setHumor(Number(e.target.value))}
+                    className="w-full accent-brand-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
                   />
                   <div className="flex justify-between text-[10px] text-text-muted">
-                    <span>Desmotivat / trist (1)</span>
-                    <span>Amb moltes ganes i energia (5)</span>
+                    <span>Desmotivat / Apatia (1)</span>
+                    <span>Neutre (3)</span>
+                    <span>Pletòric / Amb moltes ganes (5)</span>
                   </div>
                 </div>
               </div>
 
-              {/* RPE Setmanal (Borg 1-10) */}
-              <div className="space-y-3 pt-2 border-t border-border-light">
-                <h3 className="text-base font-bold text-text-primary">
-                  2. RPE Global de la Setmana (Escala Borg 1-10)
-                </h3>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs sm:text-sm">
-                    <span className="text-text-muted">Duresa percebuda de la suma dels teus entrenaments:</span>
-                    <span className="font-extrabold text-base text-brand-600">{rpe} / 10</span>
+              {/* RPE Borg Section */}
+              <div className="glass-card p-4 sm:p-6 space-y-4">
+                <div className="border-b border-border pb-3">
+                  <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-brand-500" />
+                    Esforç Global Percebut (RPE Borg 1 a 10)
+                  </h3>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    Quina duresa general han tingut els teus entrenaments aquesta darrera setmana?
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text-primary">Percepció de l'Esforç (sRPE)</span>
+                    <span className="text-base font-black text-brand-600">{rpe} / 10</span>
                   </div>
                   <input
                     type="range"
@@ -473,39 +525,44 @@ export const WellnessPage: React.FC = () => {
                     max="10"
                     step="1"
                     value={rpe}
-                    onChange={(e) => setRpe(parseInt(e.target.value))}
-                    className="w-full accent-brand-500 cursor-pointer h-2.5 bg-slate-200 rounded-lg"
+                    onChange={(e) => setRpe(Number(e.target.value))}
+                    className="w-full accent-brand-500 h-2 bg-slate-200 rounded-lg cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] text-text-muted font-medium">
-                    <span>Molt suau (1)</span>
-                    <span>Moderat (5)</span>
-                    <span>Esforç màxim (10)</span>
+                  <div className="flex justify-between text-[10px] text-text-muted">
+                    <span>Molt suau (1-2)</span>
+                    <span>Moderat (5-6)</span>
+                    <span>Duresa extrema (9-10)</span>
                   </div>
                 </div>
               </div>
 
-              {/* Zones de Dolor (Mapa Tàctil) */}
-              <div className="space-y-3 pt-2 border-t border-border-light">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-text-primary">
-                    3. Zones amb molèstia o dolor localitzat
+              {/* Pain & Anatomical selector */}
+              <div className="glass-card p-4 sm:p-6 space-y-4">
+                <div className="border-b border-border pb-3">
+                  <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    Zones de Molèstia o Dolor Localitzat
                   </h3>
-                  <span className="text-xs text-text-muted">Tria si en tens alguna:</span>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    Selecciona les àrees anatòmiques on notes sobrecàrrega o punxades.
+                  </p>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {ZONES_MOLESTIA.map(zone => {
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {ZONES_MOLESTIA.map((zone) => {
                     const isSelected = selectedZones.includes(zone)
                     return (
                       <button
                         type="button"
                         key={zone}
                         onClick={() => toggleZone(zone)}
-                        className={`p-2.5 rounded-xl text-xs font-semibold text-left transition-all border ${
+                        className={`text-xs font-semibold py-2 px-3 rounded-xl border text-left transition-all ${
                           isSelected
-                            ? 'bg-rose-50 border-rose-300 text-rose-800 ring-2 ring-rose-500/20'
-                            : 'bg-white/60 border-border-light text-text-secondary hover:bg-white'
+                            ? 'bg-rose-50 border-rose-300 text-rose-700 shadow-sm font-bold'
+                            : 'bg-bg-surface border-border text-text-secondary hover:bg-bg-hover'
                         }`}
                       >
+                        {isSelected ? '✓ ' : '+ '}
                         {zone}
                       </button>
                     )
@@ -513,75 +570,78 @@ export const WellnessPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Comentaris de recuperació */}
-              <div className="space-y-2 pt-2 border-t border-border-light">
-                <label className="block text-sm font-bold text-text-primary">
-                  Notes de recuperació o incidències per a l'entrenador
+              {/* Free notes */}
+              <div className="glass-card p-4 sm:p-6 space-y-3">
+                <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider">
+                  Comentaris o Sensacions per a l'Entrenador
                 </label>
                 <textarea
-                  rows={2}
+                  rows={3}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Ex: Dissabte vaig notar el quàdriceps dret carregat a la baixada, però amb estiraments va millorar..."
-                  className="w-full text-xs sm:text-sm p-3 rounded-xl border border-border-light focus:ring-2 focus:ring-brand-500/20 outline-none"
+                  placeholder="Ex: He tingut insomni dijous pel viatge de feina, o noto la cintilla carregada en baixar desnivell..."
+                  className="w-full bg-bg-surface border border-border rounded-xl p-3 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-brand-500"
                 />
               </div>
 
-              {/* Submit Button */}
-              <div className="pt-2 flex justify-end">
+              <div className="flex justify-end">
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="btn-primary text-sm py-3 px-6 shadow-md flex items-center justify-center gap-2 w-full sm:w-auto disabled:opacity-50"
+                  className="btn-primary text-sm py-3 px-8 font-bold flex items-center gap-2 shadow-md disabled:opacity-50"
                 >
-                  <Save className="w-4 h-4" />
-                  {isSaving ? 'Guardant...' : 'Desar Check-in de Wellness'}
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Desant...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Desar Check-in de Benestar</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           </div>
 
-          {/* Live Recovery Score Sidebar */}
-          <div className="space-y-4">
-            <div className="glass-card p-5 sm:p-6 space-y-4 border border-border-light">
-              <h3 className="font-bold text-base text-text-primary">Estat Calculat</h3>
-              
-              <div className="text-center py-4 space-y-2">
-                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full border-4 border-brand-500/20 bg-brand-50/50">
-                  <span className="text-3xl font-extrabold text-brand-600">{recoveryScore}%</span>
-                </div>
-                <div className="text-xs text-text-muted font-semibold">Índex de Recuperació Global</div>
+          {/* Right Sidebar: Dynamic Recovery Traffic Light */}
+          <div className="space-y-6">
+            <div className="glass-card p-5 sm:p-6 space-y-5 sticky top-24">
+              <div className="border-b border-border pb-3">
+                <h4 className="text-sm font-bold text-text-primary uppercase tracking-wider flex items-center gap-2">
+                  <HeartPulse className="w-4 h-4 text-brand-500" />
+                  Semàfor d'Adaptació
+                </h4>
+                <p className="text-xs text-text-muted mt-0.5">Càlcul en temps real del teu estat</p>
               </div>
 
-              <div className={`p-3.5 rounded-xl border flex items-start gap-2.5 ${currentStatus.color}`}>
-                <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${currentStatus.dot}`} />
-                <div>
-                  <h4 className="font-bold text-xs uppercase tracking-wide">{currentStatus.label}</h4>
-                  <p className="text-[11px] mt-1 leading-relaxed opacity-90">{currentStatus.recommendation}</p>
-                </div>
+              {/* Status Pill Card */}
+              <div className={`p-4 rounded-2xl border flex flex-col items-center text-center gap-2 ${currentStatus.color}`}>
+                <div className={`w-3.5 h-3.5 rounded-full ${currentStatus.dot} animate-pulse`}></div>
+                <div className="text-base font-black tracking-tight">{currentStatus.label}</div>
+                <div className="text-3xl font-black">{recoveryScore} <span className="text-xs font-normal opacity-70">/ 100</span></div>
               </div>
 
-              <div className="pt-3 border-t border-border-light space-y-2 text-xs text-text-muted">
-                <div className="flex justify-between">
-                  <span>Puntuació Hooper (5-25):</span>
+              <div className="text-xs text-text-secondary leading-relaxed bg-bg-hover/60 p-3.5 rounded-xl border border-border">
+                <strong>Recomanació clínica:</strong> {currentStatus.recommendation}
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-border text-xs">
+                <div className="flex justify-between text-text-muted">
+                  <span>Índex Hooper:</span>
                   <span className="font-bold text-text-primary">{hooperScore} / 25</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Esforç RPE Borg:</span>
+                <div className="flex justify-between text-text-muted">
+                  <span>Zones dolor:</span>
+                  <span className="font-bold text-text-primary">{selectedZones.length} seleccionades</span>
+                </div>
+                <div className="flex justify-between text-text-muted">
+                  <span>RPE Setmanal:</span>
                   <span className="font-bold text-text-primary">{rpe} / 10</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Zones dolor marcades:</span>
-                  <span className="font-bold text-text-primary">{selectedZones.length}</span>
-                </div>
               </div>
-
-              <Link
-                to="/calendar"
-                className="w-full py-2.5 px-3 rounded-xl bg-white border border-border-light hover:border-brand-500/40 text-text-primary text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all"
-              >
-                Tornar al Calendari Setmanal <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
             </div>
           </div>
         </div>
