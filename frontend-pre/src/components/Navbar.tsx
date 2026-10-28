@@ -18,12 +18,20 @@ import {
   FileText,
   UserCheck,
   Megaphone,
-  Bug
+  Bug,
+  ShoppingBag,
+  Apple,
+  Palette,
+  Settings as SettingsIcon,
+  Terminal,
+  FileSpreadsheet,
+  ChevronDown
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, isEntrenador, isAtleta, isAdmin, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -209,6 +217,94 @@ export const Navbar: React.FC = () => {
               <ShieldCheck className="w-4 h-4 text-purple-600" /> Admin
             </Link>
           )}
+
+          {/* Dropdown for More modules */}
+          <div className="relative">
+            <button
+              onClick={() => setMoreOpen(!moreOpen)}
+              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${
+                moreOpen || ['/material', '/nutricio', '/activitats', '/settings', '/forms', '/logs'].includes(location.pathname)
+                  ? 'bg-brand-50 text-brand-600 font-semibold'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              <span>Més</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {moreOpen && (
+              <div 
+                className="absolute right-0 mt-2 w-52 glass-card bg-bg-surface p-1.5 rounded-xl shadow-xl border border-border flex flex-col gap-1 z-50 animate-fade-in text-xs font-semibold"
+                onMouseLeave={() => setMoreOpen(false)}
+              >
+                <Link
+                  to="/material"
+                  onClick={() => setMoreOpen(false)}
+                  className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                    isActive('/material') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                  }`}
+                >
+                  <ShoppingBag className="w-4 h-4 text-emerald-500" /> Equipament & Roba
+                </Link>
+
+                <Link
+                  to="/nutricio"
+                  onClick={() => setMoreOpen(false)}
+                  className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                    isActive('/nutricio') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                  }`}
+                >
+                  <Apple className="w-4 h-4 text-amber-500" /> Estratègia Nutricional
+                </Link>
+
+                {(isEntrenador || isAdmin) && (
+                  <>
+                    <Link
+                      to="/activitats"
+                      onClick={() => setMoreOpen(false)}
+                      className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                        isActive('/activitats') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                      }`}
+                    >
+                      <Palette className="w-4 h-4 text-rose-500" /> Esports & Activitats
+                    </Link>
+
+                    <Link
+                      to="/forms"
+                      onClick={() => setMoreOpen(false)}
+                      className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                        isActive('/forms') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                      }`}
+                    >
+                      <FileSpreadsheet className="w-4 h-4 text-teal-600" /> Formularis Dinàmics
+                    </Link>
+
+                    <Link
+                      to="/settings"
+                      onClick={() => setMoreOpen(false)}
+                      className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                        isActive('/settings') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                      }`}
+                    >
+                      <SettingsIcon className="w-4 h-4 text-slate-500" /> Configuració Cron
+                    </Link>
+                  </>
+                )}
+
+                {isAdmin && (
+                  <Link
+                    to="/logs"
+                    onClick={() => setMoreOpen(false)}
+                    className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                      isActive('/logs') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <Terminal className="w-4 h-4 text-slate-700" /> Logs del Sistema
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* User Profile & Actions */}
@@ -342,6 +438,60 @@ export const Navbar: React.FC = () => {
           >
             <FileText className="w-4 h-4 text-sky-600" /> {isEntrenador || isAdmin ? 'Informes i Estadístiques' : 'El meu Informe'}
           </Link>
+
+          <Link
+            to="/material"
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+          >
+            <ShoppingBag className="w-4 h-4 text-emerald-500" /> Equipament & Roba
+          </Link>
+
+          <Link
+            to="/nutricio"
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+          >
+            <Apple className="w-4 h-4 text-amber-500" /> Estratègia Nutricional
+          </Link>
+
+          {(isEntrenador || isAdmin) && (
+            <>
+              <Link
+                to="/activitats"
+                onClick={() => setMobileOpen(false)}
+                className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+              >
+                <Palette className="w-4 h-4 text-rose-500" /> Esports & Activitats
+              </Link>
+
+              <Link
+                to="/forms"
+                onClick={() => setMobileOpen(false)}
+                className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-teal-600" /> Formularis Dinàmics
+              </Link>
+
+              <Link
+                to="/settings"
+                onClick={() => setMobileOpen(false)}
+                className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+              >
+                <SettingsIcon className="w-4 h-4 text-slate-500" /> Configuració Cron
+              </Link>
+            </>
+          )}
+
+          {isAdmin && (
+            <Link
+              to="/logs"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+            >
+              <Terminal className="w-4 h-4 text-slate-700" /> Logs del Sistema
+            </Link>
+          )}
 
           <Link
             to="/anuncis"

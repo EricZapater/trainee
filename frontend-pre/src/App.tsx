@@ -18,6 +18,12 @@ import { TestsManagerPage } from './pages/TestsManagerPage'
 import { InformePage } from './pages/InformePage'
 import { AnuncisPage } from './pages/AnuncisPage'
 import { FeedbackTicketsPage } from './pages/FeedbackTicketsPage'
+import { ActivitatsManagerPage } from './pages/ActivitatsManagerPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { MaterialManagerPage } from './pages/MaterialManagerPage'
+import { NutricioManagerPage } from './pages/NutricioManagerPage'
+import { FormsManagerPage } from './pages/FormsManagerPage'
+import { SystemLogsPage } from './pages/SystemLogsPage'
 import { AlertTriangle, Undo2 } from 'lucide-react'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -203,6 +209,54 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <FeedbackTicketsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/activitats"
+            element={
+              <ProtectedRoute>
+                <ActivitatsManagerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/material"
+            element={
+              <ProtectedRoute>
+                <MaterialManagerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nutricio"
+            element={
+              <ProtectedRoute>
+                <NutricioManagerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/forms"
+            element={
+              <ProtectedRoute>
+                <FormsManagerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/logs"
+            element={
+              <ProtectedRoute>
+                <SystemLogsPage />
               </ProtectedRoute>
             }
           />
