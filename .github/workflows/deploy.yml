@@ -46,6 +46,9 @@ jobs:
       - name: Compute environment flags
         id: flags
         run: |
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "IMAGE_NAME=$REPO_LOWER" >> $GITHUB_ENV
+          
           TARGET="${{ github.event.inputs.target || 'auto' }}"
           REF="${{ github.ref }}"
           
