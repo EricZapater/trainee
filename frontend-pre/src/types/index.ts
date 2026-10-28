@@ -129,3 +129,57 @@ export interface EsdevenimentEquip {
     es_privada?: boolean
   }[]
 }
+
+export interface UserStatusHistory {
+  id: string
+  usuari_id: string
+  accio: 'activate' | 'deactivate'
+  changed_by: string | null
+  created_at: string
+}
+
+export interface Test {
+  id: string
+  atleta_id: string
+  entrenador_id: string
+  titol: string
+  data_test: string
+  comentaris?: string
+  data_recordatori?: string
+  estat_recordatori: 'cap' | 'pendent' | 'resolt' | 'cancelat'
+  registrat: boolean
+  created_at: string
+  atleta_nom?: string
+}
+
+export interface CreateTestRequest {
+  atleta_id: string
+  titol: string
+  data_test: string
+  comentaris?: string
+  data_recordatori?: string
+}
+
+export interface UpdateRecordatoriRequest {
+  estat: 'resolt' | 'cancelat' | 'pendent'
+}
+
+export interface InformeResumActivitat {
+  activitat_nom: string
+  activitat_icona: string
+  activitat_color: string
+  total_hores: number
+}
+
+export interface InformeDia {
+  data: string
+  slots: SlotEntry[]
+}
+
+export interface InformeResponse {
+  atleta_id: string
+  atleta_nom: string
+  resum_activitats: InformeResumActivitat[]
+  detall_per_dies: InformeDia[]
+}
+

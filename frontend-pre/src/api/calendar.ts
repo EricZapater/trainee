@@ -1,5 +1,5 @@
 import api from './client'
-import type { Week, Activitat, MySubmissionResponse, SubmissionRequest, WeekTemplate } from '../types'
+import type { Week, Activitat, MySubmissionResponse, SubmissionRequest, WeekTemplate, InformeResponse } from '../types'
 
 export async function getOpenWeeks(): Promise<Week[]> {
   const res = await api.get<Week[]>('/weeks')
@@ -34,3 +34,9 @@ export async function createWeekTemplate(nom: string, slots: WeekTemplate['slots
 export async function deleteWeekTemplate(id: string): Promise<void> {
   await api.delete(`/atletes/templates/${id}`)
 }
+
+export async function getInformeMe(start: string, end: string): Promise<InformeResponse> {
+  const res = await api.get<InformeResponse>(`/atletes/me/informe?start_date=${start}&end_date=${end}`)
+  return res.data
+}
+

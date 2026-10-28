@@ -1,5 +1,5 @@
 import api from './client'
-import type { Week, SlotEntry } from '../types'
+import type { Week, SlotEntry, UserStatusHistory, InformeResponse } from '../types'
 
 export interface ManagedWeekWithCount extends Week {
   submissions_count?: number
@@ -89,3 +89,36 @@ export async function traspassarCompeticio(competicioId: string): Promise<void> 
 export async function updateCompeticioTipus(competicioId: string, tipus: string): Promise<void> {
   await api.patch(`/entrenador/competicions/${competicioId}/tipus`, { tipus })
 }
+
+export async function getAtletes(): Promise<{ id: string; nom: string; cognoms: string; email: string; actiu: boolean }[]> {
+  const res = await api.get<{ id: string; nom: string; cognoms: string; email: string; actiu: boolean }[]>('/entrenador/atletes')
+  return res.data
+}
+
+export async function toggleAtletaStatus(id: string, actiu: boolean): Promise<void> {
+  await api.patch(`/entrenador/atletes/${id}/status`, { actiu })
+}
+
+export async function getAtletaStatusHistory(id: string): Promise<UserStatusHistory[]> {
+  const res = await api.get<UserStatusHistory[]>(`/entrenador/atletes/${id}/history`)
+  return res.data
+}
+
+export async function getEntrenadorsList(): Promise<{ id: string; nom: string }[]> {
+  const res = await api.get<{ id: string; nom: string }[]>('/entrenadors')
+  return res.data
+}
+
+export async function reassignAtleta(id: string, newEntrenadorId: string): Promise<void> {
+  await api.patch(`/entrenador/atletes/${id}/reasignar`, { new_entrenador_id: newEntrenadorId })
+}
+
+export async function updateAtletaDetails(id: string, payload: { nom: string; cognoms: string }): Promise<void> {
+  await api.patch(`/entrenador/atletes/${id}`, payload)
+}
+
+export async function getInformeAtleta(id: string, start: string, end: string): Promise<InformeResponse> {
+  const res = await api.get<InformeResponse>(`/entrenador/atletes/${id}/informe?start_date=${start}&end_date=${end}`)
+  return res.data
+}
+

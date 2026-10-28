@@ -13,7 +13,10 @@ import {
   Users,
   ShieldCheck,
   Layers,
-  Clock
+  Clock,
+  ClipboardList,
+  FileText,
+  UserCheck
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
@@ -46,12 +49,12 @@ export const Navbar: React.FC = () => {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
+        <nav className="hidden lg:flex items-center gap-1 text-xs xl:text-sm font-medium">
           {isAtleta && (
             <>
               <Link 
                 to="/calendar" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                   isActive('/calendar') 
                     ? 'bg-brand-50 text-brand-600 font-semibold' 
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -61,20 +64,20 @@ export const Navbar: React.FC = () => {
               </Link>
               <Link 
                 to="/competicions/atleta" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                   isActive('/competicions/atleta') 
                     ? 'bg-brand-50 text-brand-600 font-semibold' 
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                 }`}
               >
-                <Trophy className="w-4 h-4 text-rose-500" /> Les meves Curses
+                <Trophy className="w-4 h-4 text-rose-500" /> Curses
               </Link>
             </>
           )}
 
           <Link 
             to="/wellness" 
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+            className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
               isActive('/wellness') 
                 ? 'bg-brand-50 text-brand-600 font-semibold' 
                 : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -85,7 +88,7 @@ export const Navbar: React.FC = () => {
 
           <Link 
             to="/team-races" 
-            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+            className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
               isActive('/team-races') 
                 ? 'bg-brand-50 text-brand-600 font-semibold' 
                 : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -98,7 +101,7 @@ export const Navbar: React.FC = () => {
             <>
               <Link 
                 to="/dashboard" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                   isActive('/dashboard') || (isActive('/') && !isAtleta)
                     ? 'bg-brand-50 text-brand-600 font-semibold' 
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -108,7 +111,7 @@ export const Navbar: React.FC = () => {
               </Link>
               <Link 
                 to="/planning" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                   isActive('/planning') 
                     ? 'bg-brand-50 text-brand-600 font-semibold' 
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -117,18 +120,38 @@ export const Navbar: React.FC = () => {
                 <Layers className="w-4 h-4 text-indigo-500" /> Planning
               </Link>
               <Link 
+                to="/atletes" 
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/atletes') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <UserCheck className="w-4 h-4 text-teal-600" /> Atletes
+              </Link>
+              <Link 
+                to="/tests" 
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  isActive('/tests') 
+                    ? 'bg-brand-50 text-brand-600 font-semibold' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <ClipboardList className="w-4 h-4 text-purple-600" /> Tests
+              </Link>
+              <Link 
                 to="/competicions/entrenador" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                   isActive('/competicions/entrenador') 
                     ? 'bg-brand-50 text-brand-600 font-semibold' 
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                 }`}
               >
-                <Trophy className="w-4 h-4 text-rose-500" /> Curses
+                <Trophy className="w-4 h-4 text-rose-500" /> Curses Entr.
               </Link>
               <Link 
                 to="/weeks" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                   isActive('/weeks') 
                     ? 'bg-brand-50 text-brand-600 font-semibold' 
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -139,10 +162,21 @@ export const Navbar: React.FC = () => {
             </>
           )}
 
+          <Link 
+            to="/informe" 
+            className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              isActive('/informe') 
+                ? 'bg-brand-50 text-brand-600 font-semibold' 
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+          >
+            <FileText className="w-4 h-4 text-sky-600" /> {isEntrenador || isAdmin ? 'Informes' : 'Informe'}
+          </Link>
+
           {isAdmin && (
             <Link 
               to="/admin" 
-              className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
                 isActive('/admin') 
                   ? 'bg-purple-100 text-purple-700 font-semibold' 
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
@@ -154,7 +188,7 @@ export const Navbar: React.FC = () => {
         </nav>
 
         {/* User Profile & Actions */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           <div className="flex items-center gap-2 pl-3 border-l border-border">
             <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 font-bold text-xs flex items-center justify-center border border-brand-200">
               {user?.nom?.charAt(0) || 'U'}
@@ -176,7 +210,7 @@ export const Navbar: React.FC = () => {
         {/* Mobile menu button */}
         <button 
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden p-2 text-text-secondary hover:bg-bg-hover rounded-lg"
+          className="lg:hidden p-2 text-text-secondary hover:bg-bg-hover rounded-lg"
         >
           {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -184,7 +218,7 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="md:hidden glass-card mt-2 p-4 flex flex-col gap-2 animate-fade-in">
+        <div className="lg:hidden glass-card mt-2 p-4 flex flex-col gap-2 animate-fade-in max-h-[85vh] overflow-y-auto">
           <div className="pb-3 mb-2 border-b border-border flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 font-bold text-sm flex items-center justify-center">
               {user?.nom?.charAt(0)}
@@ -247,6 +281,20 @@ export const Navbar: React.FC = () => {
                 <Layers className="w-4 h-4 text-indigo-500" /> Planning d'Equip
               </Link>
               <Link
+                to="/atletes"
+                onClick={() => setMobileOpen(false)}
+                className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+              >
+                <UserCheck className="w-4 h-4 text-teal-600" /> Gestió d'Atletes
+              </Link>
+              <Link
+                to="/tests"
+                onClick={() => setMobileOpen(false)}
+                className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+              >
+                <ClipboardList className="w-4 h-4 text-purple-600" /> Proves Físiques i Tests
+              </Link>
+              <Link
                 to="/competicions/entrenador"
                 onClick={() => setMobileOpen(false)}
                 className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
@@ -262,6 +310,14 @@ export const Navbar: React.FC = () => {
               </Link>
             </>
           )}
+
+          <Link
+            to="/informe"
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+          >
+            <FileText className="w-4 h-4 text-sky-600" /> {isEntrenador || isAdmin ? 'Informes i Estadístiques' : 'El meu Informe'}
+          </Link>
 
           {isAdmin && (
             <Link
