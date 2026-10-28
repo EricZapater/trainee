@@ -9,6 +9,10 @@ import { AthleteCompetitionsPage } from './pages/AthleteCompetitionsPage'
 import { WellnessPage } from './pages/WellnessPage'
 import { TeamRacesPage } from './pages/TeamRacesPage'
 import { AdminDashboardPage } from './pages/AdminDashboardPage'
+import { CoachSubmissionsMatrixPage } from './pages/CoachSubmissionsMatrixPage'
+import { WeeksManagerPage } from './pages/WeeksManagerPage'
+import { TeamPlanningPage } from './pages/TeamPlanningPage'
+import { CoachCompetitionsPage } from './pages/CoachCompetitionsPage'
 import { AlertTriangle, Undo2 } from 'lucide-react'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -59,6 +63,8 @@ const ImpersonationBanner: React.FC = () => {
 }
 
 const AppContent: React.FC = () => {
+  const { isEntrenador } = useAuth()
+
   return (
     <div className="min-h-screen bg-bg-base text-text-primary flex flex-col">
       <ImpersonationBanner />
@@ -70,6 +76,14 @@ const AppContent: React.FC = () => {
             path="/"
             element={
               <ProtectedRoute>
+                {isEntrenador ? <CoachSubmissionsMatrixPage /> : <CalendarPage />}
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hub"
+            element={
+              <ProtectedRoute>
                 <DashboardPage />
               </ProtectedRoute>
             }
@@ -78,7 +92,7 @@ const AppContent: React.FC = () => {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <DashboardPage />
+                {isEntrenador ? <CoachSubmissionsMatrixPage /> : <CalendarPage />}
               </ProtectedRoute>
             }
           />
@@ -87,6 +101,30 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <CalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/weeks"
+            element={
+              <ProtectedRoute>
+                <WeeksManagerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/planning"
+            element={
+              <ProtectedRoute>
+                <TeamPlanningPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/competicions/entrenador"
+            element={
+              <ProtectedRoute>
+                <CoachCompetitionsPage />
               </ProtectedRoute>
             }
           />
