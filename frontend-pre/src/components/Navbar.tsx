@@ -16,7 +16,9 @@ import {
   Clock,
   ClipboardList,
   FileText,
-  UserCheck
+  UserCheck,
+  Megaphone,
+  Bug
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
@@ -173,6 +175,28 @@ export const Navbar: React.FC = () => {
             <FileText className="w-4 h-4 text-sky-600" /> {isEntrenador || isAdmin ? 'Informes' : 'Informe'}
           </Link>
 
+          <Link 
+            to="/anuncis" 
+            className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              isActive('/anuncis') 
+                ? 'bg-brand-50 text-brand-600 font-semibold' 
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+          >
+            <Megaphone className="w-4 h-4 text-amber-500" /> Anuncis
+          </Link>
+
+          <Link 
+            to="/feedback" 
+            className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              isActive('/feedback') 
+                ? 'bg-brand-50 text-brand-600 font-semibold' 
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+          >
+            <Bug className="w-4 h-4 text-purple-500" /> Feedback
+          </Link>
+
           {isAdmin && (
             <Link 
               to="/admin" 
@@ -317,6 +341,22 @@ export const Navbar: React.FC = () => {
             className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
           >
             <FileText className="w-4 h-4 text-sky-600" /> {isEntrenador || isAdmin ? 'Informes i Estadístiques' : 'El meu Informe'}
+          </Link>
+
+          <Link
+            to="/anuncis"
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+          >
+            <Megaphone className="w-4 h-4 text-amber-500" /> Tauler d'Anuncis
+          </Link>
+
+          <Link
+            to="/feedback"
+            onClick={() => setMobileOpen(false)}
+            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+          >
+            <Bug className="w-4 h-4 text-purple-500" /> Bústia de Feedback & Bugs
           </Link>
 
           {isAdmin && (

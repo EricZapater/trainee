@@ -16,6 +16,8 @@ import { CoachCompetitionsPage } from './pages/CoachCompetitionsPage'
 import { AthletesManagerPage } from './pages/AthletesManagerPage'
 import { TestsManagerPage } from './pages/TestsManagerPage'
 import { InformePage } from './pages/InformePage'
+import { AnuncisPage } from './pages/AnuncisPage'
+import { FeedbackTicketsPage } from './pages/FeedbackTicketsPage'
 import { AlertTriangle, Undo2 } from 'lucide-react'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -188,6 +190,22 @@ const AppContent: React.FC = () => {
             }
           />
           <Route path="/informes" element={<Navigate to="/informe" replace />} />
+          <Route
+            path="/anuncis"
+            element={
+              <ProtectedRoute>
+                <AnuncisPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedback"
+            element={
+              <ProtectedRoute>
+                <FeedbackTicketsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
