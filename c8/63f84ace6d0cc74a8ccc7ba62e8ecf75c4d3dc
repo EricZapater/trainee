@@ -1,0 +1,24 @@
+frontend-pre/src/App.tsx
+  h_42175f19913982 2,11-12,32-60,64,117-124
+frontend-pre/src/api/admin.ts
+  h_42175f19913982 1-46
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 13-14,18,80-91,211-219
+frontend-pre/src/context/AuthContext.tsx
+  h_42175f19913982 9-10,14,23,28,34,49,55,58-95,124-125,129
+frontend-pre/src/pages/AdminDashboardPage.tsx
+  h_42175f19913982 1-321
+frontend-pre/tsconfig.tsbuildinfo
+  h_42175f19913982 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c863f84ace6d0cc74a8ccc7ba62e8ecf75c4d3dc",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
