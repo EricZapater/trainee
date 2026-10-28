@@ -1,0 +1,18 @@
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 18,48,53,58,72-119,153,164-182,184,188,190,192,196,198-199,201,205,208
+frontend-pre/src/context/AuthContext.tsx
+  h_42175f19913982 111
+frontend-pre/src/pages/DashboardPage.tsx
+  h_42175f19913982 4,7,22,30-31,37,56,75,80-81,106,129-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "329c37cd8a3c55f4ab11eb45a2efdbe41a0ae680",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
