@@ -1,0 +1,32 @@
+frontend-pre/src/App.tsx
+  h_42175f19913982 7-8,34,57,69-76
+frontend-pre/src/api/calendar.ts
+  h_42175f19913982 1-36
+frontend-pre/src/api/competicions.ts
+  h_42175f19913982 1-21
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 12-13,102-111,120,182-190,196
+frontend-pre/src/pages/AthleteCompetitionsPage.tsx
+  h_42175f19913982 1-447
+frontend-pre/src/pages/CalendarPage.tsx
+  h_42175f19913982 1-856
+frontend-pre/src/pages/DashboardPage.tsx
+  h_42175f19913982 4,10,22,29-56,63,67,80-106,110,112-114,117-118
+frontend-pre/src/pages/WellnessPage.tsx
+  h_42175f19913982 2,5-6,17-19,38-43,46-47,50-52,55,60-62,64-70,72-90,94-110,112,114,116-117,119-159,167,171-173,175-179,182-185,191-199,201,203,205-208,210-215,219-233,239-247,249-312,316-330,332-457,460-484,486-513,516-519,521-527,530-541,544-554,556-562,564-576,579-585,587
+frontend-pre/src/types/index.ts
+  h_42175f19913982 19-96,98-102,105,125
+frontend-pre/tsconfig.tsbuildinfo
+  h_42175f19913982 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bfe33563e4a54f560f62609d3e99e45ebcb79f01",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
