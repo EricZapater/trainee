@@ -103,10 +103,16 @@ func (s *PostgresStore) GetEntrenadorWellnessOverview(ctx context.Context, entre
 	}
 
 	for _, a := range atletes {
+		nomComplet := a.Nom
+		if a.Cognoms != "" {
+			nomComplet = a.Nom + " " + a.Cognoms
+		}
+
 		summary := models.AthleteWellnessSummary{
 			AtletaID:  a.ID,
 			Nom:       a.Nom,
 			Cognoms:   a.Cognoms,
+			AtletaNom: nomComplet,
 			HaRespost: false,
 			Alerta:    "pendent",
 		}

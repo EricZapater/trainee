@@ -12,8 +12,10 @@ import {
   Users, 
   Send,
   ExternalLink,
-  X
+  X,
+  Eye
 } from 'lucide-react'
+import { WellnessDetailModal } from '../components/WellnessDetailModal'
 import { 
   getEntrenadorWeeks, 
   getEntrenadorSubmissions, 
@@ -38,6 +40,10 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
   
   // Selected athlete for drawer/modal
   const [selectedAthlete, setSelectedAthlete] = useState<AtletaSubmissionSummary | null>(null)
+  
+  // Wellness Detail Modal state
+  const [wellnessModalAthlete, setWellnessModalAthlete] = useState<AtletaSubmissionSummary | null>(null)
+  const [isWellnessModalOpen, setIsWellnessModalOpen] = useState(false)
 
   useEffect(() => {
     loadWeeks()
@@ -96,9 +102,16 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
           wellness: wel ? {
             score: wel.score,
             alerta: wel.alerta,
-            zones_dolor: wel.zones_dolor,
+            ha_respost: wel.ha_respost,
+            fatiga: wel.fatiga,
+            son_qualitat: wel.son_qualitat,
+            dolor_muscular: wel.dolor_muscular,
+            estres: wel.estres,
+            humor: wel.humor,
             rpe_setmanal: wel.rpe_setmanal,
-            notes: wel.notes
+            zones_dolor: wel.zones_dolor,
+            notes: wel.notes,
+            submitted_at: wel.submitted_at
           } : undefined
         }
       })
@@ -419,10 +432,15 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
 
                       {/* Wellness Semaphore Column */}
                       <td className="py-3 px-2 text-center">
-                        {ath.wellness ? (
-                          <div 
-                            title={`Wellness: ${ath.wellness.score || 0}/25. RPE: ${ath.wellness.rpe_setmanal || 0}/10. Zones: ${ath.wellness.zones_dolor?.join(', ') || 'Cap'}`}
-                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[11px] font-bold border cursor-help transition-transform hover:scale-105"
+                        {ath.wellness?.ha_respost ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWellnessModalAthlete(ath)
+                              setIsWellnessModalOpen(true)
+                            }}
+                            title={`Wellness: ${ath.wellness.score || 0}/25. RPE: ${ath.wellness.rpe_setmanal || 0}/10. Zones: ${ath.wellness.zones_dolor?.join(', ') || 'Cap'} — Clica per obrir el detall complet`}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all hover:scale-105 shadow-2xs cursor-pointer"
                             style={{
                               backgroundColor: ath.wellness.alerta === 'vermell' ? '#fee2e2' : ath.wellness.alerta === 'groc' ? '#fef3c7' : '#d1fae5',
                               borderColor: ath.wellness.alerta === 'vermell' ? '#fca5a5' : ath.wellness.alerta === 'groc' ? '#fde047' : '#86efac',
@@ -430,12 +448,23 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
                             }}
                           >
                             <span className={`w-2 h-2 rounded-full ${
-                              ath.wellness.alerta === 'vermell' ? 'bg-rose-600' : ath.wellness.alerta === 'groc' ? 'bg-amber-500' : 'bg-emerald-500'
+                              ath.wellness.alerta === 'vermell' ? 'bg-rose-600 animate-pulse' : ath.wellness.alerta === 'groc' ? 'bg-amber-500' : 'bg-emerald-500'
                             }`} />
-                            <span>{ath.wellness.alerta === 'vermell' ? 'Alerta' : ath.wellness.alerta === 'groc' ? 'Fatiga' : 'Òptim'}</span>
-                          </div>
+                            <span>{ath.wellness.alerta === 'vermell' ? 'Risc Alt' : ath.wellness.alerta === 'groc' ? 'Alerta' : 'Òptim'}</span>
+                            <Eye className="w-3 h-3 opacity-60 ml-0.5" />
+                          </button>
                         ) : (
-                          <span className="text-[10px] text-text-muted italic">Sense check-in</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWellnessModalAthlete(ath)
+                              setIsWellnessModalOpen(true)
+                            }}
+                            title="Aquest atleta encara no ha enviat el check-in de wellness"
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-medium text-slate-500 bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-colors cursor-pointer"
+                          >
+                            <span>Pendent</span>
+                          </button>
                         )}
                       </td>
 
@@ -561,14 +590,33 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
                     </div>
 
                     {/* Wellness Badge */}
-                    {ath.wellness && (
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        ath.wellness.alerta === 'vermell' ? 'bg-rose-100 text-rose-800 border-rose-300' :
-                        ath.wellness.alerta === 'groc' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                        'bg-emerald-100 text-emerald-800 border-emerald-300'
-                      }`}>
-                        Wellness: {ath.wellness.alerta === 'vermell' ? 'Alerta' : ath.wellness.alerta === 'groc' ? 'Fatiga' : 'Òptim'}
-                      </span>
+                    {ath.wellness?.ha_respost ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWellnessModalAthlete(ath)
+                          setIsWellnessModalOpen(true)
+                        }}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 transition-transform active:scale-95 ${
+                          ath.wellness.alerta === 'vermell' ? 'bg-rose-100 text-rose-800 border-rose-300' :
+                          ath.wellness.alerta === 'groc' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                          'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        }`}
+                      >
+                        <HeartPulse className="w-3 h-3" />
+                        Wellness: {ath.wellness.alerta === 'vermell' ? 'Risc Alt' : ath.wellness.alerta === 'groc' ? 'Alerta' : 'Òptim'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWellnessModalAthlete(ath)
+                          setIsWellnessModalOpen(true)
+                        }}
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-100 text-slate-500 border-slate-200 flex items-center gap-1"
+                      >
+                        <HeartPulse className="w-3 h-3 text-slate-400" /> Wellness: Pendent
+                      </button>
                     )}
                   </div>
 
@@ -669,14 +717,42 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
 
             {/* Wellness Details in Modal */}
             {selectedAthlete.wellness && (
-              <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200 space-y-2 text-xs">
+              <div className={`p-4 rounded-xl border space-y-2.5 text-xs ${
+                !selectedAthlete.wellness.ha_respost
+                  ? 'bg-slate-50 border-slate-200'
+                  : selectedAthlete.wellness.alerta === 'vermell'
+                  ? 'bg-rose-50 border-rose-200'
+                  : selectedAthlete.wellness.alerta === 'groc'
+                  ? 'bg-amber-50 border-amber-200'
+                  : 'bg-emerald-50 border-emerald-200'
+              }`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-emerald-800 flex items-center gap-1.5">
-                    <HeartPulse className="w-4 h-4 text-emerald-600" /> Estat de Wellness: {selectedAthlete.wellness.alerta?.toUpperCase()}
+                  <span className="font-bold flex items-center gap-1.5 text-text-primary">
+                    <HeartPulse className={`w-4 h-4 ${
+                      !selectedAthlete.wellness.ha_respost
+                        ? 'text-slate-400'
+                        : selectedAthlete.wellness.alerta === 'vermell'
+                        ? 'text-rose-600'
+                        : selectedAthlete.wellness.alerta === 'groc'
+                        ? 'text-amber-600'
+                        : 'text-emerald-600'
+                    }`} />
+                    Wellness: {!selectedAthlete.wellness.ha_respost 
+                      ? 'PENDENT' 
+                      : selectedAthlete.wellness.alerta === 'vermell' 
+                      ? 'RISC ALT' 
+                      : selectedAthlete.wellness.alerta === 'groc' 
+                      ? 'ALERTA / MODERAT' 
+                      : 'ÒPTIM'}
                   </span>
-                  <span className="font-extrabold text-emerald-700">RPE: {selectedAthlete.wellness.rpe_setmanal || '-'}/10</span>
+                  {selectedAthlete.wellness.ha_respost && (
+                    <span className="font-extrabold text-text-primary">
+                      RPE: {selectedAthlete.wellness.rpe_setmanal || '-'}/10
+                    </span>
+                  )}
                 </div>
-                {selectedAthlete.wellness.zones_dolor && selectedAthlete.wellness.zones_dolor.length > 0 && (
+
+                {selectedAthlete.wellness.ha_respost && selectedAthlete.wellness.zones_dolor && selectedAthlete.wellness.zones_dolor.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     <span className="text-text-muted font-medium mr-1">Zones molestes:</span>
                     {selectedAthlete.wellness.zones_dolor.map((z: string, i: number) => (
@@ -686,11 +762,25 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
                     ))}
                   </div>
                 )}
-                {selectedAthlete.wellness.notes && (
-                  <p className="italic text-slate-600 pt-1 border-t border-emerald-200/60">
+
+                {selectedAthlete.wellness.ha_respost && selectedAthlete.wellness.notes && (
+                  <p className="italic text-text-secondary pt-1 border-t border-border/60">
                     "{selectedAthlete.wellness.notes}"
                   </p>
                 )}
+
+                <div className="pt-1 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWellnessModalAthlete(selectedAthlete)
+                      setIsWellnessModalOpen(true)
+                    }}
+                    className="text-[11px] font-bold text-brand-600 hover:text-brand-700 bg-white/80 hover:bg-white px-2.5 py-1 rounded-lg border border-brand-200 shadow-2xs flex items-center gap-1"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> Veure Check Hooper & Foster Complet
+                  </button>
+                </div>
               </div>
             )}
 
@@ -753,6 +843,17 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Dedicated Wellness Detail Modal */}
+      <WellnessDetailModal
+        isOpen={isWellnessModalOpen}
+        onClose={() => {
+          setIsWellnessModalOpen(false)
+          setWellnessModalAthlete(null)
+        }}
+        atletaNom={wellnessModalAthlete ? `${wellnessModalAthlete.nom} ${wellnessModalAthlete.cognoms || ''}`.trim() : ''}
+        weekStart={selectedWeek}
+        wellness={wellnessModalAthlete?.wellness}
+      />
     </div>
   )
 }

@@ -22,6 +22,7 @@ type AthleteWellnessSummary struct {
 	AtletaID      string     `json:"atleta_id"`
 	Nom           string     `json:"nom"`
 	Cognoms       string     `json:"cognoms"`
+	AtletaNom     string     `json:"atleta_nom,omitempty"`
 	SubmissionID  *string    `json:"submission_id,omitempty"`
 	HaRespost     bool       `json:"ha_respost"`
 	Fatiga        *int       `json:"fatiga,omitempty"`

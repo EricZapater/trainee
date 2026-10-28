@@ -154,6 +154,19 @@ func (s *PostgresStore) GetEntrenadorByUsuariID(ctx context.Context, usuariID st
 		usuariID,
 	).Scan(&e.ID, &e.UsuariID, &e.Nom, &e.CreatedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			var rol string
+			_ = s.pool.QueryRow(ctx, `SELECT rol FROM usuaris WHERE id = $1`, usuariID).Scan(&rol)
+			if rol == "admin" {
+				errAdmin := s.pool.QueryRow(ctx,
+					`SELECT id, usuari_id, nom, created_at
+					 FROM entrenadors ORDER BY created_at ASC LIMIT 1`,
+				).Scan(&e.ID, &e.UsuariID, &e.Nom, &e.CreatedAt)
+				if errAdmin == nil {
+					return &e, nil
+				}
+			}
+		}
 		return nil, err
 	}
 	return &e, nil

@@ -14,8 +14,10 @@ import {
   CheckCircle2, 
   Save, 
   Users,
-  Calendar
+  Calendar,
+  Eye
 } from 'lucide-react'
+import { WellnessDetailModal } from '../components/WellnessDetailModal'
 
 const ZONES_MOLESTIA = [
   'Bessons / Sòleus',
@@ -60,6 +62,8 @@ export const WellnessPage: React.FC = () => {
 
   // Coach state: athletes wellness overview
   const [athletesWellness, setAthletesWellness] = useState<any[]>([])
+  const [selectedAthleteDetail, setSelectedAthleteDetail] = useState<any | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState<boolean>(false)
 
   useEffect(() => {
     loadWeeksAndData()
@@ -297,24 +301,37 @@ export const WellnessPage: React.FC = () => {
                       <th className="py-3 px-3">Dolor</th>
                       <th className="py-3 px-3">RPE</th>
                       <th className="py-3 px-3">Zones Molèstia</th>
-                      <th className="py-3 px-3 text-right">Data enviament</th>
+                      <th className="py-3 px-3">Data enviament</th>
+                      <th className="py-3 px-3 text-right">Detall</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {athletesWellness.map((item, idx) => {
-                      const isDanger = item.score <= 12 || (item.dolor || 0) >= 4 || (item.zones_dolor?.length || 0) >= 2 || (item.rpe || 0) >= 9
-                      const isWarning = item.score < 18 || (item.dolor || 0) >= 3 || (item.zones_dolor?.length || 0) > 0 || (item.rpe || 0) >= 7
+                      const nomAtleta = item.atleta_nom || `${item.nom || ''} ${item.cognoms || ''}`.trim() || 'Atleta'
+                      const hasRespost = item.ha_respost
 
-                      const badge = isDanger
-                        ? { label: 'Risc Alt', class: 'bg-rose-100 text-rose-800 border-rose-300' }
-                        : isWarning
-                        ? { label: 'Alerta', class: 'bg-amber-100 text-amber-800 border-amber-300' }
-                        : { label: 'Òptim', class: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
+                      let badge = { label: 'Pendent', class: 'bg-slate-100 text-slate-600 border-slate-300' }
+                      if (hasRespost) {
+                        if (item.alerta === 'vermell') {
+                          badge = { label: 'Risc Alt', class: 'bg-rose-100 text-rose-800 border-rose-300' }
+                        } else if (item.alerta === 'groc') {
+                          badge = { label: 'Alerta', class: 'bg-amber-100 text-amber-800 border-amber-300' }
+                        } else {
+                          badge = { label: 'Òptim', class: 'bg-emerald-100 text-emerald-800 border-emerald-300' }
+                        }
+                      }
 
                       return (
-                        <tr key={idx} className="hover:bg-bg-hover/50 transition-colors">
+                        <tr 
+                          key={idx} 
+                          className="hover:bg-bg-hover/50 transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedAthleteDetail(item)
+                            setIsDetailModalOpen(true)
+                          }}
+                        >
                           <td className="py-3 px-3 font-bold text-text-primary whitespace-nowrap">
-                            {item.atleta_nom}
+                            {nomAtleta}
                           </td>
                           <td className="py-3 px-3">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.class}`}>
@@ -322,21 +339,35 @@ export const WellnessPage: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-3 px-3 font-semibold text-text-primary">
-                            {item.score || '-'} / 25
+                            {hasRespost && item.score !== undefined ? `${item.score} / 25` : '-'}
                           </td>
-                          <td className="py-3 px-3">{item.fatiga || '-'}</td>
-                          <td className="py-3 px-3">{item.son || '-'}</td>
-                          <td className="py-3 px-3">{item.dolor || '-'}</td>
-                          <td className="py-3 px-3 font-semibold">{item.rpe || '-'} / 10</td>
+                          <td className="py-3 px-3">{hasRespost && item.fatiga !== undefined ? `${item.fatiga}/5` : '-'}</td>
+                          <td className="py-3 px-3">{hasRespost && item.son_qualitat !== undefined ? `${item.son_qualitat}/5` : '-'}</td>
+                          <td className="py-3 px-3">{hasRespost && item.dolor_muscular !== undefined ? `${item.dolor_muscular}/5` : '-'}</td>
+                          <td className="py-3 px-3 font-semibold">{hasRespost && item.rpe_setmanal !== undefined ? `${item.rpe_setmanal} / 10` : '-'}</td>
                           <td className="py-3 px-3 text-text-muted">
-                            {item.zones_dolor && item.zones_dolor.length > 0 ? (
+                            {hasRespost && item.zones_dolor && item.zones_dolor.length > 0 ? (
                               <span className="text-rose-600 font-semibold">{item.zones_dolor.join(', ')}</span>
                             ) : (
-                              'Cap'
+                              hasRespost ? 'Cap' : '-'
                             )}
                           </td>
-                          <td className="py-3 px-3 text-right text-text-muted text-xs">
-                            {item.submitted_at ? new Date(item.submitted_at).toLocaleDateString('ca-ES') : 'Pendent'}
+                          <td className="py-3 px-3 text-text-muted text-xs whitespace-nowrap">
+                            {item.submitted_at ? new Date(item.submitted_at).toLocaleDateString('ca-ES') : (hasRespost ? 'Completat' : 'Pendent')}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedAthleteDetail(item)
+                                setIsDetailModalOpen(true)
+                              }}
+                              className="text-xs font-bold text-brand-600 hover:text-brand-700 bg-white border border-brand-200 hover:border-brand-300 px-2.5 py-1 rounded-lg shadow-2xs inline-flex items-center gap-1 transition-all"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Detall</span>
+                            </button>
                           </td>
                         </tr>
                       )
@@ -646,6 +677,18 @@ export const WellnessPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Wellness Detail Modal for Coach */}
+      <WellnessDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false)
+          setSelectedAthleteDetail(null)
+        }}
+        atletaNom={selectedAthleteDetail ? (selectedAthleteDetail.atleta_nom || `${selectedAthleteDetail.nom || ''} ${selectedAthleteDetail.cognoms || ''}`.trim() || 'Atleta') : ''}
+        weekStart={currentWeekStart}
+        wellness={selectedAthleteDetail}
+      />
     </div>
   )
 }

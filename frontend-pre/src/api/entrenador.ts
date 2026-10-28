@@ -6,6 +6,21 @@ export interface ManagedWeekWithCount extends Week {
   athletes_count?: number
 }
 
+export interface AthleteWellnessDetail {
+  score?: number
+  alerta?: 'verd' | 'groc' | 'vermell' | 'pendent'
+  ha_respost?: boolean
+  fatiga?: number
+  son_qualitat?: number
+  dolor_muscular?: number
+  estres?: number
+  humor?: number
+  rpe_setmanal?: number
+  zones_dolor?: string[]
+  notes?: string
+  submitted_at?: string
+}
+
 export interface AtletaSubmissionSummary {
   atleta_id: string
   submission_id?: string
@@ -21,13 +36,32 @@ export interface AtletaSubmissionSummary {
   reminders_auto?: number
   reminders_manual?: number
   slots: SlotEntry[]
-  wellness?: {
-    score?: number
-    alerta?: 'verd' | 'groc' | 'vermell' | 'pendent'
-    zones_dolor?: string[]
-    rpe_setmanal?: number
-    notes?: string
-  }
+  wellness?: AthleteWellnessDetail
+}
+
+export interface AthleteWellnessSummary {
+  atleta_id: string
+  nom: string
+  cognoms: string
+  atleta_nom?: string
+  submission_id?: string
+  ha_respost: boolean
+  fatiga?: number
+  son_qualitat?: number
+  dolor_muscular?: number
+  estres?: number
+  humor?: number
+  rpe_setmanal?: number
+  zones_dolor?: string[]
+  notes?: string
+  score?: number
+  alerta: 'verd' | 'groc' | 'vermell' | 'pendent'
+  submitted_at?: string
+}
+
+export interface EntrenadorWellnessOverviewResponse {
+  week_start: string
+  atletes: AthleteWellnessSummary[]
 }
 
 export interface EntrenadorSubmissionsResponse {
@@ -67,8 +101,8 @@ export async function updateWeek(id: string, estat: string): Promise<Week> {
   return res.data
 }
 
-export async function getEntrenadorWellnessOverview(weekStart: string): Promise<{ week_start: string; atletes: any[] }> {
-  const res = await api.get<{ week_start: string; atletes: any[] }>(`/entrenador/wellness/overview?week_start=${weekStart}`)
+export async function getEntrenadorWellnessOverview(weekStart: string): Promise<EntrenadorWellnessOverviewResponse> {
+  const res = await api.get<EntrenadorWellnessOverviewResponse>(`/entrenador/wellness/overview?week_start=${weekStart}`)
   return res.data
 }
 
