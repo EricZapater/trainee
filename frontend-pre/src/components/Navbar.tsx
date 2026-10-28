@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
-  const { user, isAuthenticated, isEntrenador, isAdmin, logout } = useAuth()
+  const { user, isAuthenticated, isEntrenador, isAtleta, isAdmin, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
@@ -45,72 +45,17 @@ export const Navbar: React.FC = () => {
 
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
-          {isEntrenador ? (
-            <>
-              <Link 
-                to="/dashboard" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                  isActive('/dashboard') || isActive('/') 
-                    ? 'bg-brand-50 text-brand-600 font-semibold' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                }`}
-              >
-                <Activity className="w-4 h-4" /> Panell
-              </Link>
-              <Link 
-                to="/wellness" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                  isActive('/wellness') 
-                    ? 'bg-brand-50 text-brand-600 font-semibold' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                }`}
-              >
-                <HeartPulse className="w-4 h-4 text-emerald-500" /> Wellness & RPE
-              </Link>
-              <Link 
-                to="/team-races" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                  isActive('/team-races') 
-                    ? 'bg-brand-50 text-brand-600 font-semibold' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                }`}
-              >
-                <Trophy className="w-4 h-4 text-amber-500" /> Curses d'Equip
-              </Link>
-              {isAdmin && (
-                <Link 
-                  to="/admin" 
-                  className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                    isActive('/admin') 
-                      ? 'bg-purple-100 text-purple-700 font-semibold' 
-                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4 text-purple-600" /> Admin
-                </Link>
-              )}
-            </>
-          ) : (
+          {isAtleta && (
             <>
               <Link 
                 to="/calendar" 
                 className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                  isActive('/calendar') || isActive('/') 
+                  isActive('/calendar') 
                     ? 'bg-brand-50 text-brand-600 font-semibold' 
                     : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
                 }`}
               >
-                <Calendar className="w-4 h-4" /> Calendari
-              </Link>
-              <Link 
-                to="/wellness" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                  isActive('/wellness') 
-                    ? 'bg-brand-50 text-brand-600 font-semibold' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                }`}
-              >
-                <HeartPulse className="w-4 h-4 text-emerald-500" /> El meu Wellness
+                <Calendar className="w-4 h-4 text-brand-500" /> Calendari
               </Link>
               <Link 
                 to="/competicions/atleta" 
@@ -122,17 +67,55 @@ export const Navbar: React.FC = () => {
               >
                 <Trophy className="w-4 h-4 text-rose-500" /> Les meves Curses
               </Link>
-              <Link 
-                to="/team-races" 
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
-                  isActive('/team-races') 
-                    ? 'bg-brand-50 text-brand-600 font-semibold' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-                }`}
-              >
-                <Users className="w-4 h-4 text-amber-500" /> Curses del Club
-              </Link>
             </>
+          )}
+
+          <Link 
+            to="/wellness" 
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              isActive('/wellness') 
+                ? 'bg-brand-50 text-brand-600 font-semibold' 
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+          >
+            <HeartPulse className="w-4 h-4 text-emerald-500" /> Wellness
+          </Link>
+
+          <Link 
+            to="/team-races" 
+            className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+              isActive('/team-races') 
+                ? 'bg-brand-50 text-brand-600 font-semibold' 
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+            }`}
+          >
+            <Users className="w-4 h-4 text-amber-500" /> Curses d'Equip
+          </Link>
+
+          {(isEntrenador || isAdmin) && (
+            <Link 
+              to="/dashboard" 
+              className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                isActive('/dashboard') || (isActive('/') && !isAtleta)
+                  ? 'bg-brand-50 text-brand-600 font-semibold' 
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              <Activity className="w-4 h-4 text-blue-500" /> Panell
+            </Link>
+          )}
+
+          {isAdmin && (
+            <Link 
+              to="/admin" 
+              className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                isActive('/admin') 
+                  ? 'bg-purple-100 text-purple-700 font-semibold' 
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-purple-600" /> Admin
+            </Link>
           )}
         </nav>
 
@@ -167,7 +150,7 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="md:hidden glass-card mt-2 p-4 flex flex-col gap-2">
+        <div className="md:hidden glass-card mt-2 p-4 flex flex-col gap-2 animate-fade-in">
           <div className="pb-3 mb-2 border-b border-border flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 font-bold text-sm flex items-center justify-center">
               {user?.nom?.charAt(0)}
@@ -178,13 +161,25 @@ export const Navbar: React.FC = () => {
             </div>
           </div>
 
-          <Link
-            to={isEntrenador ? "/dashboard" : "/calendar"}
-            onClick={() => setMobileOpen(false)}
-            className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
-          >
-            <Activity className="w-4 h-4 text-brand-500" /> {isEntrenador ? "Panell d'Entrenador" : "El meu Calendari"}
-          </Link>
+          {isAtleta && (
+            <>
+              <Link
+                to="/calendar"
+                onClick={() => setMobileOpen(false)}
+                className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4 text-brand-500" /> El meu Calendari
+              </Link>
+              <Link
+                to="/competicions/atleta"
+                onClick={() => setMobileOpen(false)}
+                className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+              >
+                <Trophy className="w-4 h-4 text-rose-500" /> Les meves Curses
+              </Link>
+            </>
+          )}
+
           <Link
             to="/wellness"
             onClick={() => setMobileOpen(false)}
@@ -192,15 +187,7 @@ export const Navbar: React.FC = () => {
           >
             <HeartPulse className="w-4 h-4 text-emerald-500" /> Mòdul Wellness & RPE
           </Link>
-          {!isEntrenador && (
-            <Link
-              to="/competicions/atleta"
-              onClick={() => setMobileOpen(false)}
-              className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
-            >
-              <Trophy className="w-4 h-4 text-rose-500" /> Les meves Curses
-            </Link>
-          )}
+
           <Link
             to="/team-races"
             onClick={() => setMobileOpen(false)}
@@ -208,6 +195,17 @@ export const Navbar: React.FC = () => {
           >
             <Users className="w-4 h-4 text-amber-500" /> Curses d'Equip (Team Hub)
           </Link>
+
+          {(isEntrenador || isAdmin) && (
+            <Link
+              to="/dashboard"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2 rounded-lg text-sm font-medium hover:bg-bg-hover flex items-center gap-2"
+            >
+              <Activity className="w-4 h-4 text-blue-500" /> Panell d'Entrenador
+            </Link>
+          )}
+
           {isAdmin && (
             <Link
               to="/admin"
