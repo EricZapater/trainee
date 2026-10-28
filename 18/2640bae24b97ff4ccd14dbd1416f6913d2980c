@@ -1,0 +1,32 @@
+frontend-pre/.gitignore
+  h_42175f19913982 14
+frontend-pre/src/App.tsx
+  h_42175f19913982 16-18,166-190
+frontend-pre/src/api/calendar.ts
+  h_42175f19913982 2,37-42
+frontend-pre/src/api/entrenador.ts
+  h_42175f19913982 2,92-124
+frontend-pre/src/api/tests.ts
+  h_42175f19913982 1-30
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 16-19,52,57,67,73,80,91,104,114,122-141,144,150,154,165-175,179,191,213,221,283-296,314-321
+frontend-pre/src/pages/AthletesManagerPage.tsx
+  h_42175f19913982 1-713
+frontend-pre/src/pages/InformePage.tsx
+  h_42175f19913982 1-483
+frontend-pre/src/pages/TestsManagerPage.tsx
+  h_42175f19913982 1-612
+frontend-pre/src/types/index.ts
+  h_42175f19913982 132-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "182640bae24b97ff4ccd14dbd1416f6913d2980c",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
