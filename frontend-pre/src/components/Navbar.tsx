@@ -10,11 +10,12 @@ import {
   Menu, 
   X,
   Sparkles,
-  Users
+  Users,
+  ShieldCheck
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
-  const { user, isAuthenticated, isEntrenador, logout } = useAuth()
+  const { user, isAuthenticated, isEntrenador, isAdmin, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
@@ -76,6 +77,18 @@ export const Navbar: React.FC = () => {
               >
                 <Trophy className="w-4 h-4 text-amber-500" /> Curses d'Equip
               </Link>
+              {isAdmin && (
+                <Link 
+                  to="/admin" 
+                  className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                    isActive('/admin') 
+                      ? 'bg-purple-100 text-purple-700 font-semibold' 
+                      : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4 text-purple-600" /> Admin
+                </Link>
+              )}
             </>
           ) : (
             <>
@@ -195,6 +208,15 @@ export const Navbar: React.FC = () => {
           >
             <Users className="w-4 h-4 text-amber-500" /> Curses d'Equip (Team Hub)
           </Link>
+          {isAdmin && (
+            <Link
+              to="/admin"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2 rounded-lg text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 flex items-center gap-2 border border-purple-200"
+            >
+              <ShieldCheck className="w-4 h-4 text-purple-600" /> Panell d'Admin (Impersonar)
+            </Link>
+          )}
 
           <button
             onClick={handleLogout}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Navbar } from './components/Navbar'
 import { LoginPage } from './pages/LoginPage'
@@ -8,6 +8,8 @@ import { CalendarPage } from './pages/CalendarPage'
 import { AthleteCompetitionsPage } from './pages/AthleteCompetitionsPage'
 import { WellnessPage } from './pages/WellnessPage'
 import { TeamRacesPage } from './pages/TeamRacesPage'
+import { AdminDashboardPage } from './pages/AdminDashboardPage'
+import { AlertTriangle, Undo2 } from 'lucide-react'
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth()
@@ -27,9 +29,39 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>
 }
 
+const ImpersonationBanner: React.FC = () => {
+  const { user, isAdminImpersonating, restoreAdminSession } = useAuth()
+  const navigate = useNavigate()
+
+  if (!isAdminImpersonating) return null
+
+  const handleRestore = () => {
+    restoreAdminSession()
+    navigate('/admin')
+  }
+
+  return (
+    <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 text-white px-4 py-2.5 text-xs sm:text-sm font-semibold flex items-center justify-between sticky top-0 z-[60] shadow-md border-b border-white/20 animate-fade-in">
+      <div className="flex items-center gap-2 max-w-xl truncate">
+        <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0" />
+        <span className="truncate">
+          Estàs visualitzant el sistema com a <strong className="text-white underline">{user?.nom} {user?.cognoms}</strong> ({user?.rol}).
+        </span>
+      </div>
+      <button 
+        onClick={handleRestore}
+        className="bg-white text-purple-900 hover:bg-purple-50 px-3 py-1 rounded-lg text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-colors shrink-0 ml-2"
+      >
+        <Undo2 className="w-3.5 h-3.5" /> Tornar a l'Admin
+      </button>
+    </div>
+  )
+}
+
 const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-bg-base text-text-primary flex flex-col">
+      <ImpersonationBanner />
       <Navbar />
       <main className="flex-1 max-w-7xl mx-auto px-4 py-4 sm:py-6 w-full">
         <Routes>
@@ -79,6 +111,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <TeamRacesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminDashboardPage />
               </ProtectedRoute>
             }
           />
