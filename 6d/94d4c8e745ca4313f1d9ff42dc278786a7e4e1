@@ -1,0 +1,28 @@
+frontend-pre/src/App.tsx
+  h_42175f19913982 12-15,66-67,77-84,95,107-130
+frontend-pre/src/api/entrenador.ts
+  h_42175f19913982 1-91
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 14-16,98-139,234-263
+frontend-pre/src/pages/CoachCompetitionsPage.tsx
+  h_42175f19913982 1-289
+frontend-pre/src/pages/CoachSubmissionsMatrixPage.tsx
+  h_42175f19913982 1-758
+frontend-pre/src/pages/TeamPlanningPage.tsx
+  h_42175f19913982 1-321
+frontend-pre/src/pages/WeeksManagerPage.tsx
+  h_42175f19913982 1-270
+frontend-pre/tsconfig.tsbuildinfo
+  h_42175f19913982 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6d94d4c8e745ca4313f1d9ff42dc278786a7e4e1",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
