@@ -1,0 +1,26 @@
+frontend-pre/src/App.tsx
+  h_42175f19913982 19-20,193-208
+frontend-pre/src/api/anuncis.ts
+  h_42175f19913982 1-62
+frontend-pre/src/api/feedback.ts
+  h_42175f19913982 1-44
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 19-21,178-199,346-361
+frontend-pre/src/pages/AnuncisPage.tsx
+  h_42175f19913982 1-763
+frontend-pre/src/pages/FeedbackTicketsPage.tsx
+  h_42175f19913982 1-604
+frontend-pre/src/pages/TeamRacesPage.tsx
+  h_42175f19913982 1,16-22,27-29,31-35,38,44,46-62,65,88,107-122,125-126,130-146,160,169,173-194,197-251,256-270,272,277-279,282-315,319-342,344-354,356-366,369-389,392,396,399-406,408,410-417,419-444,446-462,465-467,469,471-473,475-477,488,502,519,524,529,541-542,547,565-566,571,581-716,718-719
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fe3b416034ba22462df1a54eee6ba6364635e7eb",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
