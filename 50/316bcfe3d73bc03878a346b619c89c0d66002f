@@ -1,0 +1,14 @@
+frontend-pre/src/pages/TeamPlanningPage.tsx
+  h_42175f19913982 6,23-25,72,702-742,752,755-768,770-807,810-858,861-912,914-927,929-954
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "50316bcfe3d73bc03878a346b619c89c0d66002f",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
