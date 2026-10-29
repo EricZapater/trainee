@@ -54,6 +54,12 @@ services:
       - .env.backend.pre
     environment:
       - TZ=Europe/Madrid
+      - ENV=pre
+      - DISABLE_MAIL=true
+      - MAILING_ENABLED=false
+      - SMTP_HOST=
+      - SMTP_USER=
+      - BREVO_API_KEY=
     volumes:
       - backend_uploads_pre:/app/uploads
     networks:

@@ -85,6 +85,10 @@ func main() {
 		s.SetBrevo(b)
 	}
 
+	if cfg.DisableMail {
+		log.Println("🔒 [SEGURETAT] Mailing DESACTIVAT per entorn PRE/DISABLE_MAIL. Cap email serà enviat a usuaris reals.")
+	}
+
 	// Inicialitzar JobManager (substitueix cron antic)
 	mailService := mailer.NewMailer(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass)
 	jm := jobs.NewJobManager(s, mailService, cfg.JWTSecret)

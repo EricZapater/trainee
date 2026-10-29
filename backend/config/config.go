@@ -11,6 +11,7 @@ type Config struct {
 	JWTSecret   string
 	Port        string
 	Env         string
+	DisableMail bool
 	SMTPHost    string
 	SMTPPort    string
 	SMTPUser    string
@@ -28,16 +29,35 @@ func Load() *Config {
 		dbUrl = getEnv("DB_URL", "postgres://user:password@localhost:5432/atletisme?sslmode=disable")
 	}
 
+	envMode := getEnv("ENV", "development")
+	disableMail := getEnv("DISABLE_MAIL", "false") == "true" || 
+		envMode == "pre" || 
+		envMode == "staging" || 
+		getEnv("MAILING_ENABLED", "true") == "false"
+
+	smtpHost := getEnv("SMTP_HOST", "")
+	smtpPort := getEnv("SMTP_PORT", "587")
+	smtpUser := getEnv("SMTP_USER", "")
+	smtpPass := getEnv("SMTP_PASS", "")
+	brevoKey := getEnv("BREVO_API_KEY", "")
+
+	if disableMail {
+		smtpHost = ""
+		smtpUser = ""
+		brevoKey = ""
+	}
+
 	return &Config{
 		DBURL:       dbUrl,
 		JWTSecret:   getEnv("JWT_SECRET", "canvia_aquest_secret_en_produccio"),
 		Port:        getEnv("PORT", "8080"),
-		Env:         getEnv("ENV", "development"),
-		SMTPHost:    getEnv("SMTP_HOST", ""),
-		SMTPPort:    getEnv("SMTP_PORT", "587"),
-		SMTPUser:    getEnv("SMTP_USER", ""),
-		SMTPPass:    getEnv("SMTP_PASS", ""),
-		BrevoAPIKey: getEnv("BREVO_API_KEY", ""),
+		Env:         envMode,
+		DisableMail: disableMail,
+		SMTPHost:    smtpHost,
+		SMTPPort:    smtpPort,
+		SMTPUser:    smtpUser,
+		SMTPPass:    smtpPass,
+		BrevoAPIKey: brevoKey,
 		FrontendURL: getEnv("FRONTEND_URL", "https://trainee.entrenadortrail.es"),
 	}
 }
