@@ -64,13 +64,14 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
     setLoading(true)
     try {
       const allWeeks = await getEntrenadorWeeks()
-      const openWeeks = allWeeks.filter(w => w.estat === 'oberta').sort((a, b) => a.week_start.localeCompare(b.week_start))
-      setWeeks(openWeeks.length > 0 ? openWeeks : allWeeks)
+      const openWeeks = allWeeks.filter(w => w.estat === 'oberta').sort((a, b) => b.week_start.localeCompare(a.week_start))
+      const sortedAllWeeks = [...allWeeks].sort((a, b) => b.week_start.localeCompare(a.week_start))
+      setWeeks(openWeeks.length > 0 ? openWeeks : sortedAllWeeks)
       
       if (openWeeks.length > 0) {
         setSelectedWeek(openWeeks[0].week_start)
-      } else if (allWeeks.length > 0) {
-        setSelectedWeek(allWeeks[0].week_start)
+      } else if (sortedAllWeeks.length > 0) {
+        setSelectedWeek(sortedAllWeeks[0].week_start)
       }
     } catch (err) {
       console.error('Error carregant setmanes:', err)
@@ -85,7 +86,10 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
     try {
       const [submissionsRes, wellnessRes] = await Promise.all([
         getEntrenadorSubmissions(weekStart),
-        getEntrenadorWellnessOverview(weekStart).catch(() => ({ week_start: weekStart, atletes: [] }))
+        getEntrenadorWellnessOverview(weekStart).catch((err) => {
+          console.error('Error carregant overview wellness:', err)
+          return { week_start: weekStart, atletes: [] }
+        })
       ])
 
       const wellnessMap: { [atletaId: string]: any } = {}

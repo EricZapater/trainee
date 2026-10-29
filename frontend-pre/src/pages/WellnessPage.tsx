@@ -82,9 +82,10 @@ export const WellnessPage: React.FC = () => {
     setIsLoading(true)
     try {
       const openWeeks = await getOpenWeeks()
-      setWeeks(openWeeks)
-      if (openWeeks.length > 0) {
-        const defaultWeek = openWeeks.find(w => w.estat === 'oberta') || openWeeks[0]
+      const sortedWeeks = [...openWeeks].sort((a, b) => b.week_start.localeCompare(a.week_start))
+      setWeeks(sortedWeeks)
+      if (sortedWeeks.length > 0) {
+        const defaultWeek = sortedWeeks.find(w => w.estat === 'oberta') || sortedWeeks[0]
         setCurrentWeekStart(defaultWeek.week_start)
       } else {
         const d = new Date()

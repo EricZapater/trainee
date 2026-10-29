@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -92,49 +95,70 @@ func (s *PostgresStore) GetWellnessByAtletaAndWeek(ctx context.Context, atletaID
 }
 
 func (s *PostgresStore) GetEntrenadorWellnessOverview(ctx context.Context, entrenadorID, weekStart string) (*models.EntrenadorWellnessOverviewResponse, error) {
-	atletes, err := s.ListAtletesByEntrenadorID(ctx, entrenadorID)
-	if err != nil {
-		return nil, err
-	}
-
 	resp := &models.EntrenadorWellnessOverviewResponse{
 		WeekStart: weekStart,
-		Atletes:   make([]models.AthleteWellnessSummary, 0, len(atletes)),
+		Atletes:   []models.AthleteWellnessSummary{},
 	}
 
-	for _, a := range atletes {
-		nomComplet := a.Nom
-		if a.Cognoms != "" {
-			nomComplet = a.Nom + " " + a.Cognoms
+	query := `
+		SELECT 
+			a.id, 
+			u.nom, 
+			COALESCE(u.cognoms, ''),
+			ws.id,
+			ws.wellness_fatiga,
+			ws.wellness_son_qualitat,
+			ws.wellness_dolor_muscular,
+			ws.wellness_estres,
+			ws.wellness_humor,
+			ws.wellness_rpe_setmanal,
+			COALESCE(ws.wellness_zones_dolor, '[]'::jsonb),
+			COALESCE(ws.wellness_notes, ''),
+			ws.wellness_score,
+			ws.wellness_submitted_at
+		FROM atletes a
+		JOIN usuaris u ON u.id = a.usuari_id
+		LEFT JOIN weekly_submissions ws ON ws.atleta_id = a.id AND ws.week_start = $2::date
+		WHERE a.entrenador_id = $1
+		ORDER BY u.nom, u.cognoms
+	`
+
+	rows, err := s.pool.Query(ctx, query, entrenadorID, weekStart)
+	if err != nil {
+		return nil, fmt.Errorf("error consultant wellness equip: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var aID, nom, cognoms string
+		var subID *string
+		var f, sq, dm, e, h, rpe, score *int
+		var zonesJSON []byte
+		var notes string
+		var submittedAt *time.Time
+
+		if err := rows.Scan(
+			&aID, &nom, &cognoms,
+			&subID, &f, &sq, &dm, &e, &h, &rpe,
+			&zonesJSON, &notes, &score, &submittedAt,
+		); err != nil {
+			log.Printf("[WELLNESS] Error escanejant fila atleta %s: %v", aID, err)
+			continue
 		}
 
+		nomComplet := strings.TrimSpace(nom + " " + cognoms)
+
 		summary := models.AthleteWellnessSummary{
-			AtletaID:  a.ID,
-			Nom:       a.Nom,
-			Cognoms:   a.Cognoms,
+			AtletaID:  aID,
+			Nom:       nom,
+			Cognoms:   cognoms,
 			AtletaNom: nomComplet,
 			HaRespost: false,
 			Alerta:    "pendent",
 		}
 
-		query := `
-			SELECT id, wellness_fatiga, wellness_son_qualitat, wellness_dolor_muscular,
-			       wellness_estres, wellness_humor, wellness_rpe_setmanal,
-			       wellness_zones_dolor, wellness_notes, wellness_score, wellness_submitted_at
-			FROM weekly_submissions
-			WHERE atleta_id = $1 AND week_start = $2::date
-		`
-		var subID string
-		var f, sq, dm, e, h, rpe, score *int
-		var zonesJSON []byte
-		var notes *string
-		var submittedAt *time.Time
-
-		err := s.pool.QueryRow(ctx, query, a.ID, weekStart).Scan(
-			&subID, &f, &sq, &dm, &e, &h, &rpe, &zonesJSON, &notes, &score, &submittedAt,
-		)
-		if err == nil && f != nil {
-			summary.SubmissionID = &subID
+		if f != nil {
+			summary.SubmissionID = subID
 			summary.HaRespost = true
 			summary.Fatiga = f
 			summary.SonQualitat = sq
@@ -142,7 +166,9 @@ func (s *PostgresStore) GetEntrenadorWellnessOverview(ctx context.Context, entre
 			summary.Estres = e
 			summary.Humor = h
 			summary.RPESetmanal = rpe
-			summary.Notes = notes
+			if notes != "" {
+				summary.Notes = &notes
+			}
 			summary.Score = score
 			summary.SubmittedAt = submittedAt
 
@@ -173,5 +199,5 @@ func (s *PostgresStore) GetEntrenadorWellnessOverview(ctx context.Context, entre
 		resp.Atletes = append(resp.Atletes, summary)
 	}
 
-	return resp, nil
+	return resp, rows.Err()
 }
