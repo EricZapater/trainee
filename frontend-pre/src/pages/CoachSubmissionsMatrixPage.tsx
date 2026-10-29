@@ -13,7 +13,11 @@ import {
   Send,
   ExternalLink,
   X,
-  Eye
+  Eye,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  SlidersHorizontal
 } from 'lucide-react'
 import { WellnessDetailModal } from '../components/WellnessDetailModal'
 import { 
@@ -36,6 +40,8 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'tots' | 'unplanned' | 'planned' | 'absent'>('tots')
+  const [sortField, setSortField] = useState<'nom' | 'estat' | 'wellness' | 'gestionat'>('nom')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   
   // Selected athlete for drawer/modal
@@ -44,6 +50,15 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
   // Wellness Detail Modal state
   const [wellnessModalAthlete, setWellnessModalAthlete] = useState<AtletaSubmissionSummary | null>(null)
   const [isWellnessModalOpen, setIsWellnessModalOpen] = useState(false)
+
+  const handleSort = (field: 'nom' | 'estat' | 'wellness' | 'gestionat') => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection(field === 'wellness' ? 'desc' : 'asc')
+    }
+  }
 
   useEffect(() => {
     loadWeeks()
@@ -194,6 +209,49 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
     return true
   })
 
+  // Sorting
+  const sortedAndFilteredAtletes = [...filteredAtletes].sort((a, b) => {
+    let comparison = 0
+
+    if (sortField === 'estat') {
+      const getEstatRank = (ath: AtletaSubmissionSummary) => {
+        if (!ath.ha_respost && !ath.absent) return 1 // Pendent
+        if (ath.ha_respost && ath.estat === 'esborrany') return 2 // Esborrany
+        if (ath.ha_respost && ath.estat === 'completada') return 3 // Enviat
+        return 4 // Absent
+      }
+      comparison = getEstatRank(a) - getEstatRank(b)
+    } else if (sortField === 'wellness') {
+      const getWellnessRank = (ath: AtletaSubmissionSummary) => {
+        if (!ath.wellness?.ha_respost) return 1 // Pendent
+        if (ath.wellness.alerta === 'verd') return 2 // Òptim
+        if (ath.wellness.alerta === 'groc') return 3 // Alerta
+        if (ath.wellness.alerta === 'vermell') return 4 // Risc Alt
+        return 1
+      }
+      comparison = getWellnessRank(a) - getWellnessRank(b)
+      if (comparison === 0 && a.wellness?.score && b.wellness?.score) {
+        comparison = a.wellness.score - b.wellness.score
+      }
+    } else if (sortField === 'gestionat') {
+      const aVal = a.gestionat ? 1 : 0
+      const bVal = b.gestionat ? 1 : 0
+      comparison = aVal - bVal
+    } else {
+      const aNom = `${a.nom} ${a.cognoms || ''}`.trim().toLowerCase()
+      const bNom = `${b.nom} ${b.cognoms || ''}`.trim().toLowerCase()
+      comparison = aNom.localeCompare(bNom)
+    }
+
+    if (comparison === 0) {
+      const aNom = `${a.nom} ${a.cognoms || ''}`.trim().toLowerCase()
+      const bNom = `${b.nom} ${b.cognoms || ''}`.trim().toLowerCase()
+      return aNom.localeCompare(bNom)
+    }
+
+    return sortDirection === 'asc' ? comparison : -comparison
+  })
+
   const formatDate = (dateStr: string, offsetDays: number = 0) => {
     if (!dateStr) return ''
     const d = new Date(dateStr + 'T00:00:00')
@@ -308,51 +366,135 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="glass-card p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-text-muted absolute left-3 top-3" />
-          <input
-            type="text"
-            placeholder="Cerca atleta per nom..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 rounded-xl bg-white/80 border border-border-light focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-          />
+      <div className="glass-card p-3 sm:p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-text-muted absolute left-3 top-3" />
+            <input
+              type="text"
+              placeholder="Cerca atleta per nom..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full text-xs sm:text-sm pl-9 pr-3 py-2 rounded-xl bg-white/80 border border-border-light focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+            <button
+              onClick={() => setStatusFilter('tots')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
+                statusFilter === 'tots' ? 'bg-brand-500 text-white shadow-sm' : 'bg-white/60 text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Tots ({atletes.length})
+            </button>
+            <button
+              onClick={() => setStatusFilter('unplanned')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
+                statusFilter === 'unplanned' ? 'bg-amber-500 text-white shadow-sm' : 'bg-white/60 text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Per Planificar ({atletesPendentsPlanificar})
+            </button>
+            <button
+              onClick={() => setStatusFilter('planned')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
+                statusFilter === 'planned' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white/60 text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Gestionats ({atletesGestionats})
+            </button>
+            <button
+              onClick={() => setStatusFilter('absent')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
+                statusFilter === 'absent' ? 'bg-slate-700 text-white shadow-sm' : 'bg-white/60 text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Absents ({atletes.filter(a => a.absent).length})
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          <button
-            onClick={() => setStatusFilter('tots')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
-              statusFilter === 'tots' ? 'bg-brand-500 text-white shadow-sm' : 'bg-white/60 text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Tots ({atletes.length})
-          </button>
-          <button
-            onClick={() => setStatusFilter('unplanned')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
-              statusFilter === 'unplanned' ? 'bg-amber-500 text-white shadow-sm' : 'bg-white/60 text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Per Planificar ({atletesPendentsPlanificar})
-          </button>
-          <button
-            onClick={() => setStatusFilter('planned')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
-              statusFilter === 'planned' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white/60 text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Gestionats ({atletesGestionats})
-          </button>
-          <button
-            onClick={() => setStatusFilter('absent')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
-              statusFilter === 'absent' ? 'bg-slate-700 text-white shadow-sm' : 'bg-white/60 text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            Absents ({atletes.filter(a => a.absent).length})
-          </button>
+        {/* Sort Controls Bar */}
+        <div className="pt-2 border-t border-border-light flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-bold text-text-muted flex items-center gap-1 mr-1">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-brand-500" /> Ordenar per:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleSort('nom')}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors ${
+                sortField === 'nom'
+                  ? 'bg-brand-50 text-brand-600 border border-brand-200 shadow-2xs'
+                  : 'bg-white/50 text-text-secondary hover:text-text-primary border border-transparent'
+              }`}
+            >
+              <span>Nom</span>
+              {sortField === 'nom' ? (
+                sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-500" /> : <ArrowDown className="w-3 h-3 text-brand-500" />
+              ) : (
+                <ArrowUpDown className="w-3 h-3 opacity-40" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSort('estat')}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors ${
+                sortField === 'estat'
+                  ? 'bg-brand-50 text-brand-600 border border-brand-200 shadow-2xs'
+                  : 'bg-white/50 text-text-secondary hover:text-text-primary border border-transparent'
+              }`}
+            >
+              <span>Estat</span>
+              {sortField === 'estat' ? (
+                sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-500" /> : <ArrowDown className="w-3 h-3 text-brand-500" />
+              ) : (
+                <ArrowUpDown className="w-3 h-3 opacity-40" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSort('wellness')}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors ${
+                sortField === 'wellness'
+                  ? 'bg-brand-50 text-brand-600 border border-brand-200 shadow-2xs'
+                  : 'bg-white/50 text-text-secondary hover:text-text-primary border border-transparent'
+              }`}
+            >
+              <HeartPulse className="w-3 h-3 text-emerald-500" />
+              <span>Wellness</span>
+              {sortField === 'wellness' ? (
+                sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-500" /> : <ArrowDown className="w-3 h-3 text-brand-500" />
+              ) : (
+                <ArrowUpDown className="w-3 h-3 opacity-40" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSort('gestionat')}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-colors ${
+                sortField === 'gestionat'
+                  ? 'bg-brand-50 text-brand-600 border border-brand-200 shadow-2xs'
+                  : 'bg-white/50 text-text-secondary hover:text-text-primary border border-transparent'
+              }`}
+            >
+              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+              <span>Gestionat</span>
+              {sortField === 'gestionat' ? (
+                sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 text-brand-500" /> : <ArrowDown className="w-3 h-3 text-brand-500" />
+              ) : (
+                <ArrowUpDown className="w-3 h-3 opacity-40" />
+              )}
+            </button>
+          </div>
+
+          <div className="text-[11px] text-text-muted">
+            Mostrant {sortedAndFilteredAtletes.length} de {atletes.length} atletes
+          </div>
         </div>
       </div>
 
@@ -362,7 +504,7 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
           <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-text-muted text-sm font-medium">Carregant matriu de disponibilitat...</p>
         </div>
-      ) : filteredAtletes.length === 0 ? (
+      ) : sortedAndFilteredAtletes.length === 0 ? (
         <div className="glass-card p-12 text-center text-text-muted">
           <Users className="w-10 h-10 mx-auto text-slate-300 mb-2" />
           <p className="font-semibold text-sm">Cap atleta coincideix amb els criteris de cerca.</p>
@@ -376,21 +518,73 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-border-light text-text-muted font-bold uppercase text-[11px] bg-bg-surface/50">
-                  <th className="py-3 px-3 w-48">Atleta</th>
-                  <th className="py-3 px-2 text-center w-20">Estat</th>
-                  <th className="py-3 px-2 text-center w-24">Wellness</th>
+                  <th 
+                    onClick={() => handleSort('nom')}
+                    className="py-3 px-3 w-48 cursor-pointer hover:text-text-primary transition-colors select-none"
+                    title="Clica per ordenar per nom"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Atleta</span>
+                      {sortField === 'nom' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-brand-500" /> : <ArrowDown className="w-3.5 h-3.5 text-brand-500" />
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('estat')}
+                    className="py-3 px-2 text-center w-24 cursor-pointer hover:text-text-primary transition-colors select-none"
+                    title="Clica per ordenar per estat"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Estat</span>
+                      {sortField === 'estat' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-brand-500" /> : <ArrowDown className="w-3.5 h-3.5 text-brand-500" />
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                      )}
+                    </div>
+                  </th>
+                  <th 
+                    onClick={() => handleSort('wellness')}
+                    className="py-3 px-2 text-center w-28 cursor-pointer hover:text-text-primary transition-colors select-none"
+                    title="Clica per ordenar per semàfor de wellness"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Wellness</span>
+                      {sortField === 'wellness' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-brand-500" /> : <ArrowDown className="w-3.5 h-3.5 text-brand-500" />
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                      )}
+                    </div>
+                  </th>
                   {DIES_CURTS.map((diaNom, idx) => (
                     <th key={diaNom} className="py-3 px-1 text-center w-28">
                       <div>{diaNom}</div>
                       <div className="text-[10px] text-text-muted font-normal">{formatDate(selectedWeek, idx)}</div>
                     </th>
                   ))}
-                  <th className="py-3 px-3 text-center w-24">Gestionat</th>
+                  <th 
+                    onClick={() => handleSort('gestionat')}
+                    className="py-3 px-3 text-center w-28 cursor-pointer hover:text-text-primary transition-colors select-none"
+                    title="Clica per ordenar per estat de gestió"
+                  >
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Gestionat</span>
+                      {sortField === 'gestionat' ? (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-brand-500" /> : <ArrowDown className="w-3.5 h-3.5 text-brand-500" />
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40 hover:opacity-100" />
+                      )}
+                    </div>
+                  </th>
                   <th className="py-3 px-2 text-right w-16">Acció</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-light">
-                {filteredAtletes.map(ath => {
+                {sortedAndFilteredAtletes.map(ath => {
                   const totalHores = getTotalHours(ath.slots)
                   const isGestionat = ath.gestionat
 
@@ -557,7 +751,7 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
           {/* MOBILE RESPONSIVE CARDS VIEW (< 1024px)                      */}
           {/* ============================================================ */}
           <div className="block lg:hidden space-y-3">
-            {filteredAtletes.map(ath => {
+            {sortedAndFilteredAtletes.map(ath => {
               const totalHores = getTotalHours(ath.slots)
               const isGestionat = ath.gestionat
 
