@@ -71,7 +71,8 @@ export const Navbar: React.FC = () => {
   const trainingPaths = ['/calendar', '/wellness', '/informe', '/nutricio']
   const racesPaths = ['/competicions/atleta', '/team-races']
   const clubPaths = ['/anuncis', '/material', '/feedback']
-  const coachPaths = ['/dashboard', '/planning', '/atletes', '/tests', '/competicions/entrenador', '/weeks', '/nutricio', '/entrenador/forms', '/forms']
+  const planningPaths = ['/planning', '/competicions/entrenador', '/tests', '/weeks']
+  const coachPaths = ['/dashboard', '/atletes', '/nutricio', '/entrenador/forms', '/forms']
   const adminPaths = ['/admin', '/activitats', '/forms', '/settings', '/logs']
 
   return (
@@ -271,7 +272,81 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* 4. Gestió Entrenador (Only if coach or admin) */}
+          {/* 4. Planificació (Only if coach or admin) */}
+          {(isEntrenador || isAdmin) && (
+            <div className="relative">
+              <button
+                onClick={() => toggleDropdown('planning')}
+                className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+                  openDropdown === 'planning' || isAnyActive(planningPaths)
+                    ? 'bg-indigo-50 text-indigo-700 font-bold shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <Layers className="w-4 h-4 text-indigo-500" />
+                <span>Planificació</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'planning' ? 'rotate-180' : ''}`} />
+              </button>
+
+              {openDropdown === 'planning' && (
+                <div className="absolute left-0 mt-2 w-64 glass-card bg-bg-surface p-2 rounded-2xl shadow-xl border border-border flex flex-col gap-1 z-50 animate-fade-in text-xs font-medium">
+                  <Link
+                    to="/planning"
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                      isActive('/planning') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4 text-indigo-500" />
+                    <div>
+                      <p className="font-bold text-text-primary leading-tight">Planning per Setmanes</p>
+                      <p className="text-[11px] text-text-muted">Macrocicles, curses, tests i nutrició</p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/competicions/entrenador"
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                      isActive('/competicions/entrenador') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <Trophy className="w-4 h-4 text-rose-500" />
+                    <div>
+                      <p className="font-bold text-text-primary leading-tight">Curses dels Atletes</p>
+                      <p className="text-[11px] text-text-muted">Aprovació i programació</p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/tests"
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                      isActive('/tests') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <ClipboardList className="w-4 h-4 text-purple-600" />
+                    <div>
+                      <p className="font-bold text-text-primary leading-tight">Proves Físiques & Tests</p>
+                      <p className="text-[11px] text-text-muted">Traspàs i recordatoris</p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/weeks"
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                      isActive('/weeks') ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <Clock className="w-4 h-4 text-slate-500" />
+                    <div>
+                      <p className="font-bold text-text-primary leading-tight">Gestor de Setmanes</p>
+                      <p className="text-[11px] text-text-muted">Obertura i tancament</p>
+                    </div>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 5. Gestió Entrenador (Only if coach or admin) */}
           {(isEntrenador || isAdmin) && (
             <div className="relative">
               <button
@@ -291,33 +366,20 @@ export const Navbar: React.FC = () => {
                 <div className="absolute left-0 mt-2 w-64 glass-card bg-bg-surface p-2 rounded-2xl shadow-xl border border-border flex flex-col gap-1 z-50 animate-fade-in text-xs font-medium">
                   <Link
                     to="/dashboard"
-                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
                       isActive('/dashboard') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                     }`}
                   >
                     <Activity className="w-4 h-4 text-blue-500" />
                     <div>
-                      <p className="font-bold text-text-primary leading-tight">Matriu d'Atletes</p>
-                      <p className="text-[11px] text-text-muted">Disponibilitats i semàfor</p>
-                    </div>
-                  </Link>
-
-                  <Link
-                    to="/planning"
-                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
-                      isActive('/planning') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-                    }`}
-                  >
-                    <Layers className="w-4 h-4 text-indigo-500" />
-                    <div>
-                      <p className="font-bold text-text-primary leading-tight">Planning d'Equip</p>
-                      <p className="text-[11px] text-text-muted">Visió panoràmica de grup</p>
+                      <p className="font-bold text-text-primary leading-tight">Matriu de Disponibilitats</p>
+                      <p className="text-[11px] text-text-muted">Semàfor wellness i estat</p>
                     </div>
                   </Link>
 
                   <Link
                     to="/atletes"
-                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
                       isActive('/atletes') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                     }`}
                   >
@@ -329,34 +391,8 @@ export const Navbar: React.FC = () => {
                   </Link>
 
                   <Link
-                    to="/tests"
-                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
-                      isActive('/tests') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-                    }`}
-                  >
-                    <ClipboardList className="w-4 h-4 text-purple-600" />
-                    <div>
-                      <p className="font-bold text-text-primary leading-tight">Proves Físiques & Tests</p>
-                      <p className="text-[11px] text-text-muted">Traspàs i recordatoris</p>
-                    </div>
-                  </Link>
-
-                  <Link
-                    to="/competicions/entrenador"
-                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
-                      isActive('/competicions/entrenador') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-                    }`}
-                  >
-                    <Trophy className="w-4 h-4 text-rose-500" />
-                    <div>
-                      <p className="font-bold text-text-primary leading-tight">Curses dels Atletes</p>
-                      <p className="text-[11px] text-text-muted">Aprovació i programació</p>
-                    </div>
-                  </Link>
-
-                  <Link
                     to="/nutricio"
-                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
                       isActive('/nutricio') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                     }`}
                   >
@@ -368,21 +404,8 @@ export const Navbar: React.FC = () => {
                   </Link>
 
                   <Link
-                    to="/weeks"
-                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
-                      isActive('/weeks') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-                    }`}
-                  >
-                    <Clock className="w-4 h-4 text-slate-500" />
-                    <div>
-                      <p className="font-bold text-text-primary leading-tight">Gestor de Setmanes</p>
-                      <p className="text-[11px] text-text-muted">Obertura i tancament</p>
-                    </div>
-                  </Link>
-
-                  <Link
                     to="/entrenador/forms"
-                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
                       isActive('/entrenador/forms') || isActive('/forms') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                     }`}
                   >
@@ -637,7 +660,49 @@ export const Navbar: React.FC = () => {
             </Link>
           </div>
 
-          {/* Section 4: Entrenador */}
+          {/* Section 4: Planificació & Temporada (Coach/Admin) */}
+          {(isEntrenador || isAdmin) && (
+            <div className="space-y-1 pt-2 border-t border-border">
+              <p className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider px-2 mb-1.5 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                Planificació & Temporada
+              </p>
+              <Link
+                to="/planning"
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/planning') ? 'bg-indigo-50 text-indigo-700' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <Layers className="w-4 h-4 text-indigo-500" /> Planning per Setmanes
+              </Link>
+              <Link
+                to="/competicions/entrenador"
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/competicions/entrenador') ? 'bg-indigo-50 text-indigo-700' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <Trophy className="w-4 h-4 text-rose-500" /> Curses dels Atletes
+              </Link>
+              <Link
+                to="/tests"
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/tests') ? 'bg-indigo-50 text-indigo-700' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <ClipboardList className="w-4 h-4 text-purple-600" /> Proves Físiques & Tests
+              </Link>
+              <Link
+                to="/weeks"
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/weeks') ? 'bg-indigo-50 text-indigo-700' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <Clock className="w-4 h-4 text-slate-500" /> Gestor de Setmanes
+              </Link>
+            </div>
+          )}
+
+          {/* Section 5: Gestió Entrenador (Coach/Admin) */}
           {(isEntrenador || isAdmin) && (
             <div className="space-y-1 pt-2 border-t border-border">
               <p className="text-[11px] font-bold text-blue-700 uppercase tracking-wider px-2 mb-1.5 flex items-center gap-1.5">
@@ -653,14 +718,6 @@ export const Navbar: React.FC = () => {
                 <Activity className="w-4 h-4 text-blue-500" /> Matriu de Disponibilitats
               </Link>
               <Link
-                to="/planning"
-                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
-                  isActive('/planning') ? 'bg-blue-50 text-blue-700' : 'text-text-secondary hover:bg-bg-hover'
-                }`}
-              >
-                <Layers className="w-4 h-4 text-indigo-500" /> Planning d'Equip
-              </Link>
-              <Link
                 to="/atletes"
                 className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
                   isActive('/atletes') ? 'bg-blue-50 text-blue-700' : 'text-text-secondary hover:bg-bg-hover'
@@ -669,36 +726,12 @@ export const Navbar: React.FC = () => {
                 <UserCheck className="w-4 h-4 text-teal-600" /> Gestió d'Atletes
               </Link>
               <Link
-                to="/tests"
-                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
-                  isActive('/tests') ? 'bg-blue-50 text-blue-700' : 'text-text-secondary hover:bg-bg-hover'
-                }`}
-              >
-                <ClipboardList className="w-4 h-4 text-purple-600" /> Proves Físiques & Tests
-              </Link>
-              <Link
-                to="/competicions/entrenador"
-                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
-                  isActive('/competicions/entrenador') ? 'bg-blue-50 text-blue-700' : 'text-text-secondary hover:bg-bg-hover'
-                }`}
-              >
-                <Trophy className="w-4 h-4 text-rose-500" /> Curses dels Atletes
-              </Link>
-              <Link
                 to="/nutricio"
                 className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
                   isActive('/nutricio') ? 'bg-blue-50 text-blue-700' : 'text-text-secondary hover:bg-bg-hover'
                 }`}
               >
                 <Apple className="w-4 h-4 text-amber-500" /> Estratègia Nutricional
-              </Link>
-              <Link
-                to="/weeks"
-                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
-                  isActive('/weeks') ? 'bg-blue-50 text-blue-700' : 'text-text-secondary hover:bg-bg-hover'
-                }`}
-              >
-                <Clock className="w-4 h-4 text-slate-500" /> Gestor de Setmanes
               </Link>
               <Link
                 to="/entrenador/forms"
