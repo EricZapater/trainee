@@ -1,0 +1,14 @@
+frontend-pre/src/pages/CoachSubmissionsMatrixPage.tsx
+  h_42175f19913982 16-20,43-44,54-62,212-254,369-415,418-497,507,521-562,569-582,587,754
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "552d76fc6354821b335668fecbfce22600463181",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
