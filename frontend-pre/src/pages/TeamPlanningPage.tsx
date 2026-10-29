@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { 
   Layers, 
   Calendar as CalendarIcon, 
+  Trophy,
   Apple, 
   Flame, 
   Droplet, 
@@ -19,7 +20,9 @@ import {
   User, 
   EyeOff,
   Activity,
-  CalendarCheck
+  CalendarCheck,
+  Maximize2,
+  Minimize2
 } from 'lucide-react'
 import { getAtletes, getEntrenadorWeeks, getEntrenadorSubmissions, type ManagedWeekWithCount, type AtletaSubmissionSummary } from '../api/entrenador'
 import { getAtletaCompeticionsByEntrenador } from '../api/competicions'
@@ -66,6 +69,7 @@ export const TeamPlanningPage: React.FC = () => {
   })
   const [selectedPeriod, setSelectedPeriod] = useState<number>(6) // mesos
   const [hideDiscarded, setHideDiscarded] = useState<boolean>(false)
+  const [fitToScreen, setFitToScreen] = useState<boolean>(true) // Ajustar les setmanes a la pantalla
 
   // Dades de l'atleta seleccionat
   const [loadingTimeline, setLoadingTimeline] = useState(false)
@@ -695,8 +699,47 @@ export const TeamPlanningPage: React.FC = () => {
             </div>
           )}
 
-          {/* Timeline de Setmanes */}
-          <div className="glass-card p-4 sm:p-5">
+          {/* Matriu de Planificació per Setmanes */}
+          <div className="glass-card p-3 sm:p-5">
+            {/* Header de la Matriu */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 mb-3 border-b border-border gap-2">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-text-primary flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-brand-500" />
+                  Matriu de Temporada ({generatedWeeks.length} setmanes • {selectedPeriod} mesos)
+                </h3>
+                <p className="text-[11px] text-text-muted">
+                  Estructura per files: Nutrició (a dalt) • Tests • Curses • Data d'inici de la setmana (a baix). Clic a qualsevol event per obrir el detall.
+                </p>
+              </div>
+
+              {/* Controls de la matriu: Ajustar a pantalla toggle */}
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setFitToScreen(!fitToScreen)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                    fitToScreen
+                      ? 'bg-brand-50 text-brand-700 border-brand-200 shadow-xs'
+                      : 'bg-white border-border text-text-secondary hover:text-text-primary'
+                  }`}
+                  title={fitToScreen ? "Mode Ajustat: totes les setmanes caben en pantalla" : "Mode Scroll: columnes amples amb desplaçament horitzontal"}
+                >
+                  {fitToScreen ? (
+                    <>
+                      <Minimize2 className="w-3.5 h-3.5 text-brand-500" />
+                      <span>Ajustat a pantalla</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="w-3.5 h-3.5 text-text-muted" />
+                      <span>Scroll lliure</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
             {loadingTimeline ? (
               <div className="py-16 text-center text-text-muted space-y-2">
                 <Clock className="w-8 h-8 text-brand-500 animate-spin mx-auto" />
@@ -706,128 +749,209 @@ export const TeamPlanningPage: React.FC = () => {
               <div className="py-16 text-center text-text-muted space-y-2">
                 <User className="w-10 h-10 text-text-muted mx-auto opacity-40" />
                 <p className="text-sm font-semibold text-text-primary">Selecciona un atleta</p>
-                <p className="text-xs">Tria un esportista del selector superior per veure el seu planning setmanal.</p>
+                <p className="text-xs">Tria un esportista del selector superior per veure la seva matriu de planificació.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto pb-4 custom-scrollbar">
-                <div className="inline-flex gap-3 min-w-full">
-                  {generatedWeeks.map((week) => {
-                    const weekComps = getCompeticionsForWeek(week.start, week.end)
-                    const weekTests = getTestsForWeek(week.start, week.end)
-                    const weekNutris = getNutricioEventsForWeek(week.start, week.end)
-                    const hasItems = weekComps.length > 0 || weekTests.length > 0 || weekNutris.length > 0
+              <div className="overflow-x-auto pb-2 custom-scrollbar">
+                <table className={`border-collapse border border-border rounded-2xl overflow-hidden ${
+                  fitToScreen ? 'w-full table-fixed' : 'min-w-max'
+                }`}>
+                  <tbody>
+                    {/* ================================================================= */}
+                    {/* FILA 3 (A DALT DE TOT): NUTRICIÓ                                  */}
+                    {/* ================================================================= */}
+                    <tr className="border-b border-border/80 bg-white/40 dark:bg-slate-900/40">
+                      {/* Capçalera Fila 3 */}
+                      <th className="sticky left-0 z-20 w-24 sm:w-32 p-2 sm:p-2.5 text-left bg-amber-50/90 dark:bg-amber-950/80 backdrop-blur-xs border-r border-border text-[11px] sm:text-xs font-bold text-amber-900 dark:text-amber-200">
+                        <div className="flex items-center gap-1.5">
+                          <Apple className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>Nutrició</span>
+                        </div>
+                      </th>
 
-                    return (
-                      <div
-                        key={week.index}
-                        className={`w-48 sm:w-56 shrink-0 rounded-2xl border flex flex-col transition-all ${
-                          week.isCurrent
-                            ? 'bg-blue-50/40 border-blue-400 dark:bg-blue-950/20 shadow-sm'
-                            : 'bg-white/60 dark:bg-slate-900/40 border-border'
-                        }`}
-                      >
-                        {/* Capçalera de Setmana */}
-                        <div className={`p-2.5 rounded-t-2xl border-b flex items-center justify-between text-xs font-bold ${
-                          week.isCurrent
-                            ? 'bg-blue-600 text-white border-blue-700'
-                            : 'bg-black/5 dark:bg-white/5 border-border text-text-primary'
-                        }`}>
-                          <div className="flex items-center gap-1.5">
-                            <span>{week.labelWeek}</span>
-                            {week.isCurrent && (
-                              <span className="text-[10px] bg-white text-blue-800 font-extrabold px-1.5 py-0.2 rounded-md">
-                                Ara
-                              </span>
-                            )}
+                      {/* Cel·les de Setmanes per a Nutrició */}
+                      {generatedWeeks.map((week) => {
+                        const weekNutris = getNutricioEventsForWeek(week.start, week.end)
+
+                        return (
+                          <td
+                            key={`nutri-${week.index}`}
+                            className={`p-1 text-center align-middle border-r border-border/60 transition-colors ${
+                              week.isCurrent ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''
+                            } ${fitToScreen ? 'min-w-[32px]' : 'min-w-[110px]'}`}
+                          >
+                            <div className="flex flex-col items-center justify-center gap-1 min-h-[50px] sm:min-h-[56px]">
+                              {weekNutris.length > 0 ? (
+                                weekNutris.map((nutri) => (
+                                  <button
+                                    key={nutri.id}
+                                    type="button"
+                                    onClick={() => navigate(`/nutricio?plan_id=${nutri.planId}`)}
+                                    className={`w-full max-w-[100px] px-1.5 py-1 rounded-lg border text-[10px] font-bold transition-all transform hover:scale-105 shadow-2xs flex flex-col items-center justify-center cursor-pointer ${
+                                      nutri.type === 'revision_scheduled'
+                                        ? 'bg-sky-50 text-sky-800 border-sky-300 hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-200 dark:border-sky-700'
+                                        : 'bg-teal-50 text-teal-800 border-teal-300 hover:bg-teal-100 dark:bg-teal-950/60 dark:text-teal-200 dark:border-teal-700'
+                                    }`}
+                                    title={`${nutri.type === 'revision_scheduled' ? 'Propera revisió' : 'Revisió'} v${nutri.versio}: ${nutri.planTitle} (${nutri.ch || 0}g/h CH) - Clic per anar al pla`}
+                                  >
+                                    <div className="flex items-center gap-0.5 truncate leading-tight">
+                                      <Apple className="w-3 h-3 text-amber-500 shrink-0" />
+                                      <span className="truncate">v{nutri.versio}</span>
+                                    </div>
+                                    {!fitToScreen && nutri.ch !== undefined && (
+                                      <span className="text-[9px] text-text-muted mt-0.5">{nutri.ch}g/h</span>
+                                    )}
+                                  </button>
+                                ))
+                              ) : (
+                                <span className="text-[10px] text-text-muted/30 select-none">-</span>
+                              )}
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+
+                    {/* ================================================================= */}
+                    {/* FILA 2: TESTS                                                     */}
+                    {/* ================================================================= */}
+                    <tr className="border-b border-border/80 bg-white/20 dark:bg-slate-900/20">
+                      {/* Capçalera Fila 2 */}
+                      <th className="sticky left-0 z-20 w-24 sm:w-32 p-2 sm:p-2.5 text-left bg-indigo-50/90 dark:bg-indigo-950/80 backdrop-blur-xs border-r border-border text-[11px] sm:text-xs font-bold text-indigo-900 dark:text-indigo-200">
+                        <div className="flex items-center gap-1.5">
+                          <Zap className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <span>Tests</span>
+                        </div>
+                      </th>
+
+                      {/* Cel·les de Setmanes per a Tests */}
+                      {generatedWeeks.map((week) => {
+                        const weekTests = getTestsForWeek(week.start, week.end)
+
+                        return (
+                          <td
+                            key={`test-${week.index}`}
+                            className={`p-1 text-center align-middle border-r border-border/60 transition-colors ${
+                              week.isCurrent ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''
+                            } ${fitToScreen ? 'min-w-[32px]' : 'min-w-[110px]'}`}
+                          >
+                            <div className="flex flex-col items-center justify-center gap-1 min-h-[50px] sm:min-h-[56px]">
+                              {weekTests.length > 0 ? (
+                                weekTests.map((test) => (
+                                  <button
+                                    key={test.id}
+                                    type="button"
+                                    onClick={() => setSelectedTestModal(test)}
+                                    className="w-full max-w-[100px] px-1.5 py-1 rounded-lg border bg-indigo-50 text-indigo-800 border-indigo-300 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-200 dark:border-indigo-700 text-[10px] font-bold transition-all transform hover:scale-105 shadow-2xs flex flex-col items-center justify-center cursor-pointer"
+                                    title={`Test: ${test.titol} (${formatDisplayDate(test.data_test)}) - Clic per veure detall`}
+                                  >
+                                    <div className="flex items-center gap-0.5 truncate leading-tight w-full justify-center">
+                                      <Zap className="w-3 h-3 text-indigo-500 fill-indigo-500 shrink-0" />
+                                      <span className="truncate">{fitToScreen ? 'Test' : test.titol}</span>
+                                    </div>
+                                    {!fitToScreen && (
+                                      <span className="text-[9px] text-indigo-600/80 truncate">{formatDisplayDate(test.data_test)}</span>
+                                    )}
+                                  </button>
+                                ))
+                              ) : (
+                                <span className="text-[10px] text-text-muted/30 select-none">-</span>
+                              )}
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+
+                    {/* ================================================================= */}
+                    {/* FILA 1: CURSES                                                    */}
+                    {/* ================================================================= */}
+                    <tr className="border-b border-border/80 bg-white/40 dark:bg-slate-900/40">
+                      {/* Capçalera Fila 1 */}
+                      <th className="sticky left-0 z-20 w-24 sm:w-32 p-2 sm:p-2.5 text-left bg-rose-50/90 dark:bg-rose-950/80 backdrop-blur-xs border-r border-border text-[11px] sm:text-xs font-bold text-rose-900 dark:text-rose-200">
+                        <div className="flex items-center gap-1.5">
+                          <Trophy className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>Curses</span>
+                        </div>
+                      </th>
+
+                      {/* Cel·les de Setmanes per a Curses */}
+                      {generatedWeeks.map((week) => {
+                        const weekComps = getCompeticionsForWeek(week.start, week.end)
+
+                        return (
+                          <td
+                            key={`comp-${week.index}`}
+                            className={`p-1 text-center align-middle border-r border-border/60 transition-colors ${
+                              week.isCurrent ? 'bg-blue-50/30 dark:bg-blue-950/10' : ''
+                            } ${fitToScreen ? 'min-w-[32px]' : 'min-w-[110px]'}`}
+                          >
+                            <div className="flex flex-col items-center justify-center gap-1 min-h-[50px] sm:min-h-[56px]">
+                              {weekComps.length > 0 ? (
+                                weekComps.map((comp) => (
+                                  <button
+                                    key={comp.id}
+                                    type="button"
+                                    onClick={() => setSelectedCompModal(comp)}
+                                    className={`w-full max-w-[100px] px-1.5 py-1 rounded-lg border text-[10px] font-bold transition-all transform hover:scale-105 shadow-2xs flex flex-col items-center justify-center cursor-pointer ${getCompBadgeStyle(comp)}`}
+                                    title={`Cursa: ${comp.nom} (${comp.tipus}) - ${formatDisplayDate(comp.data)} - Clic per veure detall`}
+                                  >
+                                    <div className="flex items-center gap-1 truncate leading-tight w-full justify-center">
+                                      <span className={`text-[9px] font-black px-1 rounded-sm uppercase ${getCompTypePill(comp.tipus, comp.estat)}`}>
+                                        {comp.tipus}
+                                      </span>
+                                      <span className="truncate">{fitToScreen ? comp.nom.slice(0, 8) : comp.nom}</span>
+                                    </div>
+                                    {!fitToScreen && comp.kms && (
+                                      <span className="text-[9px] text-text-muted mt-0.5">{comp.kms}km</span>
+                                    )}
+                                  </button>
+                                ))
+                              ) : (
+                                <span className="text-[10px] text-text-muted/30 select-none">-</span>
+                              )}
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+
+                    {/* ================================================================= */}
+                    {/* FILA 0 (A BAIX DE TOT): DATA D'INICI DE LA SETMANA                */}
+                    {/* ================================================================= */}
+                    <tr className="bg-slate-100/90 dark:bg-slate-800/90 border-t-2 border-border font-bold">
+                      {/* Capçalera Fila 0 */}
+                      <th className="sticky left-0 z-20 w-24 sm:w-32 p-2 sm:p-2.5 text-left bg-slate-200/90 dark:bg-slate-700/90 backdrop-blur-xs border-r border-border text-[11px] sm:text-xs font-bold text-text-primary">
+                        <div className="flex items-center gap-1.5">
+                          <CalendarIcon className="w-4 h-4 text-slate-600 shrink-0" />
+                          <span>Setmana</span>
+                        </div>
+                      </th>
+
+                      {/* Cel·les de Data d'Inici de la Setmana */}
+                      {generatedWeeks.map((week) => (
+                        <td
+                          key={`date-${week.index}`}
+                          className={`p-1.5 text-center align-middle border-r border-border/80 text-[10px] sm:text-xs transition-colors ${
+                            week.isCurrent 
+                              ? 'bg-blue-600 text-white font-black shadow-inner' 
+                              : 'text-text-primary hover:bg-slate-200/60 dark:hover:bg-slate-700/60'
+                          } ${fitToScreen ? 'min-w-[32px]' : 'min-w-[110px]'}`}
+                          title={`Setmana ${week.index} (${week.labelWeek}): inicia el dilluns ${week.labelDate}`}
+                        >
+                          <div className="flex flex-col items-center justify-center leading-tight">
+                            <span className={`text-[10px] font-black ${week.isCurrent ? 'text-blue-100' : 'text-text-muted'}`}>
+                              {week.labelWeek}
+                            </span>
+                            <span className="font-extrabold tracking-tighter mt-0.5">
+                              {week.labelDate}
+                            </span>
                           </div>
-                          <span className={`text-[11px] font-medium ${week.isCurrent ? 'text-blue-100' : 'text-text-muted'}`}>
-                            {week.labelDate}
-                          </span>
-                        </div>
-
-                        {/* Cos de Setmana */}
-                        <div className="p-2 space-y-2 flex-1 min-h-[160px]">
-                          {/* 1. Competicions */}
-                          {weekComps.map(comp => (
-                            <div
-                              key={comp.id}
-                              onClick={() => setSelectedCompModal(comp)}
-                              className={`p-2 rounded-xl border text-xs cursor-pointer shadow-xs transition-all hover:scale-[1.02] ${getCompBadgeStyle(comp)}`}
-                              title={`Competició: ${comp.nom} (${comp.tipus})`}
-                            >
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${getCompTypePill(comp.tipus, comp.estat)}`}>
-                                  {comp.tipus}
-                                </span>
-                                <span className="text-[10px] text-text-muted">
-                                  {formatDisplayDate(comp.data)}
-                                </span>
-                              </div>
-                              <p className="font-bold truncate text-text-primary">{comp.nom}</p>
-                              {(comp.kms || comp.desnivell) && (
-                                <p className="text-[10px] text-text-muted mt-0.5">
-                                  {comp.kms ? `${comp.kms}km ` : ''}{comp.desnivell ? `+${comp.desnivell}m` : ''}
-                                </p>
-                              )}
-                            </div>
-                          ))}
-
-                          {/* 2. Proves Físiques & Tests */}
-                          {weekTests.map(test => (
-                            <div
-                              key={test.id}
-                              onClick={() => setSelectedTestModal(test)}
-                              className="p-2 rounded-xl border bg-indigo-50 border-indigo-200 text-indigo-900 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-200 text-xs cursor-pointer shadow-xs transition-all hover:scale-[1.02]"
-                              title={`Test Físic: ${test.titol}`}
-                            >
-                              <div className="flex items-center gap-1 mb-1 text-[10px] font-extrabold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
-                                <Zap className="w-3 h-3 text-indigo-500 fill-indigo-500" />
-                                <span>Test Físic</span>
-                              </div>
-                              <p className="font-bold truncate">{test.titol}</p>
-                              <p className="text-[10px] text-indigo-600/80 dark:text-indigo-300/80 mt-0.5">
-                                {formatDisplayDate(test.data_test)}
-                              </p>
-                            </div>
-                          ))}
-
-                          {/* 3. Revisions Nutricionals */}
-                          {weekNutris.map(nutri => (
-                            <div
-                              key={nutri.id}
-                              onClick={() => navigate(`/nutricio?plan_id=${nutri.planId}`)}
-                              className={`p-2 rounded-xl border text-xs cursor-pointer shadow-xs transition-all hover:scale-[1.02] ${
-                                nutri.type === 'revision_scheduled'
-                                  ? 'bg-sky-50 border-sky-200 text-sky-900 dark:bg-sky-950/40 dark:border-sky-800 dark:text-sky-200'
-                                  : 'bg-teal-50 border-teal-200 text-teal-900 dark:bg-teal-950/40 dark:border-teal-800 dark:text-teal-200'
-                              }`}
-                              title={nutri.type === 'revision_scheduled' ? `Propera revisió agendada v${nutri.versio}` : `Revisió v${nutri.versio} aplicada`}
-                            >
-                              <div className="flex items-center gap-1 mb-0.5 text-[10px] font-extrabold uppercase tracking-wider">
-                                <Apple className="w-3 h-3 text-amber-500" />
-                                <span>{nutri.type === 'revision_scheduled' ? 'Propera Rev.' : 'Rev. Nutri'}</span>
-                                <span className="ml-auto font-black">v{nutri.versio}</span>
-                              </div>
-                              <p className="text-[11px] font-semibold truncate">{nutri.planTitle}</p>
-                              {nutri.ch !== undefined && (
-                                <p className="text-[10px] text-text-muted mt-0.5">
-                                  {nutri.ch} g/h CH • {nutri.sodi || 0} mg Na
-                                </p>
-                              )}
-                            </div>
-                          ))}
-
-                          {/* Buit */}
-                          {!hasItems && (
-                            <div className="h-full flex items-center justify-center py-8 text-center text-text-muted text-[11px] opacity-40">
-                              <span>-</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
