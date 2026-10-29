@@ -28,3 +28,8 @@ export const getTest = async (id: string): Promise<Test> => {
   const response = await api.get<Test>(`/tests/${id}`)
   return response.data
 }
+
+export const getAtletaTestsByEntrenador = async (atletaId: string): Promise<Test[]> => {
+  const response = await api.get<Test[]>(`/entrenador/atletes/${atletaId}/tests`)
+  return response.data
+}

@@ -75,6 +75,28 @@ func (h *Handler) ListRecordatoris(c *gin.Context) {
 	c.JSON(http.StatusOK, tests)
 }
 
+func (h *Handler) GetAtletaTestsTimeline(c *gin.Context) {
+	usuariID := c.GetString("user_id")
+	atletaID := c.Param("id")
+
+	entrenadorInfo, err := h.Store.GetEntrenadorByUsuariID(c.Request.Context(), usuariID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no s'ha trobat l'entrenador"})
+		return
+	}
+
+	tests, err := h.Store.ListAllTestsByAtletaAndEntrenador(c.Request.Context(), atletaID, entrenadorInfo.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error llistant tests"})
+		return
+	}
+
+	if tests == nil {
+		tests = []models.Test{}
+	}
+	c.JSON(http.StatusOK, tests)
+}
+
 func (h *Handler) TraspassarTest(c *gin.Context) {
 	testID := c.Param("id")
 	usuariID := c.GetString("user_id")

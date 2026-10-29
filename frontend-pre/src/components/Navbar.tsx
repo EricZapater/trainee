@@ -71,7 +71,7 @@ export const Navbar: React.FC = () => {
   const trainingPaths = ['/calendar', '/wellness', '/informe', '/nutricio']
   const racesPaths = ['/competicions/atleta', '/team-races']
   const clubPaths = ['/anuncis', '/material', '/feedback']
-  const coachPaths = ['/dashboard', '/planning', '/atletes', '/tests', '/competicions/entrenador', '/weeks', '/entrenador/forms', '/forms']
+  const coachPaths = ['/dashboard', '/planning', '/atletes', '/tests', '/competicions/entrenador', '/weeks', '/nutricio', '/entrenador/forms', '/forms']
   const adminPaths = ['/admin', '/activitats', '/forms', '/settings', '/logs']
 
   return (
@@ -351,6 +351,19 @@ export const Navbar: React.FC = () => {
                     <div>
                       <p className="font-bold text-text-primary leading-tight">Curses dels Atletes</p>
                       <p className="text-[11px] text-text-muted">Aprovació i programació</p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/nutricio"
+                    className={`px-3 py-2 rounded-xl flex items-center gap-2.5 transition-colors ${
+                      isActive('/nutricio') ? 'bg-blue-50 text-blue-700 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <Apple className="w-4 h-4 text-amber-500" />
+                    <div>
+                      <p className="font-bold text-text-primary leading-tight">Estratègia Nutricional</p>
+                      <p className="text-[11px] text-text-muted">Plans, revisions i avituallament</p>
                     </div>
                   </Link>
 
@@ -670,6 +683,14 @@ export const Navbar: React.FC = () => {
                 }`}
               >
                 <Trophy className="w-4 h-4 text-rose-500" /> Curses dels Atletes
+              </Link>
+              <Link
+                to="/nutricio"
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/nutricio') ? 'bg-blue-50 text-blue-700' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <Apple className="w-4 h-4 text-amber-500" /> Estratègia Nutricional
               </Link>
               <Link
                 to="/weeks"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { 
   Apple, 
@@ -39,6 +40,7 @@ import { getAtletes } from '../api/entrenador'
 export const NutricioManagerPage: React.FC = () => {
   const { isEntrenador, isAdmin } = useAuth()
   const isCoach = isEntrenador || isAdmin
+  const [searchParams] = useSearchParams()
 
   const [plans, setPlans] = useState<NutricioPlanWithDetails[]>([])
   const [atletes, setAtletes] = useState<{ id: string; nom: string; cognoms: string; email: string }[]>([])
@@ -52,6 +54,14 @@ export const NutricioManagerPage: React.FC = () => {
 
   // Selected plan detail view
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
+
+  // Check URL query param for initial plan selection
+  useEffect(() => {
+    const planIdParam = searchParams.get('plan_id')
+    if (planIdParam) {
+      setSelectedPlanId(planIdParam)
+    }
+  }, [searchParams])
 
   // Expanded revisions map in detail view: { [revisionId]: boolean }
   const [expandedRevisions, setExpandedRevisions] = useState<Record<string, boolean>>({})

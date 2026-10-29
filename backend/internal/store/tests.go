@@ -75,6 +75,32 @@ func (s *PostgresStore) ListPendingTestsByEntrenador(ctx context.Context, entren
 	return result, nil
 }
 
+func (s *PostgresStore) ListAllTestsByAtletaAndEntrenador(ctx context.Context, atletaID, entrenadorID string) ([]models.Test, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT c.id, c.atleta_id, c.entrenador_id, c.titol, TO_CHAR(c.data_test, 'YYYY-MM-DD'), c.comentaris, TO_CHAR(c.data_recordatori, 'YYYY-MM-DD'), c.estat_recordatori, c.registrat, c.created_at, a.nom as atleta_nom
+		 FROM tests c
+		 JOIN atletes at ON at.id = c.atleta_id
+		 JOIN usuaris a ON a.id = at.usuari_id
+		 WHERE c.atleta_id = $1 AND c.entrenador_id = $2
+		 ORDER BY c.data_test ASC`,
+		atletaID, entrenadorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.Test
+	for rows.Next() {
+		var c models.Test
+		if err := rows.Scan(&c.ID, &c.AtletaID, &c.EntrenadorID, &c.Titol, &c.DataTest, &c.Comentaris, &c.DataRecordatori, &c.EstatRecordatori, &c.Registrat, &c.CreatedAt, &c.AtletaNom); err != nil {
+			return nil, err
+		}
+		result = append(result, c)
+	}
+	return result, nil
+}
+
 func (s *PostgresStore) ListRecordatorisByEntrenador(ctx context.Context, entrenadorID string) ([]models.Test, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT c.id, c.atleta_id, c.entrenador_id, c.titol, TO_CHAR(c.data_test, 'YYYY-MM-DD'), c.comentaris, TO_CHAR(c.data_recordatori, 'YYYY-MM-DD'), c.estat_recordatori, c.registrat, c.created_at, a.nom as atleta_nom

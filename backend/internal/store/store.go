@@ -90,6 +90,7 @@ type Store interface {
 	GetTestByID(ctx context.Context, id string) (*models.Test, error)
 	ListPendingTestsByEntrenador(ctx context.Context, entrenadorID string) ([]models.Test, error)
 	ListRecordatorisByEntrenador(ctx context.Context, entrenadorID string) ([]models.Test, error)
+	ListAllTestsByAtletaAndEntrenador(ctx context.Context, atletaID, entrenadorID string) ([]models.Test, error)
 	TraspassarTest(ctx context.Context, entrenadorID, testID string) error
 	UpdateEstatRecordatori(ctx context.Context, entrenadorID, testID, estat string) error
 

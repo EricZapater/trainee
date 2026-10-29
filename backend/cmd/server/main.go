@@ -221,6 +221,7 @@ func main() {
 		entrenadorRoutes.PATCH("/atletes/:id/reasignar", h.ReasignarAtleta)
 		entrenadorRoutes.POST("/atletes/:id/remind", h.SendManualReminder)
 		entrenadorRoutes.PATCH("/atletes/:id/absent", h.ToggleAtletaAbsent)
+		entrenadorRoutes.GET("/atletes/:id/tests", h.GetAtletaTestsTimeline)
 		
 		entrenadorRoutes.POST("/tests", h.CreateTest)
 		entrenadorRoutes.GET("/tests/pendents", h.ListPendingTestsByEntrenador)

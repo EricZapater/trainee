@@ -19,3 +19,8 @@ export async function updateCompeticio(id: string, formData: FormData): Promise<
   })
   return res.data
 }
+
+export async function getAtletaCompeticionsByEntrenador(atletaId: string): Promise<Competicio[]> {
+  const res = await api.get<Competicio[]>(`/entrenador/atletes/${atletaId}/competicions`)
+  return res.data
+}
