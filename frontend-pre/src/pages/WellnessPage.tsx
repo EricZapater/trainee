@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
-import { getOpenWeeks } from '../api/calendar'
+import { getOpenWeeks, getMySubmission } from '../api/calendar'
 import type { Week } from '../types'
 import { 
   HeartPulse, 
@@ -33,6 +34,9 @@ const ZONES_MOLESTIA = [
 ]
 
 export const WellnessPage: React.FC = () => {
+  const [searchParams] = useSearchParams()
+  const weekParam = searchParams.get('week')
+
   const { isEntrenador, isAdmin, user } = useAuth()
   const canSeeTeamOverview = isEntrenador || isAdmin
 
@@ -44,6 +48,7 @@ export const WellnessPage: React.FC = () => {
   // Weeks state
   const [weeks, setWeeks] = useState<Week[]>([])
   const [currentWeekStart, setCurrentWeekStart] = useState<string>('')
+  const [availabilityData, setAvailabilityData] = useState<any | null>(null)
 
   // Form states for Athlete (Hooper & Foster protocol 1-5)
   const [fatiga, setFatiga] = useState<number>(2)
@@ -85,21 +90,25 @@ export const WellnessPage: React.FC = () => {
       const sortedWeeks = [...openWeeks].sort((a, b) => b.week_start.localeCompare(a.week_start))
       setWeeks(sortedWeeks)
       if (sortedWeeks.length > 0) {
-        const d = new Date()
-        const day = d.getDay()
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-        const todayMonday = new Date(d.setDate(diff)).toISOString().split('T')[0]
+        if (weekParam && sortedWeeks.some(w => w.week_start === weekParam)) {
+          setCurrentWeekStart(weekParam)
+        } else {
+          const d = new Date()
+          const day = d.getDay()
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+          const todayMonday = new Date(d.setDate(diff)).toISOString().split('T')[0]
 
-        const matchingWeek = sortedWeeks.find(w => w.week_start === todayMonday)
-        const openWeek = sortedWeeks.find(w => w.estat === 'oberta')
-        const defaultWeek = matchingWeek || openWeek || sortedWeeks[0]
-        setCurrentWeekStart(defaultWeek.week_start)
+          const matchingWeek = sortedWeeks.find(w => w.week_start === todayMonday)
+          const openWeek = sortedWeeks.find(w => w.estat === 'oberta')
+          const defaultWeek = matchingWeek || openWeek || sortedWeeks[0]
+          setCurrentWeekStart(defaultWeek.week_start)
+        }
       } else {
         const d = new Date()
         const day = d.getDay()
         const diff = d.getDate() - day + (day === 0 ? -6 : 1)
         const monday = new Date(d.setDate(diff)).toISOString().split('T')[0]
-        setCurrentWeekStart(monday)
+        setCurrentWeekStart(weekParam || monday)
       }
     } catch (err) {
       console.error('Error carregant setmanes:', err)
@@ -110,8 +119,11 @@ export const WellnessPage: React.FC = () => {
 
   const loadMyWellness = async (weekStart: string) => {
     try {
-      const res = await api.get(`/submissions/wellness/me?week_start=${weekStart}`)
-      if (res.data) {
+      const [res, avail] = await Promise.all([
+        api.get(`/submissions/wellness/me?week_start=${weekStart}`).catch(() => null),
+        getMySubmission(weekStart).catch(() => null)
+      ])
+      if (res && res.data) {
         setFatiga(res.data.fatiga || 2)
         setSon(res.data.son_qualitat || 4)
         setDolor(res.data.dolor_muscular || 2)
@@ -122,7 +134,17 @@ export const WellnessPage: React.FC = () => {
         if (Array.isArray(res.data.zones_dolor)) {
           setSelectedZones(res.data.zones_dolor)
         }
+      } else {
+        setFatiga(2)
+        setSon(4)
+        setDolor(2)
+        setEstres(2)
+        setHumor(4)
+        setRpe(6)
+        setSelectedZones([])
+        setNotes('')
       }
+      setAvailabilityData(avail)
     } catch (err) {
       console.error('No hi ha dades prèvies de wellness per aquesta setmana:', err)
     }
@@ -265,6 +287,53 @@ export const WellnessPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Availability Status Banner for Athletes */}
+      {activeTab === 'my_checkin' && (
+        <div className={`glass-card p-4 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${
+          availabilityData?.estat === 'completada'
+            ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30'
+            : 'bg-gradient-to-r from-amber-500/15 via-brand-500/5 to-transparent border-amber-500/40'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              availabilityData?.estat === 'completada' ? 'bg-emerald-500/20 text-emerald-600' : 'bg-amber-500/20 text-amber-600'
+            }`}>
+              {availabilityData?.estat === 'completada' ? <CheckCircle2 className="w-6 h-6" /> : <Calendar className="w-6 h-6" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-bold text-sm sm:text-base text-text-primary">
+                  Disponibilitat Setmanal (Horaris d'Entrenament)
+                </h4>
+                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                  availabilityData?.estat === 'completada' 
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                    : 'bg-amber-100 text-amber-800 border border-amber-300'
+                }`}>
+                  {availabilityData?.estat === 'completada' ? 'Completada' : 'Pendent'}
+                </span>
+              </div>
+              <p className="text-xs text-text-muted mt-0.5">
+                {availabilityData?.estat === 'completada'
+                  ? 'Has completat i enviat els teus horaris d\'entrenament per a aquesta setmana.'
+                  : 'Recorda completar els teus slots i disponibilitat perquè l\'entrenador pugui planificar-te.'}
+              </p>
+            </div>
+          </div>
+          <Link
+            to={`/calendar?week=${currentWeekStart}`}
+            className={`text-xs sm:text-sm py-2 px-4 rounded-xl font-bold shrink-0 flex items-center gap-1.5 self-end sm:self-center transition-all shadow-sm ${
+              availabilityData?.estat === 'completada'
+                ? 'bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300'
+                : 'bg-brand-500 hover:bg-brand-600 text-white'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            {availabilityData?.estat === 'completada' ? 'Tornar a la Disponibilitat' : 'Completar Disponibilitat'}
+          </Link>
+        </div>
+      )}
 
       {/* Role Navigation Tabs (if Coach or Admin) */}
       {canSeeTeamOverview && (

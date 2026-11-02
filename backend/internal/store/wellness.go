@@ -120,6 +120,8 @@ func (s *PostgresStore) GetEntrenadorWellnessOverview(ctx context.Context, entre
 		JOIN usuaris u ON u.id = a.usuari_id
 		LEFT JOIN weekly_submissions ws ON ws.atleta_id = a.id AND ws.week_start = $2::date
 		WHERE a.entrenador_id = $1
+		   OR a.entrenador_id IN (SELECT id FROM entrenadors WHERE usuari_id = $1 OR id = $1)
+		   OR a.entrenador_id IN (SELECT usuari_id FROM entrenadors WHERE id = $1 OR usuari_id = $1)
 		ORDER BY u.nom, u.cognoms
 	`
 

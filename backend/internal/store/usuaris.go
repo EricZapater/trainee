@@ -291,6 +291,8 @@ func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenado
 		 FROM atletes a
 		 JOIN usuaris u ON u.id = a.usuari_id
 		 WHERE a.entrenador_id = $1
+		    OR a.entrenador_id IN (SELECT id FROM entrenadors WHERE usuari_id = $1 OR id = $1)
+		    OR a.entrenador_id IN (SELECT usuari_id FROM entrenadors WHERE id = $1 OR usuari_id = $1)
 		 ORDER BY u.nom`,
 		entrenadorID,
 	)

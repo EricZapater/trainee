@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import api from '../api/client'
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -47,8 +48,12 @@ const DURADES_OPTIONS = [
 ]
 
 export const CalendarPage: React.FC = () => {
+  const [searchParams] = useSearchParams()
+  const weekParam = searchParams.get('week')
+
   const [weeks, setWeeks] = useState<Week[]>([])
   const [currentWeekStart, setCurrentWeekStart] = useState<string>('')
+  const [wellnessData, setWellnessData] = useState<any | null>(null)
   const [activitats, setActivitats] = useState<Activitat[]>([])
   const [templates, setTemplates] = useState<WeekTemplate[]>([])
   const [slotsByDay, setSlotsByDay] = useState<{ [day: number]: SlotEntry[] }>({
@@ -105,23 +110,27 @@ export const CalendarPage: React.FC = () => {
       }
 
       if (sortedWeeks.length > 0) {
-        // Default to current real-world week if present, or first open week, or latest
-        const d = new Date()
-        const day = d.getDay()
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-        const todayMonday = new Date(d.setDate(diff)).toISOString().split('T')[0]
+        if (weekParam && sortedWeeks.some(w => w.week_start === weekParam)) {
+          setCurrentWeekStart(weekParam)
+        } else {
+          // Default to current real-world week if present, or first open week, or latest
+          const d = new Date()
+          const day = d.getDay()
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+          const todayMonday = new Date(d.setDate(diff)).toISOString().split('T')[0]
 
-        const matchingWeek = sortedWeeks.find(w => w.week_start === todayMonday)
-        const openWeek = sortedWeeks.find(w => w.estat === 'oberta')
-        const defaultWeek = matchingWeek || openWeek || sortedWeeks[sortedWeeks.length - 1]
-        setCurrentWeekStart(defaultWeek.week_start)
+          const matchingWeek = sortedWeeks.find(w => w.week_start === todayMonday)
+          const openWeek = sortedWeeks.find(w => w.estat === 'oberta')
+          const defaultWeek = matchingWeek || openWeek || sortedWeeks[sortedWeeks.length - 1]
+          setCurrentWeekStart(defaultWeek.week_start)
+        }
       } else {
         // Fallback: calculate current week monday
         const d = new Date()
         const day = d.getDay()
         const diff = d.getDate() - day + (day === 0 ? -6 : 1)
         const monday = new Date(d.setDate(diff)).toISOString().split('T')[0]
-        setCurrentWeekStart(monday)
+        setCurrentWeekStart(weekParam || monday)
       }
     } catch (err) {
       console.error('Error loading calendar data:', err)
@@ -133,9 +142,19 @@ export const CalendarPage: React.FC = () => {
 
   const loadSubmissionForWeek = async (weekStart: string) => {
     try {
-      const sub = await getMySubmission(weekStart)
+      const [sub, welRes] = await Promise.all([
+        getMySubmission(weekStart).catch(() => ({ notes_setmana: '', estat: 'esborrany', slots: [] })),
+        api.get(`/submissions/wellness/me?week_start=${weekStart}`).catch(() => null)
+      ])
+
       setNotesSetmana(sub.notes_setmana || '')
       setSubmissionEstat(sub.estat || 'esborrany')
+
+      if (welRes && welRes.data && (welRes.data.fatiga !== undefined || welRes.data.wellness_fatiga !== undefined || welRes.data.score !== undefined)) {
+        setWellnessData(welRes.data)
+      } else {
+        setWellnessData(null)
+      }
 
       const newSlots: { [day: number]: SlotEntry[] } = {
         0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: []
@@ -390,21 +409,45 @@ export const CalendarPage: React.FC = () => {
       )}
 
       {/* Wellness Reminder Banner */}
-      <div className="glass-card p-4 bg-gradient-to-r from-emerald-500/10 via-brand-500/5 to-transparent border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className={`glass-card p-4 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all ${
+        wellnessData 
+          ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/30' 
+          : 'bg-gradient-to-r from-amber-500/15 via-brand-500/5 to-transparent border-amber-500/40'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
-            <HeartPulse className="w-6 h-6" />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            wellnessData ? 'bg-emerald-500/20 text-emerald-600' : 'bg-amber-500/20 text-amber-600'
+          }`}>
+            {wellnessData ? <CheckCircle2 className="w-6 h-6" /> : <HeartPulse className="w-6 h-6" />}
           </div>
           <div>
-            <h4 className="font-bold text-sm sm:text-base text-text-primary">Check-in Setmanal de Wellness</h4>
-            <p className="text-xs text-text-muted">No oblidis enviar el teu protocol de fatiga i zones de dolor d'aquesta setmana.</p>
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-sm sm:text-base text-text-primary">
+                Check-in Setmanal de Benestar (Wellness)
+              </h4>
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                wellnessData ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300'
+              }`}>
+                {wellnessData ? 'Completat' : 'Pendent'}
+              </span>
+            </div>
+            <p className="text-xs text-text-muted mt-0.5">
+              {wellnessData 
+                ? 'Ja has enviat el teu estat de fatiga i benestar per a aquesta setmana.' 
+                : 'No oblidis enviar el teu protocol de fatiga i zones de dolor per a aquesta setmana.'}
+            </p>
           </div>
         </div>
         <Link 
-          to="/wellness" 
-          className="btn-primary text-xs sm:text-sm py-2 px-3.5 shrink-0 flex items-center gap-1.5 self-end sm:self-center"
+          to={`/wellness?week=${currentWeekStart}`} 
+          className={`text-xs sm:text-sm py-2 px-4 rounded-xl font-bold shrink-0 flex items-center gap-1.5 self-end sm:self-center transition-all shadow-sm ${
+            wellnessData
+              ? 'bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300'
+              : 'bg-brand-500 hover:bg-brand-600 text-white'
+          }`}
         >
-          <Sparkles className="w-4 h-4" /> Fer Check-in
+          {wellnessData ? <Sparkles className="w-4 h-4 text-emerald-600" /> : <Sparkles className="w-4 h-4" />}
+          {wellnessData ? 'Modificar Wellness' : 'Fer Check-in'}
         </Link>
       </div>
 
@@ -791,20 +834,21 @@ export const CalendarPage: React.FC = () => {
 
       {/* Action Buttons */}
       {isWeekOpen && (
-        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-border-light">
           <button
             onClick={() => handleSave(false)}
             disabled={isSaving}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-border-light bg-white text-text-primary hover:bg-bg-hover text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            className="w-full sm:w-auto px-5 py-3 rounded-xl border border-border-light bg-white text-text-primary hover:bg-bg-hover text-sm font-bold shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
           >
-            <Save className="w-4 h-4" /> Desar com a Esborrany
+            <Save className="w-4 h-4 text-text-muted" /> Desar com a Esborrany
           </button>
           <button
             onClick={() => handleSave(true)}
             disabled={isSaving}
-            className="w-full sm:w-auto btn-primary text-sm py-2.5 px-6 shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full sm:w-auto px-7 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-black shadow-lg shadow-emerald-600/30 ring-2 ring-emerald-500/40 flex items-center justify-center gap-2.5 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 cursor-pointer"
           >
-            <CheckCircle2 className="w-4 h-4" /> Completar Disponibilitat
+            <CheckCircle2 className="w-5 h-5" />
+            <span>{submissionEstat === 'completada' ? 'Actualitzar Disponibilitat (Completada)' : 'Marcar i Completar Disponibilitat'}</span>
           </button>
         </div>
       )}

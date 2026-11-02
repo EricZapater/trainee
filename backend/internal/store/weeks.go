@@ -14,7 +14,9 @@ func (s *PostgresStore) ListManagedWeeksByEntrenador(ctx context.Context, entren
 		 FROM managed_weeks mw
 		 LEFT JOIN atletes a ON a.entrenador_id = mw.entrenador_id
 		 LEFT JOIN weekly_submissions ws ON ws.atleta_id = a.id AND ws.week_start = mw.week_start
-		 WHERE mw.entrenador_id = $1
+		 WHERE (mw.entrenador_id = $1
+		    OR mw.entrenador_id IN (SELECT id FROM entrenadors WHERE usuari_id = $1 OR id = $1)
+		    OR mw.entrenador_id IN (SELECT usuari_id FROM entrenadors WHERE id = $1 OR usuari_id = $1))
 		 GROUP BY mw.id
 		 ORDER BY mw.week_start DESC`,
 		entrenadorID,
@@ -39,7 +41,10 @@ func (s *PostgresStore) ListOpenWeeksByEntrenador(ctx context.Context, entrenado
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, entrenador_id, TO_CHAR(week_start, 'YYYY-MM-DD'), estat, created_at
 		 FROM managed_weeks
-		 WHERE entrenador_id = $1 AND estat IN ('oberta', 'tancada')
+		 WHERE (entrenador_id = $1
+		    OR entrenador_id IN (SELECT id FROM entrenadors WHERE usuari_id = $1 OR id = $1)
+		    OR entrenador_id IN (SELECT usuari_id FROM entrenadors WHERE id = $1 OR usuari_id = $1))
+		   AND estat IN ('oberta', 'tancada')
 		 ORDER BY week_start ASC`,
 		entrenadorID,
 	)

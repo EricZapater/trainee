@@ -79,14 +79,19 @@ export const CoachSubmissionsMatrixPage: React.FC = () => {
     setLoading(true)
     try {
       const allWeeks = await getEntrenadorWeeks()
-      const openWeeks = allWeeks.filter(w => w.estat === 'oberta').sort((a, b) => b.week_start.localeCompare(a.week_start))
-      const sortedAllWeeks = [...allWeeks].sort((a, b) => b.week_start.localeCompare(a.week_start))
-      setWeeks(openWeeks.length > 0 ? openWeeks : sortedAllWeeks)
+      const sortedWeeks = [...allWeeks].sort((a, b) => a.week_start.localeCompare(b.week_start))
+      setWeeks(sortedWeeks)
       
-      if (openWeeks.length > 0) {
-        setSelectedWeek(openWeeks[0].week_start)
-      } else if (sortedAllWeeks.length > 0) {
-        setSelectedWeek(sortedAllWeeks[0].week_start)
+      const d = new Date()
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+      const todayMonday = new Date(d.setDate(diff)).toISOString().split('T')[0]
+
+      const matchingWeek = sortedWeeks.find(w => w.week_start === todayMonday)
+      const openWeek = sortedWeeks.find(w => w.estat === 'oberta')
+      const defaultWeek = matchingWeek || openWeek || sortedWeeks[sortedWeeks.length - 1]
+      if (defaultWeek) {
+        setSelectedWeek(defaultWeek.week_start)
       }
     } catch (err) {
       console.error('Error carregant setmanes:', err)
