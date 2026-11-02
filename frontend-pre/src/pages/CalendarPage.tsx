@@ -95,7 +95,8 @@ export const CalendarPage: React.FC = () => {
         getActivitats(),
         getWeekTemplates()
       ])
-      setWeeks(weeksData)
+      const sortedWeeks = [...weeksData].sort((a, b) => a.week_start.localeCompare(b.week_start))
+      setWeeks(sortedWeeks)
       setActivitats(activitatsData.filter(a => a.activa))
       setTemplates(templatesData)
 
@@ -103,10 +104,17 @@ export const CalendarPage: React.FC = () => {
         setSelectedActivity(activitatsData[0])
       }
 
-      if (weeksData.length > 0) {
-        // Default to first open week or first available
-        const openWeek = weeksData.find(w => w.estat === 'oberta') || weeksData[0]
-        setCurrentWeekStart(openWeek.week_start)
+      if (sortedWeeks.length > 0) {
+        // Default to current real-world week if present, or first open week, or latest
+        const d = new Date()
+        const day = d.getDay()
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+        const todayMonday = new Date(d.setDate(diff)).toISOString().split('T')[0]
+
+        const matchingWeek = sortedWeeks.find(w => w.week_start === todayMonday)
+        const openWeek = sortedWeeks.find(w => w.estat === 'oberta')
+        const defaultWeek = matchingWeek || openWeek || sortedWeeks[sortedWeeks.length - 1]
+        setCurrentWeekStart(defaultWeek.week_start)
       } else {
         // Fallback: calculate current week monday
         const d = new Date()
@@ -371,13 +379,13 @@ export const CalendarPage: React.FC = () => {
     <div className="space-y-6 pb-20">
       {/* Toast Notification */}
       {feedbackMsg && (
-        <div className={`fixed top-20 right-4 z-50 px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 border animate-fade-in ${
+        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border animate-fade-in ${
           feedbackMsg.type === 'success' 
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-            : 'bg-rose-50 border-rose-200 text-rose-800'
+            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 ring-2 ring-emerald-500/20' 
+            : 'bg-rose-50 border-rose-300 text-rose-900 ring-2 ring-rose-500/20'
         }`}>
-          {feedbackMsg.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertCircle className="w-5 h-5 text-rose-600" />}
-          <span className="text-sm font-semibold">{feedbackMsg.text}</span>
+          {feedbackMsg.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" /> : <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />}
+          <span className="text-sm font-bold">{feedbackMsg.text}</span>
         </div>
       )}
 
@@ -415,11 +423,29 @@ export const CalendarPage: React.FC = () => {
             <ChevronLeft className="w-5 h-5" />
           </button>
 
-          <div className="text-center">
-            <h2 className="text-base sm:text-xl font-bold text-text-primary flex items-center justify-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-brand-500" />
-              Setmana {formatDate(currentWeekStart)} - {formatDate(currentWeekStart, 6)}
-            </h2>
+          <div className="text-center space-y-1">
+            <div className="flex items-center justify-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-brand-500 shrink-0" />
+              {weeks.length > 0 ? (
+                <select
+                  value={currentWeekStart}
+                  onChange={(e) => setCurrentWeekStart(e.target.value)}
+                  className="text-base sm:text-xl font-bold text-text-primary bg-transparent border-b border-dashed border-border-light hover:border-brand-500 cursor-pointer focus:outline-none"
+                  title="Canvia de setmana"
+                >
+                  {weeks.map(w => (
+                    <option key={w.id} value={w.week_start} className="bg-bg-surface text-text-primary text-sm font-semibold">
+                      Setmana {formatDate(w.week_start)} - {formatDate(w.week_start, 6)} ({w.estat})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <h2 className="text-base sm:text-xl font-bold text-text-primary">
+                  Setmana {formatDate(currentWeekStart)} - {formatDate(currentWeekStart, 6)}
+                </h2>
+              )}
+            </div>
+
             <div className="flex items-center justify-center gap-2 mt-1">
               <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                 isWeekOpen ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'

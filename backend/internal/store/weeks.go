@@ -39,8 +39,8 @@ func (s *PostgresStore) ListOpenWeeksByEntrenador(ctx context.Context, entrenado
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, entrenador_id, TO_CHAR(week_start, 'YYYY-MM-DD'), estat, created_at
 		 FROM managed_weeks
-		 WHERE entrenador_id = $1 AND estat = 'oberta'
-		 ORDER BY week_start DESC`,
+		 WHERE entrenador_id = $1 AND estat IN ('oberta', 'tancada')
+		 ORDER BY week_start ASC`,
 		entrenadorID,
 	)
 	if err != nil {

@@ -51,7 +51,10 @@ func (h *Handler) CreateSubmission(c *gin.Context) {
 func (h *Handler) GetMySubmission(c *gin.Context) {
 	weekStart := c.Query("week")
 	if weekStart == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "paràmetre 'week' requerit (format YYYY-MM-DD)"})
+		weekStart = c.Query("week_start")
+	}
+	if weekStart == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "paràmetre 'week' o 'week_start' requerit (format YYYY-MM-DD)"})
 		return
 	}
 

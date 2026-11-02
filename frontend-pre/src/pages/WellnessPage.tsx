@@ -85,7 +85,14 @@ export const WellnessPage: React.FC = () => {
       const sortedWeeks = [...openWeeks].sort((a, b) => b.week_start.localeCompare(a.week_start))
       setWeeks(sortedWeeks)
       if (sortedWeeks.length > 0) {
-        const defaultWeek = sortedWeeks.find(w => w.estat === 'oberta') || sortedWeeks[0]
+        const d = new Date()
+        const day = d.getDay()
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1)
+        const todayMonday = new Date(d.setDate(diff)).toISOString().split('T')[0]
+
+        const matchingWeek = sortedWeeks.find(w => w.week_start === todayMonday)
+        const openWeek = sortedWeeks.find(w => w.estat === 'oberta')
+        const defaultWeek = matchingWeek || openWeek || sortedWeeks[0]
         setCurrentWeekStart(defaultWeek.week_start)
       } else {
         const d = new Date()
@@ -209,6 +216,20 @@ export const WellnessPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20">
+      {/* Floating Toast Notification */}
+      {saveSuccess && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border bg-emerald-50 border-emerald-300 text-emerald-900 ring-2 ring-emerald-500/20 animate-fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span className="text-sm font-bold">Check-in de wellness desat correctament! L'entrenador podrà visualitzar el teu estat.</span>
+        </div>
+      )}
+      {feedbackError && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border bg-rose-50 border-rose-300 text-rose-900 ring-2 ring-rose-500/20 animate-fade-in">
+          <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+          <span className="text-sm font-bold">{feedbackError}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="glass-card p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>

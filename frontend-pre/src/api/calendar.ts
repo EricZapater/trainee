@@ -12,7 +12,7 @@ export async function getActivitats(): Promise<Activitat[]> {
 }
 
 export async function getMySubmission(weekStart: string): Promise<MySubmissionResponse> {
-  const res = await api.get<MySubmissionResponse>(`/submissions/me?week_start=${weekStart}`)
+  const res = await api.get<MySubmissionResponse>(`/submissions/me?week=${weekStart}&week_start=${weekStart}`)
   return res.data
 }
 
