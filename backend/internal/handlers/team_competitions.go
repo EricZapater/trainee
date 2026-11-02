@@ -29,6 +29,15 @@ func (h *Handler) CreateTeamCompetition(c *gin.Context) {
 		return
 	}
 
+	if req.Nom == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "el nom de la cursa és obligatori"})
+		return
+	}
+	if req.DataInici == "" && req.Data == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "la data de la cursa és obligatòria"})
+		return
+	}
+
 	comp, err := h.Store.CreateTeamCompetition(c.Request.Context(), usuariID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "error creant cursa d'equip: " + err.Error()})
@@ -36,6 +45,23 @@ func (h *Handler) CreateTeamCompetition(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, comp)
+}
+
+func (h *Handler) DeleteTeamCompetition(c *gin.Context) {
+	usuariID := c.GetString("user_id")
+	compID := c.Param("id")
+	rol := c.GetString("rol")
+	if rol == "" {
+		rol = c.GetString("user_rol")
+	}
+	isCoachOrAdmin := rol == "entrenador" || rol == "admin"
+
+	if err := h.Store.DeleteTeamCompetition(c.Request.Context(), compID, usuariID, isCoachOrAdmin); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error eliminant cursa d'equip: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 func (h *Handler) JoinTeamCompetition(c *gin.Context) {

@@ -110,24 +110,51 @@ export interface EsdevenimentEquip {
   id: string
   nom: string
   data: string
+  data_inici?: string
+  data_fi?: string
   poblacio?: string
+  localitzacio?: string
   kms?: number
+  distancia_km?: number
   desnivell?: number
+  desnivell_positiu?: number
   gpx_url?: string
+  fitxer_gpx?: string
   enllac_oficial?: string
+  web_oficial?: string
   notes_equip?: string
+  creat_per?: string
   total_inscrits?: number
   total_publics?: number
+  participants_count?: number
+  user_participant?: {
+    id?: string
+    estat?: string
+    objectiu?: string
+    tipus_objectiu?: string
+    disposa_cotxe?: boolean
+    comparteix_transport?: boolean
+    ciutat_origen?: string
+    ciutat_origen_transport?: string
+    kms?: number
+    privacitat?: string
+    es_privada?: boolean
+  }
   atletes?: {
     atleta_id: string
     nom: string
-    cognoms: string
+    cognoms?: string
     tipus_objectiu?: string
+    objectiu?: string
     kms?: number
     comparteix_transport?: boolean
+    disposa_cotxe?: boolean
     ciutat_origen_transport?: string
+    ciutat_origen?: string
     es_privada?: boolean
+    privacitat?: string
   }[]
+  participants?: any[]
 }
 
 export interface UserStatusHistory {

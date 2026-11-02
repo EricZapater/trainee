@@ -170,6 +170,7 @@ func main() {
 		// Curses d'Equip / Team Race Hub (Autenticats)
 		authenticated.GET("/competicions/equip", h.ListTeamCompetitions)
 		authenticated.POST("/competicions/equip", h.CreateTeamCompetition)
+		authenticated.DELETE("/competicions/equip/:id", h.DeleteTeamCompetition)
 		authenticated.POST("/competicions/equip/:id/join", h.JoinTeamCompetition)
 		authenticated.DELETE("/competicions/equip/:id/leave", h.LeaveTeamCompetition)
 		authenticated.POST("/competicions/equip/upload-gpx", h.UploadTeamCompetitionGPX)

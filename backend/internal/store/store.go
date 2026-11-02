@@ -174,6 +174,7 @@ type Store interface {
 	// Team Competitions
 	ListTeamCompetitions(ctx context.Context, currentUserID string) ([]models.TeamCompetition, error)
 	CreateTeamCompetition(ctx context.Context, usuariID string, req models.CreateTeamCompetitionRequest) (*models.TeamCompetition, error)
+	DeleteTeamCompetition(ctx context.Context, teamCompetitionID, usuariID string, isCoachOrAdmin bool) error
 	JoinTeamCompetition(ctx context.Context, teamCompetitionID, usuariID string, req models.JoinTeamCompetitionRequest) error
 	LeaveTeamCompetition(ctx context.Context, teamCompetitionID, usuariID string) error
 }

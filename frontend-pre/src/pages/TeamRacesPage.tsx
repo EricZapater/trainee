@@ -19,7 +19,9 @@ import {
   Check,
   AlertTriangle,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Trash2,
+  UserMinus
 } from 'lucide-react'
 import type { EsdevenimentEquip } from '../types'
 
@@ -66,62 +68,9 @@ export const TeamRacesPage: React.FC = () => {
     try {
       const res = await api.get('/competicions/equip')
       setRaces(res.data || [])
-    } catch (e) {
-      // Demo / seed data for PRE visualization
-      setRaces([
-        {
-          id: 'race-1',
-          nom: 'Ultra Pirineu',
-          data: '2026-10-03',
-          poblacio: 'Bagà, Berguedà',
-          kms: 100,
-          desnivell: 6600,
-          gpx_url: '#',
-          notes_equip: 'Punt de trobada del club a la plaça Major de Bagà a les 06:15h. Avituallament i suport d\'equip autoritzat a Gósol (km 42).',
-          total_inscrits: 5,
-          total_publics: 4,
-          atletes: [
-            { atleta_id: 'a1', nom: 'Marc Puig', cognoms: '', tipus_objectiu: 'A', kms: 100, comparteix_transport: true, ciutat_origen_transport: 'Girona (2 places)' },
-            { atleta_id: 'a2', nom: 'Laura Morales', cognoms: '', tipus_objectiu: 'B', kms: 42, comparteix_transport: false },
-            { atleta_id: 'a3', nom: 'Jordi Segura', cognoms: '', tipus_objectiu: 'A', kms: 100, comparteix_transport: true, ciutat_origen_transport: 'Barcelona (1 plaça)' },
-            { atleta_id: 'a4', nom: 'Clara Valls', cognoms: '', tipus_objectiu: 'C', kms: 42, comparteix_transport: false },
-            { atleta_id: 'a5', nom: 'Corredor Anònim', cognoms: '', tipus_objectiu: 'A', kms: 100, es_privada: true }
-          ]
-        },
-        {
-          id: 'race-2',
-          nom: 'Trail Cap de Creus',
-          data: '2026-11-15',
-          poblacio: 'Roses, Alt Empordà',
-          kms: 44,
-          desnivell: 2100,
-          gpx_url: '#',
-          notes_equip: 'Tots els corredors que necessitin assistència avisar abans de dijous.',
-          total_inscrits: 3,
-          total_publics: 3,
-          atletes: [
-            { atleta_id: 'a1', nom: 'Marc Puig', cognoms: '', tipus_objectiu: 'B', kms: 44, comparteix_transport: true, ciutat_origen_transport: 'Girona' },
-            { atleta_id: 'a6', nom: 'David Rovira', cognoms: '', tipus_objectiu: 'A', kms: 44, comparteix_transport: false },
-            { atleta_id: 'a7', nom: 'Mireia Font', cognoms: '', tipus_objectiu: 'A', kms: 22, comparteix_transport: true, ciutat_origen_transport: 'Figueres' }
-          ]
-        },
-        {
-          id: 'race-3',
-          nom: 'Marató de Barcelona',
-          data: '2027-03-14',
-          poblacio: 'Barcelona, Barcelonès',
-          kms: 42,
-          desnivell: 120,
-          notes_equip: 'Carpa d\'equip a l\'Avinguda Maria Cristina des de les 07:30h per deixar motxilles.',
-          total_inscrits: 6,
-          total_publics: 6,
-          atletes: [
-            { atleta_id: 'a8', nom: 'Sergi Vidal', cognoms: '', tipus_objectiu: 'A', kms: 42, comparteix_transport: true, ciutat_origen_transport: 'Vic (3 places)' },
-            { atleta_id: 'a9', nom: 'Anna Soler', cognoms: '', tipus_objectiu: 'A', kms: 42, comparteix_transport: false },
-            { atleta_id: 'a10', nom: 'Pol Vila', cognoms: '', tipus_objectiu: 'B', kms: 42, comparteix_transport: true, ciutat_origen_transport: 'Mataró (2 places)' }
-          ]
-        }
-      ])
+    } catch (e: any) {
+      console.error("Error carregant curses d'equip:", e)
+      showToast(e.response?.data?.error || "Error en carregar les curses d'equip del servidor", 'error')
     } finally {
       setLoading(false)
     }
@@ -136,21 +85,41 @@ export const TeamRacesPage: React.FC = () => {
     return races.filter(r => {
       const q = searchQuery.toLowerCase().trim()
       if (!q) return true
+      const nom = r.nom || ''
+      const loc = r.poblacio || r.localitzacio || ''
+      const notes = r.notes_equip || ''
       return (
-        r.nom.toLowerCase().includes(q) ||
-        (r.poblacio && r.poblacio.toLowerCase().includes(q)) ||
-        (r.notes_equip && r.notes_equip.toLowerCase().includes(q))
+        nom.toLowerCase().includes(q) ||
+        loc.toLowerCase().includes(q) ||
+        notes.toLowerCase().includes(q)
       )
     })
   }, [races, searchQuery])
 
+  // Helper to determine if the current user is registered in a race
+  const getUserParticipation = (race: EsdevenimentEquip) => {
+    if (race.user_participant) return race.user_participant
+    const list = race.atletes || race.participants || []
+    return list.find(a => (a.atleta_id || a.usuari_id) === user?.id)
+  }
+
   const openJoinModal = (race: EsdevenimentEquip) => {
     setSelectedRaceForJoin(race)
-    setKms(race.kms || 42)
-    setTipusObjectiu('A')
-    setVisibilitatEquip(true)
-    setComparteixTransport(false)
-    setCiutatOrigen('')
+    const existing = getUserParticipation(race)
+    if (existing) {
+      const obj = (existing.tipus_objectiu || existing.objectiu || 'A') as 'A' | 'B' | 'C'
+      setTipusObjectiu(['A', 'B', 'C'].includes(obj) ? obj : 'A')
+      setKms(existing.kms || race.kms || race.distancia_km || 42)
+      setVisibilitatEquip(existing.privacitat ? existing.privacitat === 'equip' : !existing.es_privada)
+      setComparteixTransport(existing.disposa_cotxe ?? existing.comparteix_transport ?? false)
+      setCiutatOrigen(existing.ciutat_origen || existing.ciutat_origen_transport || '')
+    } else {
+      setKms(race.kms || race.distancia_km || 42)
+      setTipusObjectiu('A')
+      setVisibilitatEquip(true)
+      setComparteixTransport(false)
+      setCiutatOrigen('')
+    }
   }
 
   const handleJoinRace = async (e: React.FormEvent) => {
@@ -159,42 +128,52 @@ export const TeamRacesPage: React.FC = () => {
 
     setSubmittingJoin(true)
     try {
-      await api.post(`/competicions/equip/${selectedRaceForJoin.id}/join`, {
+      const payload = {
+        estat: 'inscrit',
+        objectiu: tipusObjectiu,
         tipus_objectiu: tipusObjectiu,
         kms,
+        privacitat: visibilitatEquip ? 'equip' : 'privat',
         visibilitat_equip: visibilitatEquip,
+        disposa_cotxe: comparteixTransport,
         comparteix_transport: comparteixTransport,
-        ciutat_origen_transport: ciutatOrigen
-      })
-      showToast("T'has afegit correctament a la cursa!")
+        places_lliures: comparteixTransport ? 1 : 0,
+        ciutat_origen: ciutatOrigen.trim() || undefined,
+        ciutat_origen_transport: ciutatOrigen.trim() || undefined
+      }
+      await api.post(`/competicions/equip/${selectedRaceForJoin.id}/join`, payload)
+      showToast("Inscripció guardada correctament!")
       setSelectedRaceForJoin(null)
-      loadTeamRaces()
-    } catch (e) {
-      // Local optimistic update for PRE
-      const myName = user ? `${user.nom} ${user.cognoms || ''}`.trim() : 'El meu usuari'
-      setRaces(prev => prev.map(r => {
-        if (r.id !== selectedRaceForJoin.id) return r
-        const newAthlete = {
-          atleta_id: user?.id || 'me',
-          nom: myName,
-          cognoms: '',
-          tipus_objectiu: tipusObjectiu,
-          kms,
-          comparteix_transport: comparteixTransport,
-          ciutat_origen_transport: ciutatOrigen,
-          es_privada: !visibilitatEquip
-        }
-        return {
-          ...r,
-          total_inscrits: (r.total_inscrits || 0) + 1,
-          total_publics: (r.total_publics || 0) + (visibilitatEquip ? 1 : 0),
-          atletes: [...(r.atletes || []), newAthlete]
-        }
-      }))
-      showToast("Inscripció afegida correctament a l'equip!")
-      setSelectedRaceForJoin(null)
+      await loadTeamRaces()
+    } catch (e: any) {
+      console.error("Error registrant inscripció:", e)
+      showToast(e.response?.data?.error || "Error registrant la inscripció a la cursa", 'error')
     } finally {
       setSubmittingJoin(false)
+    }
+  }
+
+  const handleLeaveRace = async (raceId: string, nom: string) => {
+    if (!window.confirm(`Segur que vols donar-te de baixa de la cursa "${nom}"?`)) return
+    try {
+      await api.delete(`/competicions/equip/${raceId}/leave`)
+      showToast("T'has donat de baixa correctament.")
+      await loadTeamRaces()
+    } catch (e: any) {
+      console.error("Error cancel·lant inscripció:", e)
+      showToast(e.response?.data?.error || "Error cancel·lant la inscripció", 'error')
+    }
+  }
+
+  const handleDeleteRace = async (raceId: string, nom: string) => {
+    if (!window.confirm(`Segur que vols eliminar la cursa d'equip "${nom}" per a tothom?`)) return
+    try {
+      await api.delete(`/competicions/equip/${raceId}`)
+      showToast("Cursa d'equip eliminada correctament.")
+      await loadTeamRaces()
+    } catch (e: any) {
+      console.error("Error eliminant cursa:", e)
+      showToast(e.response?.data?.error || "Error eliminant la cursa d'equip", 'error')
     }
   }
 
@@ -207,36 +186,22 @@ export const TeamRacesPage: React.FC = () => {
 
     setSubmittingCreate(true)
     try {
-      await api.post('/competicions/equip', newRaceForm)
-      showToast('Cursa d\'equip proposada correctament!')
-      setCreateModalOpen(false)
-      loadTeamRaces()
-    } catch (e) {
-      // Local addition for preview
-      const newRace: EsdevenimentEquip = {
-        id: `race-${Date.now()}`,
+      const payload = {
         nom: newRaceForm.nom.trim(),
+        data_inici: newRaceForm.data,
         data: newRaceForm.data,
+        localitzacio: newRaceForm.poblacio.trim() || undefined,
         poblacio: newRaceForm.poblacio.trim() || undefined,
+        distancia_km: newRaceForm.kms,
         kms: newRaceForm.kms,
+        desnivell_positiu: newRaceForm.desnivell,
         desnivell: newRaceForm.desnivell,
+        web_oficial: newRaceForm.enllac_oficial.trim() || undefined,
         enllac_oficial: newRaceForm.enllac_oficial.trim() || undefined,
-        notes_equip: newRaceForm.notes_equip.trim() || undefined,
-        total_inscrits: 1,
-        total_publics: 1,
-        atletes: [
-          {
-            atleta_id: user?.id || 'me',
-            nom: user ? `${user.nom} ${user.cognoms || ''}`.trim() : 'Organitzador',
-            cognoms: '',
-            tipus_objectiu: 'A',
-            kms: newRaceForm.kms,
-            comparteix_transport: false
-          }
-        ]
+        notes_equip: newRaceForm.notes_equip.trim() || undefined
       }
-      setRaces(prev => [newRace, ...prev])
-      showToast('Cursa d\'equip afegida al tauler!')
+      await api.post('/competicions/equip', payload)
+      showToast("Cursa d'equip publicada al calendari de club!")
       setCreateModalOpen(false)
       setNewRaceForm({
         nom: '',
@@ -247,6 +212,10 @@ export const TeamRacesPage: React.FC = () => {
         enllac_oficial: '',
         notes_equip: ''
       })
+      await loadTeamRaces()
+    } catch (e: any) {
+      console.error("Error creant cursa d'equip:", e)
+      showToast(e.response?.data?.error || "Error creant la cursa d'equip", 'error')
     } finally {
       setSubmittingCreate(false)
     }
@@ -331,138 +300,198 @@ export const TeamRacesPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-6">
-          {filteredRaces.map((race) => (
-            <div key={race.id} className="glass-card p-4 sm:p-6 space-y-5 hover:shadow-lg transition-all">
-              {/* Top Bar: Title, Date, Badges */}
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-4 border-b border-border">
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <h2 className="text-lg sm:text-xl font-bold text-text-primary">{race.nom}</h2>
-                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                      <Users className="w-3.5 h-3.5" /> {race.total_inscrits} atletes del club
-                    </span>
-                  </div>
+          {filteredRaces.map((race) => {
+            const raceDate = race.data || race.data_inici || ''
+            const raceLoc = race.poblacio || race.localitzacio || ''
+            const raceKms = race.kms ?? race.distancia_km
+            const raceDesnivell = race.desnivell ?? race.desnivell_positiu
+            const raceWeb = race.enllac_oficial || race.web_oficial
+            const raceGpx = race.gpx_url || race.fitxer_gpx
+            const athletes = race.atletes || race.participants || []
+            const totalInscrits = race.total_inscrits ?? race.participants_count ?? athletes.length
+            const userPart = getUserParticipation(race)
+            const canDeleteRace = canManage || (user?.id && race.creat_per === user.id)
 
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-text-muted pt-0.5">
-                    <span className="flex items-center gap-1 font-semibold text-text-secondary">
-                      <Calendar className="w-3.5 h-3.5 text-brand-500" />
-                      {new Date(race.data + 'T00:00:00').toLocaleDateString('ca-ES', {
-                        weekday: 'short',
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </span>
-                    {race.poblacio && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-text-secondary" /> {race.poblacio}
+            return (
+              <div key={race.id} className="glass-card p-4 sm:p-6 space-y-5 hover:shadow-lg transition-all">
+                {/* Top Bar: Title, Date, Badges */}
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-4 border-b border-border">
+                  <div className="space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h2 className="text-lg sm:text-xl font-bold text-text-primary">{race.nom}</h2>
+                      <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        <Users className="w-3.5 h-3.5" /> {totalInscrits} atletes del club
                       </span>
-                    )}
-                    {race.kms && (
-                      <span className="flex items-center gap-1">
-                        <Mountain className="w-3.5 h-3.5 text-emerald-500" /> {race.kms} km {race.desnivell ? `| +${race.desnivell}m D+` : ''}
-                      </span>
-                    )}
+                      {userPart && (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <Check className="w-3.5 h-3.5" /> Hi participes
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-text-muted pt-0.5">
+                      {raceDate && (
+                        <span className="flex items-center gap-1 font-semibold text-text-secondary">
+                          <Calendar className="w-3.5 h-3.5 text-brand-500" />
+                          {new Date(raceDate + 'T00:00:00').toLocaleDateString('ca-ES', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      )}
+                      {raceLoc && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-text-secondary" /> {raceLoc}
+                        </span>
+                      )}
+                      {raceKms && (
+                        <span className="flex items-center gap-1">
+                          <Mountain className="w-3.5 h-3.5 text-emerald-500" /> {raceKms} km {raceDesnivell ? `| +${raceDesnivell}m D+` : ''}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* Action buttons */}
-                <div className="flex items-center gap-2 self-start md:self-auto">
-                  {race.enllac_oficial && (
-                    <a
-                      href={race.enllac_oficial}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-bg-surface hover:bg-bg-hover text-text-secondary border border-border flex items-center gap-1.5 transition-colors"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" /> Web Oficial
-                    </a>
-                  )}
-                  {race.gpx_url && race.gpx_url !== '#' && (
-                    <a
-                      href={race.gpx_url}
-                      download
-                      className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-bg-hover hover:bg-border text-text-primary transition-colors flex items-center gap-1.5 border border-border"
-                    >
-                      <Download className="w-3.5 h-3.5 text-brand-500" /> Track GPX
-                    </a>
-                  )}
-                  <button
-                    onClick={() => openJoinModal(race)}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-brand-500 hover:bg-brand-600 text-white transition-all shadow-sm flex items-center gap-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Jo també hi vaig!
-                  </button>
-                </div>
-              </div>
-
-              {/* Coach's collective notes */}
-              {race.notes_equip && (
-                <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-                  <Trophy className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold text-amber-950">Indicacions d'Equip de l'Entrenador:</p>
-                    <p className="mt-0.5 leading-relaxed">{race.notes_equip}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Athletes in this race */}
-              <div>
-                <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2.5">
-                  Companys inscrits a la prova:
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {race.atletes?.map((atl, idx) => {
-                    if (atl.es_privada && !canManage) return null
-
-                    return (
-                      <div 
-                        key={idx}
-                        className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
-                          atl.es_privada 
-                            ? 'bg-rose-50/40 border-rose-200' 
-                            : 'bg-bg-surface border-border'
-                        }`}
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+                    {raceWeb && (
+                      <a
+                        href={raceWeb}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-bg-surface hover:bg-bg-hover text-text-secondary border border-border flex items-center gap-1.5 transition-colors"
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 font-bold text-xs flex items-center justify-center shrink-0">
-                            {atl.nom.charAt(0)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-text-primary truncate flex items-center gap-1">
-                              {atl.nom}
-                              {atl.es_privada && canManage && (
-                                <span title="Inscripció Privada (només visible per a l'entrenador)">
-                                  <Lock className="w-3 h-3 text-rose-500" />
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-[11px] text-text-muted">
-                              {atl.kms ? `${atl.kms} km` : 'Cursa'} • Obj. {atl.tipus_objectiu || 'A'}
-                            </p>
-                          </div>
-                        </div>
+                        <ExternalLink className="w-3.5 h-3.5" /> Web Oficial
+                      </a>
+                    )}
+                    {raceGpx && raceGpx !== '#' && (
+                      <a
+                        href={raceGpx}
+                        download
+                        className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-bg-hover hover:bg-border text-text-primary transition-colors flex items-center gap-1.5 border border-border"
+                      >
+                        <Download className="w-3.5 h-3.5 text-brand-500" /> Track GPX
+                      </a>
+                    )}
 
-                        {/* Ride sharing badge */}
-                        {atl.comparteix_transport && (
-                          <div 
-                            className="flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0"
-                            title={atl.ciutat_origen_transport ? `Surt de: ${atl.ciutat_origen_transport}` : 'Comparteix transport'}
-                          >
-                            <Car className="w-3 h-3 text-emerald-600 shrink-0" />
-                            <span className="font-semibold truncate max-w-[90px]">
-                              {atl.ciutat_origen_transport || 'Cotxe'}
-                            </span>
-                          </div>
-                        )}
+                    {userPart ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => openJoinModal(race)}
+                          className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Modificar dades
+                        </button>
+                        <button
+                          onClick={() => handleLeaveRace(race.id, race.nom)}
+                          title="Donar-me de baixa"
+                          className="p-1.5 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors"
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </button>
                       </div>
-                    )
-                  })}
+                    ) : (
+                      <button
+                        onClick={() => openJoinModal(race)}
+                        className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-brand-500 hover:bg-brand-600 text-white transition-all shadow-sm flex items-center gap-1.5"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Jo també hi vaig!
+                      </button>
+                    )}
+
+                    {canDeleteRace && (
+                      <button
+                        onClick={() => handleDeleteRace(race.id, race.nom)}
+                        title="Eliminar cursa d'equip"
+                        className="p-1.5 rounded-xl text-xs font-semibold bg-bg-surface hover:bg-rose-50 text-text-muted hover:text-rose-600 border border-border transition-colors ml-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Coach's collective notes */}
+                {race.notes_equip && (
+                  <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                    <Trophy className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-amber-950">Indicacions d'Equip:</p>
+                      <p className="mt-0.5 leading-relaxed">{race.notes_equip}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Athletes in this race */}
+                <div>
+                  <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2.5">
+                    Companys inscrits a la prova:
+                  </h3>
+                  {athletes.length === 0 ? (
+                    <p className="text-xs text-text-muted italic">Encara no hi ha cap inscrit registrat.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {athletes.map((atl, idx) => {
+                        const isPrivada = atl.es_privada ?? (atl.privacitat === 'privat')
+                        if (isPrivada && !canManage && (atl.atleta_id || atl.usuari_id) !== user?.id) return null
+
+                        const nomComplet = atl.nom || 'Atleta'
+                        const atlKms = atl.kms ?? raceKms
+                        const obj = atl.tipus_objectiu || atl.objectiu || 'A'
+                        const hasCar = atl.comparteix_transport ?? atl.disposa_cotxe
+                        const carCity = atl.ciutat_origen_transport || atl.ciutat_origen
+
+                        return (
+                          <div 
+                            key={idx}
+                            className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                              isPrivada 
+                                ? 'bg-rose-50/40 border-rose-200' 
+                                : 'bg-bg-surface border-border'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 font-bold text-xs flex items-center justify-center shrink-0">
+                                {nomComplet.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-text-primary truncate flex items-center gap-1">
+                                  {nomComplet}
+                                  {isPrivada && (
+                                    <span title="Inscripció Privada (només visible per a tu i l'entrenador)">
+                                      <Lock className="w-3 h-3 text-rose-500" />
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-[11px] text-text-muted">
+                                  {atlKms ? `${atlKms} km` : 'Cursa'} • Obj. {obj}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Ride sharing badge */}
+                            {hasCar && (
+                              <div 
+                                className="flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0"
+                                title={carCity ? `Surt de: ${carCity}` : 'Comparteix transport'}
+                              >
+                                <Car className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span className="font-semibold truncate max-w-[90px]">
+                                  {carCity || 'Cotxe'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -475,7 +504,9 @@ export const TeamRacesPage: React.FC = () => {
                 <h3 className="text-base sm:text-lg font-black text-text-primary">
                   Inscriure'm a {selectedRaceForJoin.nom}
                 </h3>
-                <p className="text-xs text-text-muted">Data: {selectedRaceForJoin.data}</p>
+                <p className="text-xs text-text-muted">
+                  Data: {selectedRaceForJoin.data || selectedRaceForJoin.data_inici}
+                </p>
               </div>
               <button 
                 onClick={() => setSelectedRaceForJoin(null)}
@@ -539,7 +570,7 @@ export const TeamRacesPage: React.FC = () => {
                 <p className="text-[11px] text-text-muted leading-relaxed">
                   {visibilitatEquip 
                     ? "Els teus companys podran veure que participes i podreu organitzar el viatge junts."
-                    : "Només el teu entrenador sabrà que corres aquesta cursa. No apareixeràs al llistat dels companys."}
+                    : "Només el teu entrenador sabrà que corres aquesta cursa. No apareixeràs al llistat públic dels companys."}
                 </p>
               </div>
 
