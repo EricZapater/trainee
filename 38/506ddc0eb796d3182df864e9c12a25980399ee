@@ -1,0 +1,22 @@
+backend/internal/handlers/submissions.go
+  h_42175f19913982 54-57
+backend/internal/store/weeks.go
+  h_42175f19913982 42-43
+frontend-pre/src/api/calendar.ts
+  h_42175f19913982 15
+frontend-pre/src/pages/CalendarPage.tsx
+  h_42175f19913982 98-99,107-117,382,384-385,387-388,426-448
+frontend-pre/src/pages/WellnessPage.tsx
+  h_42175f19913982 88-95,219-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "38506ddc0eb796d3182df864e9c12a25980399ee",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
