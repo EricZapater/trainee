@@ -1,0 +1,30 @@
+backend/cmd/server/main.go
+  h_42175f19913982 173
+backend/internal/handlers/team_competitions.go
+  h_42175f19913982 32-40,50-66
+backend/internal/models/team_competitions.go
+  h_42175f19913982 11,16-17,20-28,42,50-60,65-66,69,72,74,76,78,82-93
+backend/internal/store/store.go
+  h_42175f19913982 177
+backend/internal/store/team_competitions.go
+  h_42175f19913982 5,11,14,20,38,44-50,52,58,60,74,76,78,83-97,109,112,114-117,128-155,159,163,169,174-175,179,185-190,192,196-216,218-255,259,263,274-275,279-280
+backend/migrations/000042_update_team_competitions.down.sql
+  h_42175f19913982 1-5
+backend/migrations/000042_update_team_competitions.up.sql
+  h_42175f19913982 1-7
+frontend-pre/src/pages/TeamRacesPage.tsx
+  h_42175f19913982 22-24,71-73,88-90,92-94,99-105,108-122,131-133,136,138,140-145,147-150,156-179,189,191,193,195,197,199,201,203-204,215-218,303-313,315-323,325-367,369-376,379-402,404-412,416-425,427-446,448-453,455-485,487-490,493-494,507-509,573
+frontend-pre/src/types/index.ts
+  h_42175f19913982 113-114,116,118,120,122,124,126,129-142,146,148,151,153,155,157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8d9bdd9b34c20eb80c2e12b9dcd3fcabf55df47a",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
