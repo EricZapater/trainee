@@ -320,9 +320,40 @@ func (h *FinancesHandler) ListSubscripcions(c *gin.Context) {
 func (h *FinancesHandler) CreateSubscripcio(c *gin.Context) {
 	var req models.UpsertFinSubscripcioRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dades de subscripció invàlides: " + err.Error()})
 		return
 	}
+	if req.ProperaDataFacturacio == "" {
+		req.ProperaDataFacturacio = req.DataInici
+	}
+	if req.ArticleID == "" {
+		articles, err := h.Store.ListFinArticles(c.Request.Context())
+		if err == nil && len(articles) > 0 {
+			req.ArticleID = articles[0].ID
+			if req.UnitatNegociID == "" {
+				req.UnitatNegociID = articles[0].UnitatNegociID
+			}
+			if req.BaseImposable == 0 {
+				req.BaseImposable = articles[0].PreuBase
+			}
+			if req.IvaPercentatge == 0 {
+				req.IvaPercentatge = articles[0].IvaPercentatge
+			}
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cal crear com a mínim un Article a Configuració abans de crear una subscripció"})
+			return
+		}
+	}
+	if req.UnitatNegociID == "" {
+		units, err := h.Store.ListFinUnitatsNegoci(c.Request.Context())
+		if err == nil && len(units) > 0 {
+			req.UnitatNegociID = units[0].ID
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Cal tenir com a mínim una Unitat de Negoci configurada"})
+			return
+		}
+	}
+
 	sb, err := h.Store.CreateFinSubscripcio(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -335,7 +366,7 @@ func (h *FinancesHandler) UpdateSubscripcio(c *gin.Context) {
 	id := c.Param("id")
 	var req models.UpsertFinSubscripcioRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dades de subscripció invàlides: " + err.Error()})
 		return
 	}
 	sb, err := h.Store.UpdateFinSubscripcio(c.Request.Context(), id, req)

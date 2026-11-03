@@ -346,35 +346,14 @@ func (s *PostgresStore) UpsertFinClientByUsuariID(ctx context.Context, usuariID 
 	if req.Pais == "" {
 		req.Pais = "ES"
 	}
-	var cl models.FinClient
-	err := s.pool.QueryRow(ctx, `
-		INSERT INTO fin_clients (usuari_id, nom_fiscal, tipus_id_fiscal, nif_cif, adreca, cp, poblacio, provincia, pais, email, telefon, notes, actiu)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)
-		ON CONFLICT (usuari_id) DO UPDATE
-		SET nom_fiscal = EXCLUDED.nom_fiscal,
-		    tipus_id_fiscal = EXCLUDED.tipus_id_fiscal,
-		    nif_cif = EXCLUDED.nif_cif,
-		    adreca = EXCLUDED.adreca,
-		    cp = EXCLUDED.cp,
-		    poblacio = EXCLUDED.poblacio,
-		    provincia = EXCLUDED.provincia,
-		    pais = EXCLUDED.pais,
-		    email = EXCLUDED.email,
-		    telefon = EXCLUDED.telefon,
-		    notes = EXCLUDED.notes,
-		    updated_at = now()
-		RETURNING id, usuari_id, nom_fiscal, tipus_id_fiscal, nif_cif, adreca, cp, poblacio, provincia, pais, email, telefon, notes, actiu, created_at, updated_at
-	`,
-		usuariID, req.NomFiscal, req.TipusIDFiscal, req.NifCif, req.Adreca, req.CP, req.Poblacio, req.Provincia, req.Pais,
-		req.Email, req.Telefon, req.Notes,
-	).Scan(
-		&cl.ID, &cl.UsuariID, &cl.NomFiscal, &cl.TipusIDFiscal, &cl.NifCif, &cl.Adreca, &cl.CP, &cl.Poblacio, &cl.Provincia, &cl.Pais,
-		&cl.Email, &cl.Telefon, &cl.Notes, &cl.Actiu, &cl.CreatedAt, &cl.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
+	req.UsuariID = &usuariID
+
+	var existingID string
+	err := s.pool.QueryRow(ctx, `SELECT id FROM fin_clients WHERE usuari_id = $1 LIMIT 1`, usuariID).Scan(&existingID)
+	if err == nil && existingID != "" {
+		return s.UpdateFinClient(ctx, existingID, req)
 	}
-	return &cl, nil
+	return s.CreateFinClient(ctx, req)
 }
 
 func (s *PostgresStore) CreateFinClient(ctx context.Context, req models.UpsertFinClientRequest) (*models.FinClient, error) {

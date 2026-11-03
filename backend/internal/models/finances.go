@@ -228,8 +228,8 @@ type FinSubscripcio struct {
 
 type UpsertFinSubscripcioRequest struct {
 	ClientID              string  `json:"client_id" binding:"required"`
-	ArticleID             string  `json:"article_id" binding:"required"`
-	UnitatNegociID        string  `json:"unitat_negoci_id" binding:"required"`
+	ArticleID             string  `json:"article_id"`
+	UnitatNegociID        string  `json:"unitat_negoci_id"`
 	EntrenadorID          *string `json:"entrenador_id"`
 	PeriodicitatMesos     int     `json:"periodicitat_mesos" binding:"required,oneof=1 3 6 12"`
 	ConceptePersonalitzat string  `json:"concepte_personalitzat"`

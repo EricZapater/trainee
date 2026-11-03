@@ -10,18 +10,30 @@ import {
   Eye, 
   Trash2, 
   X,
-  Users
+  Users,
+  Percent,
+  Hash,
+  Briefcase,
+  Tag,
+  Package
 } from 'lucide-react'
 import {
   getFinConfiguracio,
   updateFinConfiguracio,
   listFinImpostos,
+  createFinImpost,
+  deleteFinImpost,
   listFinSeries,
+  createFinSerie,
   listFinUnitatsNegoci,
+  createFinUnitatNegoci,
   listFinClients,
+  createFinClient,
   syncAtletesToClients,
   listFinProveidors,
+  createFinProveidor,
   listFinArticles,
+  createFinArticle,
   listFinSubscripcions,
   createFinSubscripcio,
   batchGenerateSubscripcions,
@@ -44,6 +56,9 @@ import {
   uploadFinanceDocument,
   type FinConfiguracioEmpresa,
   type FinUnitatNegoci,
+  type FinSerie,
+  type FinImpost,
+  type FinArticle,
   type FinClient,
   type FinProveidor,
   type FinSubscripcio,
@@ -91,8 +106,31 @@ export const FinanceAdminPage: React.FC = () => {
   // Master data state
   const [config, setConfig] = useState<FinConfiguracioEmpresa | null>(null)
   const [unitats, setUnitats] = useState<FinUnitatNegoci[]>([])
+  const [series, setSeries] = useState<FinSerie[]>([])
+  const [impostos, setImpostos] = useState<FinImpost[]>([])
+  const [articles, setArticles] = useState<FinArticle[]>([])
   const [clients, setClients] = useState<FinClient[]>([])
   const [proveidors, setProveidors] = useState<FinProveidor[]>([])
+  const [activeConfigSubtab, setActiveConfigSubtab] = useState<'empresa' | 'unitats' | 'series' | 'impostos' | 'articles' | 'clients' | 'proveidors'>('empresa')
+
+  // Modals de mestres
+  const [showUnitatModal, setShowUnitatModal] = useState(false)
+  const [newUnitat, setNewUnitat] = useState({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', activa: true, ordre: 1 })
+
+  const [showSerieModal, setShowSerieModal] = useState(false)
+  const [newSerie, setNewSerie] = useState({ codi: '', descripcio: '', tipus: 'ordinaria' as 'ordinaria' | 'rectificativa', any_fiscal: new Date().getFullYear(), prefix: '', ultim_numero: 0, activa: true })
+
+  const [showImpostModal, setShowImpostModal] = useState(false)
+  const [newImpost, setNewImpost] = useState({ nom: '', tipus: 'iva' as 'iva' | 'irpf', percentatge: 21, causa_exempcio: '', per_defecte: false, actiu: true })
+
+  const [showArticleModal, setShowArticleModal] = useState(false)
+  const [newArticle, setNewArticle] = useState({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent' as 'entrenament_recurrent' | 'training_camp' | 'puntual', unitat_negoci_id: '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+
+  const [showClientModal, setShowClientModal] = useState(false)
+  const [newClient, setNewClient] = useState({ nom_fiscal: '', tipus_id_fiscal: 'NIF', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', email: '', telefon: '', notes: '', actiu: true })
+
+  const [showProveidorModal, setShowProveidorModal] = useState(false)
+  const [newProveidor, setNewProveidor] = useState({ nom_fiscal: '', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', iban: '', email: '', telefon: '', iva_defecte: 21, irpf_defecte: 0, unitat_negoci_defecte_id: '', notes: '', actiu: true })
 
   // Operations state
   const [factures, setFactures] = useState<FinFacturaVenda[]>([])
@@ -204,7 +242,7 @@ export const FinanceAdminPage: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      const [cfg, , , un, cl, pr] = await Promise.all([
+      const [cfg, impList, serList, un, cl, pr, artList] = await Promise.all([
         getFinConfiguracio(),
         listFinImpostos(),
         listFinSeries(),
@@ -214,23 +252,37 @@ export const FinanceAdminPage: React.FC = () => {
         listFinArticles()
       ])
       setConfig(cfg)
-      setUnitats(un)
-      setClients(cl)
-      setProveidors(pr)
-      if (un.length > 0) {
+      setImpostos(impList || [])
+      setSeries(serList || [])
+      setUnitats(un || [])
+      setClients(cl || [])
+      setProveidors(pr || [])
+      setArticles(artList || [])
+
+      if (un && un.length > 0) {
         setNewFactura(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
         setNewCompra(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
         setNewDespesa(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
-        setNewSub(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
         setNewCamp(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
+        setNewArticle(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
       }
-      if (cl.length > 0) {
+      if (cl && cl.length > 0) {
         setNewFactura(prev => ({ ...prev, client_id: cl[0].id }))
         setNewSub(prev => ({ ...prev, client_id: cl[0].id }))
         setNewCamp(prev => ({ ...prev, client_id: cl[0].id }))
       }
-      if (pr.length > 0) {
+      if (pr && pr.length > 0) {
         setNewCompra(prev => ({ ...prev, proveidor_id: pr[0].id }))
+      }
+      if (artList && artList.length > 0) {
+        setNewSub(prev => ({
+          ...prev,
+          article_id: artList[0].id,
+          unitat_negoci_id: artList[0].unitat_negoci_id || (un && un.length > 0 ? un[0].id : ''),
+          concepte_personalitzat: artList[0].nom,
+          base_imposable: artList[0].preu_base,
+          iva_percentatge: artList[0].iva_percentatge
+        }))
       }
     } catch (err: any) {
       console.error('Error carregant dades mestres:', err)
@@ -463,6 +515,102 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
+  const handleCreateUnitat = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await createFinUnitatNegoci(newUnitat)
+      showNotify('success', 'Unitat de negoci creada correctament!')
+      setShowUnitatModal(false)
+      setNewUnitat({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', activa: true, ordre: 1 })
+      const un = await listFinUnitatsNegoci()
+      setUnitats(un)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error creant unitat de negoci')
+    }
+  }
+
+  const handleCreateSerie = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await createFinSerie(newSerie)
+      showNotify('success', 'Sèrie de facturació creada!')
+      setShowSerieModal(false)
+      setNewSerie({ codi: '', descripcio: '', tipus: 'ordinaria', any_fiscal: new Date().getFullYear(), prefix: '', ultim_numero: 0, activa: true })
+      const s = await listFinSeries()
+      setSeries(s)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error creant sèrie')
+    }
+  }
+
+  const handleCreateImpost = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await createFinImpost(newImpost)
+      showNotify('success', 'Tipus d\'impost afegit correctament!')
+      setShowImpostModal(false)
+      setNewImpost({ nom: '', tipus: 'iva', percentatge: 21, causa_exempcio: '', per_defecte: false, actiu: true })
+      const imp = await listFinImpostos()
+      setImpostos(imp)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error afegint impost')
+    }
+  }
+
+  const handleDeleteImpost = async (id: string) => {
+    if (!window.confirm('Vols desactivar/eliminar aquest tipus d\'IVA?')) return
+    try {
+      await deleteFinImpost(id)
+      showNotify('success', 'Tipus d\'impost eliminat')
+      const imp = await listFinImpostos()
+      setImpostos(imp)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error eliminant impost')
+    }
+  }
+
+  const handleCreateArticle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await createFinArticle(newArticle)
+      showNotify('success', 'Article / Servei creat al catàleg!')
+      setShowArticleModal(false)
+      setNewArticle({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent', unitat_negoci_id: unitats[0]?.id || '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+      const arts = await listFinArticles()
+      setArticles(arts)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error creant article')
+    }
+  }
+
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await createFinClient(newClient)
+      showNotify('success', 'Client fiscal creat!')
+      setShowClientModal(false)
+      setNewClient({ nom_fiscal: '', tipus_id_fiscal: 'NIF', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', email: '', telefon: '', notes: '', actiu: true })
+      const cl = await listFinClients()
+      setClients(cl)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error creant client')
+    }
+  }
+
+  const handleCreateProveidor = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await createFinProveidor(newProveidor)
+      showNotify('success', 'Proveïdor fiscal registrat!')
+      setShowProveidorModal(false)
+      setNewProveidor({ nom_fiscal: '', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', iban: '', email: '', telefon: '', iva_defecte: 21, irpf_defecte: 0, unitat_negoci_defecte_id: '', notes: '', actiu: true })
+      const pr = await listFinProveidors()
+      setProveidors(pr)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error creant proveïdor')
+    }
+  }
+
   const handleFacturarFita = async (fitaId: string) => {
     if (!window.confirm('Vols generar una factura independent per a aquest termini de pagament?')) return
     try {
@@ -528,26 +676,48 @@ export const FinanceAdminPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Global Action Shortcut */}
+        {/* Action Shortcut segons la secció activa */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setShowFacturaModal(true)}
-            className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Nova Venda
-          </button>
-          <button
-            onClick={() => setShowCompraModal(true)}
-            className="p-2 rounded-xl bg-white border border-border-light text-slate-700 hover:text-slate-900 shadow-sm text-xs font-bold flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5 text-rose-500" /> Compra
-          </button>
-          <button
-            onClick={() => setShowDespesaModal(true)}
-            className="p-2 rounded-xl bg-white border border-border-light text-slate-700 hover:text-slate-900 shadow-sm text-xs font-bold flex items-center gap-1"
-          >
-            <Plus className="w-3.5 h-3.5 text-amber-500" /> Despesa
-          </button>
+          {activeTab === 'vendes' && (
+            <button
+              onClick={() => setShowFacturaModal(true)}
+              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Nova Venda
+            </button>
+          )}
+          {activeTab === 'compres' && (
+            <button
+              onClick={() => setShowCompraModal(true)}
+              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 shadow-sm text-white"
+            >
+              <Plus className="w-4 h-4" /> Nova Compra
+            </button>
+          )}
+          {activeTab === 'despeses' && (
+            <button
+              onClick={() => setShowDespesaModal(true)}
+              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 shadow-sm text-white"
+            >
+              <Plus className="w-4 h-4" /> Nova Despesa
+            </button>
+          )}
+          {activeTab === 'subscripcions' && (
+            <button
+              onClick={() => setShowSubModal(true)}
+              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Nova Subscripció
+            </button>
+          )}
+          {activeTab === 'camps' && (
+            <button
+              onClick={() => setShowCampModal(true)}
+              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Nou Pla de Camp
+            </button>
+          )}
         </div>
       </div>
 
@@ -1186,70 +1356,515 @@ export const FinanceAdminPage: React.FC = () => {
       )}
 
       {/* TAB 8: CONFIGURACIÓ & MESTRES */}
-      {activeTab === 'config' && config && (
+      {activeTab === 'config' && (
         <div className="space-y-6">
-          <div className="glass-card p-5 space-y-4">
-            <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-emerald-600" /> Dades Fiscals de l'Emissor (1 Sol CIF/NIF)
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-600">Raó Social</label>
-                <input
-                  type="text"
-                  value={config.rao_social}
-                  onChange={e => setConfig({ ...config, rao_social: e.target.value })}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-600">CIF / NIF</label>
-                <input
-                  type="text"
-                  value={config.nif_cif}
-                  onChange={e => setConfig({ ...config, nif_cif: e.target.value })}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white"
-                />
-              </div>
-              <div>
-                <label className="font-bold text-slate-600">IBAN Principal de Cobrament</label>
-                <input
-                  type="text"
-                  value={config.iban_principal}
-                  onChange={e => setConfig({ ...config, iban_principal: e.target.value })}
-                  className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white font-mono"
-                />
-              </div>
-            </div>
-            <button
-              onClick={async () => {
-                await updateFinConfiguracio(config)
-                showNotify('success', 'Configuració fiscal guardada!')
-              }}
-              className="btn-primary text-xs py-2 px-4 bg-emerald-600 hover:bg-emerald-700"
-            >
-              Guardar Configuració
-            </button>
+          {/* Subpestanyes de Configuració */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-bold border-b border-border">
+            {[
+              { id: 'empresa', label: 'Empresa & Emissor', icon: Building2 },
+              { id: 'unitats', label: 'Unitats de Negoci', icon: Briefcase },
+              { id: 'series', label: 'Sèries & Comptadors', icon: Hash },
+              { id: 'impostos', label: 'Tipus d\'IVA & Retencions', icon: Percent },
+              { id: 'articles', label: 'Catàleg d\'Articles', icon: Package },
+              { id: 'clients', label: 'Clients Fiscals', icon: Users },
+              { id: 'proveidors', label: 'Proveïdors', icon: Tag },
+            ].map(tab => {
+              const Icon = tab.icon
+              const isSelected = activeConfigSubtab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveConfigSubtab(tab.id as any)}
+                  className={`px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap transition-colors ${
+                    isSelected ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
           </div>
 
-          {/* Sync Athletes to Clients */}
-          <div className="glass-card p-5 flex items-center justify-between">
-            <div>
-              <h4 className="font-bold text-sm text-slate-800">Sincronització d'Atletes a la base de Clients</h4>
-              <p className="text-xs text-slate-500">Crea la fitxa de client per a tots els atletes actius que encara no en tinguin</p>
+          {/* SUBTAB 1: EMPRESA */}
+          {activeConfigSubtab === 'empresa' && config && (
+            <div className="glass-card p-6 space-y-5">
+              <div className="flex items-center justify-between border-b pb-3">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-emerald-600" /> Dades Fiscals de l'Emissor (1 Sol CIF/NIF)
+                  </h3>
+                  <p className="text-xs text-slate-500">Aquestes dades s'imprimeixen a les capçaleres de totes les factures emeses legalment.</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    await updateFinConfiguracio(config)
+                    showNotify('success', 'Configuració fiscal guardada!')
+                  }}
+                  className="btn-primary text-xs py-2 px-4 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
+                >
+                  Guardar Canvis
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700">Raó Social *</label>
+                  <input
+                    type="text"
+                    value={config.rao_social}
+                    onChange={e => setConfig({ ...config, rao_social: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Nom Comercial</label>
+                  <input
+                    type="text"
+                    value={config.nom_comercial}
+                    onChange={e => setConfig({ ...config, nom_comercial: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">CIF / NIF *</label>
+                  <input
+                    type="text"
+                    value={config.nif_cif}
+                    onChange={e => setConfig({ ...config, nif_cif: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white uppercase font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Adreça Fiscal</label>
+                  <input
+                    type="text"
+                    value={config.adreca}
+                    onChange={e => setConfig({ ...config, adreca: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Població / Província</label>
+                  <input
+                    type="text"
+                    value={config.poblacio}
+                    onChange={e => setConfig({ ...config, poblacio: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Codi Postal</label>
+                  <input
+                    type="text"
+                    value={config.cp}
+                    onChange={e => setConfig({ ...config, cp: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Email d'Administració</label>
+                  <input
+                    type="email"
+                    value={config.email_administracio}
+                    onChange={e => setConfig({ ...config, email_administracio: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Telèfon de Contacte</label>
+                  <input
+                    type="text"
+                    value={config.telefon}
+                    onChange={e => setConfig({ ...config, telefon: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">IBAN Principal de Cobrament</label>
+                  <input
+                    type="text"
+                    value={config.iban_principal}
+                    onChange={e => setConfig({ ...config, iban_principal: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white font-mono"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="font-bold text-slate-700">Peu Legal de Factura (LSSI / RGPD / Veri*factu)</label>
+                  <textarea
+                    rows={2}
+                    value={config.peu_legal}
+                    onChange={e => setConfig({ ...config, peu_legal: e.target.value })}
+                    className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white text-xs"
+                    placeholder="Inscrita al Registre Mercantil..."
+                  />
+                </div>
+              </div>
             </div>
-            <button
-              onClick={async () => {
-                const res = await syncAtletesToClients()
-                showNotify('success', `S'han importat ${res.imported_count} atletes com a clients!`)
-                const cl = await listFinClients()
-                setClients(cl)
-              }}
-              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300"
-            >
-              Sincronitzar Atletes
-            </button>
-          </div>
+          )}
+
+          {/* SUBTAB 2: UNITATS DE NEGOCI */}
+          {activeConfigSubtab === 'unitats' && (
+            <div className="glass-card p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-emerald-600" /> Unitats de Negoci Analítiques
+                  </h3>
+                  <p className="text-xs text-slate-500">Centres de cost i línies d'activitat per a totalitzacions i P&L (Ex: Entrenaments, Training Camps, etc.).</p>
+                </div>
+                <button
+                  onClick={() => setShowUnitatModal(true)}
+                  className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Nova Unitat
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
+                    <tr>
+                      <th className="p-3">Codi</th>
+                      <th className="p-3">Nom de la Unitat</th>
+                      <th className="p-3">Descripció</th>
+                      <th className="p-3">Sèrie Defecte</th>
+                      <th className="p-3 text-center">Estat</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {unitats.map(u => (
+                      <tr key={u.id} className="hover:bg-slate-50/50">
+                        <td className="p-3 font-mono font-bold text-emerald-700">{u.codi}</td>
+                        <td className="p-3 font-bold text-slate-900">{u.nom}</td>
+                        <td className="p-3 text-slate-600">{u.descripcio || '—'}</td>
+                        <td className="p-3 font-mono text-slate-500">{u.serie_codi || 'Per defecte'}</td>
+                        <td className="p-3 text-center">
+                          {u.activa ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Activa</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiva</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SUBTAB 3: SÈRIES & COMPTADORS */}
+          {activeConfigSubtab === 'series' && (
+            <div className="glass-card p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <Hash className="w-5 h-5 text-emerald-600" /> Sèries de Facturació, Any Fiscal & Comptadors
+                  </h3>
+                  <p className="text-xs text-slate-500">Numeració correlativa legal per a factures ordinàries i rectificatives (abonaments).</p>
+                </div>
+                <button
+                  onClick={() => setShowSerieModal(true)}
+                  className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Nova Sèrie
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
+                    <tr>
+                      <th className="p-3">Codi Sèrie</th>
+                      <th className="p-3">Descripció</th>
+                      <th className="p-3">Tipus</th>
+                      <th className="p-3">Exercici / Any</th>
+                      <th className="p-3">Prefix</th>
+                      <th className="p-3 text-right">Últim Número emès</th>
+                      <th className="p-3 text-center">Estat</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {series.map(s => (
+                      <tr key={s.id} className="hover:bg-slate-50/50">
+                        <td className="p-3 font-mono font-bold text-emerald-700">{s.codi}</td>
+                        <td className="p-3 font-semibold text-slate-900">{s.descripcio}</td>
+                        <td className="p-3">
+                          {s.tipus === 'rectificativa' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">Rectificativa (Abonament)</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">Ordinària</span>
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-slate-600">{s.any_fiscal}</td>
+                        <td className="p-3 font-mono text-slate-600">{s.prefix}</td>
+                        <td className="p-3 text-right font-mono font-bold text-slate-900">{s.ultim_numero}</td>
+                        <td className="p-3 text-center">
+                          {s.activa ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Activa</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiva</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SUBTAB 4: TIPUS D'IVA & IMPOSTOS */}
+          {activeConfigSubtab === 'impostos' && (
+            <div className="glass-card p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <Percent className="w-5 h-5 text-emerald-600" /> Catàleg de Tipus d'IVA & Retencions IRPF
+                  </h3>
+                  <p className="text-xs text-slate-500">Configuració dinàmica dels percentatges tributaris aplicables a vendes, compres i articles (gens de hardcoded).</p>
+                </div>
+                <button
+                  onClick={() => setShowImpostModal(true)}
+                  className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Nou Tipus d'Impost
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
+                    <tr>
+                      <th className="p-3">Nom</th>
+                      <th className="p-3">Tipus Tributari</th>
+                      <th className="p-3 text-right">Percentatge (%)</th>
+                      <th className="p-3">Exempció</th>
+                      <th className="p-3 text-center">Per Defecte</th>
+                      <th className="p-3 text-center">Estat</th>
+                      <th className="p-3 text-right">Accions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {impostos.map(imp => (
+                      <tr key={imp.id} className="hover:bg-slate-50/50">
+                        <td className="p-3 font-bold text-slate-900">{imp.nom}</td>
+                        <td className="p-3 capitalize">
+                          {imp.tipus === 'iva' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 uppercase">IVA</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 uppercase">IRPF</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-slate-900">{imp.percentatge.toFixed(2)} %</td>
+                        <td className="p-3 text-slate-500 font-mono text-[11px]">{imp.causa_exempcio || '—'}</td>
+                        <td className="p-3 text-center">
+                          {imp.per_defecte && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-100 text-brand-800">Per Defecte</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          {imp.actiu ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Actiu</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
+                          )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleDeleteImpost(imp.id)}
+                            className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                            title="Eliminar aquest tipus tributari"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SUBTAB 5: CATÀLEG D'ARTICLES */}
+          {activeConfigSubtab === 'articles' && (
+            <div className="glass-card p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-emerald-600" /> Catàleg d'Articles & Serveis Facturables
+                  </h3>
+                  <p className="text-xs text-slate-500">Articles predefinits per a factures i subscripcions recurrents (preus base, tipus d'IVA i unitat de negoci).</p>
+                </div>
+                <button
+                  onClick={() => setShowArticleModal(true)}
+                  className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Nou Article
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
+                    <tr>
+                      <th className="p-3">Codi</th>
+                      <th className="p-3">Nom de l'Article</th>
+                      <th className="p-3">Categoria</th>
+                      <th className="p-3">Unitat Negoci</th>
+                      <th className="p-3 text-right">Preu Base</th>
+                      <th className="p-3 text-right">IVA (%)</th>
+                      <th className="p-3 text-center">Estat</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {articles.map(art => (
+                      <tr key={art.id} className="hover:bg-slate-50/50">
+                        <td className="p-3 font-mono font-bold text-slate-600">{art.codi || '—'}</td>
+                        <td className="p-3 font-bold text-slate-900">{art.nom}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 capitalize">
+                            {art.categoria.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-600">{art.unitat_negoci_nom || '—'}</td>
+                        <td className="p-3 text-right font-mono font-bold text-emerald-700">{art.preu_base.toFixed(2)} €</td>
+                        <td className="p-3 text-right font-mono text-slate-600">{art.iva_percentatge}%</td>
+                        <td className="p-3 text-center">
+                          {art.actiu ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Actiu</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SUBTAB 6: CLIENTS */}
+          {activeConfigSubtab === 'clients' && (
+            <div className="glass-card p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b gap-3">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-emerald-600" /> Clients Fiscals & Destinataris
+                  </h3>
+                  <p className="text-xs text-slate-500">Base de clients per emetre factures legals de venda i cobraments.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      const res = await syncAtletesToClients()
+                      showNotify('success', `S'han importat ${res.imported_count} atletes com a clients!`)
+                      const cl = await listFinClients()
+                      setClients(cl)
+                    }}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300"
+                  >
+                    Sincronitzar Atletes
+                  </button>
+                  <button
+                    onClick={() => setShowClientModal(true)}
+                    className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" /> Nou Client
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
+                    <tr>
+                      <th className="p-3">Nom Fiscal</th>
+                      <th className="p-3">NIF / CIF</th>
+                      <th className="p-3">Usuari Vinculat</th>
+                      <th className="p-3">Email & Telèfon</th>
+                      <th className="p-3">Població</th>
+                      <th className="p-3 text-center">Estat</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {clients.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50/50">
+                        <td className="p-3 font-bold text-slate-900">{c.nom_fiscal}</td>
+                        <td className="p-3 font-mono text-slate-700">{c.nif_cif || '—'}</td>
+                        <td className="p-3 text-slate-600">{c.usuari_nom || '—'}</td>
+                        <td className="p-3 text-slate-500">{c.email || c.telefon || '—'}</td>
+                        <td className="p-3 text-slate-500">{c.poblacio || '—'}</td>
+                        <td className="p-3 text-center">
+                          {c.actiu ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Actiu</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SUBTAB 7: PROVEÏDORS */}
+          {activeConfigSubtab === 'proveidors' && (
+            <div className="glass-card p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b">
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                    <Tag className="w-5 h-5 text-emerald-600" /> Proveïdors Fiscals de Compra
+                  </h3>
+                  <p className="text-xs text-slate-500">Mestres de proveïdors per a despeses i factures de compra rebudes.</p>
+                </div>
+                <button
+                  onClick={() => setShowProveidorModal(true)}
+                  className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Nou Proveïdor
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
+                    <tr>
+                      <th className="p-3">Nom Fiscal</th>
+                      <th className="p-3">NIF / CIF</th>
+                      <th className="p-3">IBAN</th>
+                      <th className="p-3">Email</th>
+                      <th className="p-3">IVA Defecte</th>
+                      <th className="p-3 text-center">Estat</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {proveidors.map(pr => (
+                      <tr key={pr.id} className="hover:bg-slate-50/50">
+                        <td className="p-3 font-bold text-slate-900">{pr.nom_fiscal}</td>
+                        <td className="p-3 font-mono text-slate-700">{pr.nif_cif || '—'}</td>
+                        <td className="p-3 font-mono text-[11px] text-slate-500">{pr.iban || '—'}</td>
+                        <td className="p-3 text-slate-500">{pr.email || '—'}</td>
+                        <td className="p-3 font-mono font-bold text-slate-700">{pr.iva_defecte}%</td>
+                        <td className="p-3 text-center">
+                          {pr.actiu ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Actiu</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1264,30 +1879,85 @@ export const FinanceAdminPage: React.FC = () => {
 
             <form onSubmit={handleCreateSub} className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-700">Client</label>
+                <label className="font-bold text-slate-700">Client *</label>
                 <select
                   value={newSub.client_id}
                   onChange={e => setNewSub({ ...newSub, client_id: e.target.value })}
                   className="w-full mt-1 p-2 border rounded-xl"
                   required
                 >
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal}</option>)}
+                  <option value="">-- Selecciona un client --</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal} {c.nif_cif ? `(${c.nif_cif})` : ''}</option>)}
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Concepte Personalitzat / Servei</label>
-                <input
-                  type="text"
-                  value={newSub.concepte_personalitzat}
-                  onChange={e => setNewSub({ ...newSub, concepte_personalitzat: e.target.value })}
-                  placeholder="Ex: Entrenament Trail Running Pro"
-                  className="w-full mt-1 p-2 border rounded-xl"
+                <label className="font-bold text-slate-700">Article / Concepte del Catàleg *</label>
+                <select
+                  value={newSub.article_id}
+                  onChange={e => {
+                    const artId = e.target.value
+                    const art = articles.find(a => a.id === artId)
+                    if (art) {
+                      setNewSub({
+                        ...newSub,
+                        article_id: artId,
+                        unitat_negoci_id: art.unitat_negoci_id || newSub.unitat_negoci_id,
+                        concepte_personalitzat: art.nom,
+                        base_imposable: art.preu_base,
+                        iva_percentatge: art.iva_percentatge,
+                        irpf_percentatge: art.irpf_percentatge
+                      })
+                    } else {
+                      setNewSub({ ...newSub, article_id: artId })
+                    }
+                  }}
+                  className="w-full mt-1 p-2 border rounded-xl font-bold bg-white"
                   required
-                />
+                >
+                  <option value="">-- Selecciona article / servei --</option>
+                  {articles.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.nom} ({a.preu_base.toFixed(2)} € + {a.iva_percentatge}% IVA)
+                    </option>
+                  ))}
+                </select>
+                {articles.length === 0 && (
+                  <p className="text-rose-600 text-[11px] mt-1 font-semibold">
+                    No hi ha articles al catàleg. Ves a Configuració &gt; Articles per crear-ne un.
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Unitat de Negoci *</label>
+                  <select
+                    value={newSub.unitat_negoci_id}
+                    onChange={e => setNewSub({ ...newSub, unitat_negoci_id: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                    required
+                  >
+                    <option value="">-- Selecciona unitat --</option>
+                    {unitats.map(u => (
+                      <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Concepte Personalitzat</label>
+                  <input
+                    type="text"
+                    value={newSub.concepte_personalitzat}
+                    onChange={e => setNewSub({ ...newSub, concepte_personalitzat: e.target.value })}
+                    placeholder="Ex: Entrenament Trail Running Pro"
+                    className="w-full mt-1 p-2 border rounded-xl"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="font-bold text-slate-700">Periodicitat</label>
                   <select
@@ -1308,6 +1978,17 @@ export const FinanceAdminPage: React.FC = () => {
                     step="0.01"
                     value={newSub.base_imposable}
                     onChange={e => setNewSub({ ...newSub, base_imposable: parseFloat(e.target.value) || 0 })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">IVA (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newSub.iva_percentatge}
+                    onChange={e => setNewSub({ ...newSub, iva_percentatge: parseFloat(e.target.value) || 0 })}
                     className="w-full mt-1 p-2 border rounded-xl font-bold"
                     required
                   />
@@ -1836,6 +2517,482 @@ export const FinanceAdminPage: React.FC = () => {
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-amber-600 hover:bg-amber-700">
                   Guardar Despesa
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOVA UNITAT DE NEGOCI */}
+      {showUnitatModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-base text-slate-900">Nova Unitat de Negoci Analítica</h3>
+              <button onClick={() => setShowUnitatModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={handleCreateUnitat} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Codi Identificador *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: CAMP, ENT, MAT..."
+                  value={newUnitat.codi}
+                  onChange={e => setNewUnitat({ ...newUnitat, codi: e.target.value.toUpperCase() })}
+                  className="w-full mt-1 p-2 border rounded-xl font-mono uppercase"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Nom de la Unitat *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Training Camps i Campus"
+                  value={newUnitat.nom}
+                  onChange={e => setNewUnitat({ ...newUnitat, nom: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Descripció</label>
+                <textarea
+                  rows={2}
+                  placeholder="Descripció analítica del centre de cost"
+                  value={newUnitat.descripcio}
+                  onChange={e => setNewUnitat({ ...newUnitat, descripcio: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUnitatModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
+                  Crear Unitat
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOVA SÈRIE DE FACTURACIÓ */}
+      {showSerieModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-base text-slate-900">Nova Sèrie de Facturació</h3>
+              <button onClick={() => setShowSerieModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={handleCreateSerie} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Codi Sèrie *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: F2026, R2026"
+                    value={newSerie.codi}
+                    onChange={e => setNewSerie({ ...newSerie, codi: e.target.value.toUpperCase() })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Tipus de Sèrie</label>
+                  <select
+                    value={newSerie.tipus}
+                    onChange={e => setNewSerie({ ...newSerie, tipus: e.target.value as any })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                  >
+                    <option value="ordinaria">Ordinària</option>
+                    <option value="rectificativa">Rectificativa (Abonament)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Exercici / Any Fiscal</label>
+                  <input
+                    type="number"
+                    required
+                    value={newSerie.any_fiscal}
+                    onChange={e => setNewSerie({ ...newSerie, any_fiscal: parseInt(e.target.value) || 2026 })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Prefix Número</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: F2026-"
+                    value={newSerie.prefix}
+                    onChange={e => setNewSerie({ ...newSerie, prefix: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Descripció</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Facturació ordinària de vendes de serveis"
+                  value={newSerie.descripcio}
+                  onChange={e => setNewSerie({ ...newSerie, descripcio: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSerieModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
+                  Crear Sèrie
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOU IMPOST (IVA / IRPF) */}
+      {showImpostModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-base text-slate-900">Nou Tipus Tributari (IVA / IRPF)</h3>
+              <button onClick={() => setShowImpostModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={handleCreateImpost} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Nom descriptiu *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: IVA General (21%), IRPF Nous Professionals (7%)"
+                  value={newImpost.nom}
+                  onChange={e => setNewImpost({ ...newImpost, nom: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Tipus Tributari</label>
+                  <select
+                    value={newImpost.tipus}
+                    onChange={e => setNewImpost({ ...newImpost, tipus: e.target.value as any })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                  >
+                    <option value="iva">IVA</option>
+                    <option value="irpf">Retenció IRPF</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Percentatge (%) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={newImpost.percentatge}
+                    onChange={e => setNewImpost({ ...newImpost, percentatge: parseFloat(e.target.value) || 0 })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold font-mono"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Causa d'Exempció (si % és 0)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: E1 - Operació exempta segons art. 20 LIVA"
+                  value={newImpost.causa_exempcio}
+                  onChange={e => setNewImpost({ ...newImpost, causa_exempcio: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowImpostModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
+                  Desar Impost
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOU ARTICLE / SERVEI */}
+      {showArticleModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-base text-slate-900">Nou Article / Servei al Catàleg</h3>
+              <button onClick={() => setShowArticleModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={handleCreateArticle} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Codi Article</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: ENT-TRAIL-PRO"
+                    value={newArticle.codi}
+                    onChange={e => setNewArticle({ ...newArticle, codi: e.target.value.toUpperCase() })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Categoria</label>
+                  <select
+                    value={newArticle.categoria}
+                    onChange={e => setNewArticle({ ...newArticle, categoria: e.target.value as any })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                  >
+                    <option value="entrenament_recurrent">Entrenament Recurrent (Subscripció)</option>
+                    <option value="training_camp">Training Camp (Fites)</option>
+                    <option value="puntual">Puntual / Assessorament</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Nom de l'Article o Servei *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Entrenament Personalitzat Trail Running"
+                  value={newArticle.nom}
+                  onChange={e => setNewArticle({ ...newArticle, nom: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Unitat de Negoci *</label>
+                <select
+                  value={newArticle.unitat_negoci_id}
+                  onChange={e => setNewArticle({ ...newArticle, unitat_negoci_id: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                  required
+                >
+                  <option value="">-- Selecciona unitat de negoci --</option>
+                  {unitats.map(u => (
+                    <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Preu Base Imposable (€) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={newArticle.preu_base}
+                    onChange={e => setNewArticle({ ...newArticle, preu_base: parseFloat(e.target.value) || 0 })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">IVA (%)</label>
+                  <select
+                    value={newArticle.iva_percentatge}
+                    onChange={e => setNewArticle({ ...newArticle, iva_percentatge: parseFloat(e.target.value) || 0 })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                  >
+                    <option value={21}>21% (General)</option>
+                    <option value={10}>10% (Reduït)</option>
+                    <option value={4}>4% (Superreduït)</option>
+                    <option value={0}>0% (Exempt)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Descripció addicional</label>
+                <textarea
+                  rows={2}
+                  placeholder="Detalls del servei que s'inclouran a la factura"
+                  value={newArticle.descripcio}
+                  onChange={e => setNewArticle({ ...newArticle, descripcio: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowArticleModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
+                  Desar Article
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOU CLIENT */}
+      {showClientModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-base text-slate-900">Nou Client Fiscal</h3>
+              <button onClick={() => setShowClientModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={handleCreateClient} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Nom Fiscal / Raó Social *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Marta Font Gomez"
+                  value={newClient.nom_fiscal}
+                  onChange={e => setNewClient({ ...newClient, nom_fiscal: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Tipus ID</label>
+                  <select
+                    value={newClient.tipus_id_fiscal}
+                    onChange={e => setNewClient({ ...newClient, tipus_id_fiscal: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  >
+                    <option value="NIF">NIF/DNI</option>
+                    <option value="CIF">CIF</option>
+                    <option value="NIE">NIE</option>
+                    <option value="Passaport">Passaport</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="font-bold text-slate-700">NIF / CIF *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="12345678Z"
+                    value={newClient.nif_cif}
+                    onChange={e => setNewClient({ ...newClient, nif_cif: e.target.value.toUpperCase() })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono uppercase"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Email</label>
+                  <input
+                    type="email"
+                    placeholder="factures@client.com"
+                    value={newClient.email}
+                    onChange={e => setNewClient({ ...newClient, email: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Telèfon</label>
+                  <input
+                    type="text"
+                    placeholder="+34 600..."
+                    value={newClient.telefon}
+                    onChange={e => setNewClient({ ...newClient, telefon: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowClientModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
+                  Desar Client
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOU PROVEÏDOR */}
+      {showProveidorModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-base text-slate-900">Nou Proveïdor de Compra</h3>
+              <button onClick={() => setShowProveidorModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={handleCreateProveidor} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Nom Fiscal del Proveïdor *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Allnutrition SL / Strava Inc"
+                  value={newProveidor.nom_fiscal}
+                  onChange={e => setNewProveidor({ ...newProveidor, nom_fiscal: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">CIF / NIF</label>
+                  <input
+                    type="text"
+                    placeholder="B12345678"
+                    value={newProveidor.nif_cif}
+                    onChange={e => setNewProveidor({ ...newProveidor, nif_cif: e.target.value.toUpperCase() })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono uppercase"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">IVA Defecte (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newProveidor.iva_defecte}
+                    onChange={e => setNewProveidor({ ...newProveidor, iva_defecte: parseFloat(e.target.value) || 21 })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold font-mono"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">IBAN del Proveïdor</label>
+                <input
+                  type="text"
+                  placeholder="ES00 0000 0000 0000 0000 0000"
+                  value={newProveidor.iban}
+                  onChange={e => setNewProveidor({ ...newProveidor, iban: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl font-mono"
+                />
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowProveidorModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
+                  Desar Proveïdor
                 </button>
               </div>
             </form>
