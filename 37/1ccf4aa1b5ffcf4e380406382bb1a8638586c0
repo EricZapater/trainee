@@ -1,0 +1,14 @@
+frontend-pre/src/pages/FinanceAdminPage.tsx
+  h_42175f19913982 545-548,550,553,2742-2759
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "371ccf4aa1b5ffcf4e380406382bb1a8638586c0",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
