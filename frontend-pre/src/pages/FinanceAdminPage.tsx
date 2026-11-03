@@ -15,25 +15,32 @@ import {
   Hash,
   Briefcase,
   Tag,
-  Package
+  Package,
+  Pencil
 } from 'lucide-react'
 import {
   getFinConfiguracio,
   updateFinConfiguracio,
   listFinImpostos,
   createFinImpost,
+  updateFinImpost,
   deleteFinImpost,
   listFinSeries,
   createFinSerie,
+  updateFinSerie,
   listFinUnitatsNegoci,
   createFinUnitatNegoci,
+  updateFinUnitatNegoci,
   listFinClients,
   createFinClient,
+  updateFinClient,
   syncAtletesToClients,
   listFinProveidors,
   createFinProveidor,
+  updateFinProveidor,
   listFinArticles,
   createFinArticle,
+  updateFinArticle,
   listFinSubscripcions,
   createFinSubscripcio,
   batchGenerateSubscripcions,
@@ -113,23 +120,29 @@ export const FinanceAdminPage: React.FC = () => {
   const [proveidors, setProveidors] = useState<FinProveidor[]>([])
   const [activeConfigSubtab, setActiveConfigSubtab] = useState<'empresa' | 'unitats' | 'series' | 'impostos' | 'articles' | 'clients' | 'proveidors'>('empresa')
 
-  // Modals de mestres
+  // Modals de mestres i edició
   const [showUnitatModal, setShowUnitatModal] = useState(false)
+  const [editingUnitatId, setEditingUnitatId] = useState<string | null>(null)
   const [newUnitat, setNewUnitat] = useState({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', activa: true, ordre: 1 })
 
   const [showSerieModal, setShowSerieModal] = useState(false)
+  const [editingSerieId, setEditingSerieId] = useState<string | null>(null)
   const [newSerie, setNewSerie] = useState({ codi: '', descripcio: '', tipus: 'ordinaria' as 'ordinaria' | 'rectificativa', any_fiscal: new Date().getFullYear(), prefix: '', ultim_numero: 0, activa: true })
 
   const [showImpostModal, setShowImpostModal] = useState(false)
+  const [editingImpostId, setEditingImpostId] = useState<string | null>(null)
   const [newImpost, setNewImpost] = useState({ nom: '', tipus: 'iva' as 'iva' | 'irpf', percentatge: 21, causa_exempcio: '', per_defecte: false, actiu: true })
 
   const [showArticleModal, setShowArticleModal] = useState(false)
+  const [editingArticleId, setEditingArticleId] = useState<string | null>(null)
   const [newArticle, setNewArticle] = useState({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent' as 'entrenament_recurrent' | 'training_camp' | 'puntual', unitat_negoci_id: '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
 
   const [showClientModal, setShowClientModal] = useState(false)
+  const [editingClientId, setEditingClientId] = useState<string | null>(null)
   const [newClient, setNewClient] = useState({ nom_fiscal: '', tipus_id_fiscal: 'NIF', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', email: '', telefon: '', notes: '', actiu: true })
 
   const [showProveidorModal, setShowProveidorModal] = useState(false)
+  const [editingProveidorId, setEditingProveidorId] = useState<string | null>(null)
   const [newProveidor, setNewProveidor] = useState({ nom_fiscal: '', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', iban: '', email: '', telefon: '', iva_defecte: 21, irpf_defecte: 0, unitat_negoci_defecte_id: '', notes: '', actiu: true })
 
   // Operations state
@@ -515,45 +528,90 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleCreateUnitat = async (e: React.FormEvent) => {
+  // 1. Unitats
+  const openCreateUnitat = () => {
+    setEditingUnitatId(null)
+    setNewUnitat({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', activa: true, ordre: unitats.length + 1 })
+    setShowUnitatModal(true)
+  }
+  const openEditUnitat = (u: FinUnitatNegoci) => {
+    setEditingUnitatId(u.id)
+    setNewUnitat({ codi: u.codi, nom: u.nom, descripcio: u.descripcio || '', serie_defecte_id: u.serie_defecte_id || '', activa: u.activa, ordre: u.ordre || 1 })
+    setShowUnitatModal(true)
+  }
+  const handleSaveUnitat = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createFinUnitatNegoci(newUnitat)
-      showNotify('success', 'Unitat de negoci creada correctament!')
+      if (editingUnitatId) {
+        await updateFinUnitatNegoci(editingUnitatId, newUnitat)
+        showNotify('success', 'Unitat de negoci actualitzada correctament!')
+      } else {
+        await createFinUnitatNegoci(newUnitat)
+        showNotify('success', 'Unitat de negoci creada correctament!')
+      }
       setShowUnitatModal(false)
-      setNewUnitat({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', activa: true, ordre: 1 })
       const un = await listFinUnitatsNegoci()
       setUnitats(un)
     } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error creant unitat de negoci')
+      showNotify('error', err.response?.data?.error || 'Error desant unitat de negoci')
     }
   }
 
-  const handleCreateSerie = async (e: React.FormEvent) => {
+  // 2. Sèries
+  const openCreateSerie = () => {
+    setEditingSerieId(null)
+    setNewSerie({ codi: '', descripcio: '', tipus: 'ordinaria', any_fiscal: new Date().getFullYear(), prefix: '', ultim_numero: 0, activa: true })
+    setShowSerieModal(true)
+  }
+  const openEditSerie = (s: FinSerie) => {
+    setEditingSerieId(s.id)
+    setNewSerie({ codi: s.codi, descripcio: s.descripcio || '', tipus: s.tipus, any_fiscal: s.any_fiscal, prefix: s.prefix || '', ultim_numero: s.ultim_numero || 0, activa: s.activa })
+    setShowSerieModal(true)
+  }
+  const handleSaveSerie = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createFinSerie(newSerie)
-      showNotify('success', 'Sèrie de facturació creada!')
+      if (editingSerieId) {
+        await updateFinSerie(editingSerieId, newSerie)
+        showNotify('success', 'Sèrie de facturació actualitzada!')
+      } else {
+        await createFinSerie(newSerie)
+        showNotify('success', 'Sèrie de facturació creada!')
+      }
       setShowSerieModal(false)
-      setNewSerie({ codi: '', descripcio: '', tipus: 'ordinaria', any_fiscal: new Date().getFullYear(), prefix: '', ultim_numero: 0, activa: true })
       const s = await listFinSeries()
       setSeries(s)
     } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error creant sèrie')
+      showNotify('error', err.response?.data?.error || 'Error desant sèrie')
     }
   }
 
-  const handleCreateImpost = async (e: React.FormEvent) => {
+  // 3. Impostos
+  const openCreateImpost = () => {
+    setEditingImpostId(null)
+    setNewImpost({ nom: '', tipus: 'iva', percentatge: 21, causa_exempcio: '', per_defecte: false, actiu: true })
+    setShowImpostModal(true)
+  }
+  const openEditImpost = (imp: FinImpost) => {
+    setEditingImpostId(imp.id)
+    setNewImpost({ nom: imp.nom, tipus: imp.tipus, percentatge: imp.percentatge, causa_exempcio: imp.causa_exempcio || '', per_defecte: imp.per_defecte, actiu: imp.actiu })
+    setShowImpostModal(true)
+  }
+  const handleSaveImpost = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createFinImpost(newImpost)
-      showNotify('success', 'Tipus d\'impost afegit correctament!')
+      if (editingImpostId) {
+        await updateFinImpost(editingImpostId, newImpost)
+        showNotify('success', 'Tipus tributari actualitzat!')
+      } else {
+        await createFinImpost(newImpost)
+        showNotify('success', 'Tipus tributari afegit!')
+      }
       setShowImpostModal(false)
-      setNewImpost({ nom: '', tipus: 'iva', percentatge: 21, causa_exempcio: '', per_defecte: false, actiu: true })
       const imp = await listFinImpostos()
       setImpostos(imp)
     } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error afegint impost')
+      showNotify('error', err.response?.data?.error || 'Error desant impost')
     }
   }
 
@@ -569,45 +627,90 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleCreateArticle = async (e: React.FormEvent) => {
+  // 4. Articles
+  const openCreateArticle = () => {
+    setEditingArticleId(null)
+    setNewArticle({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent', unitat_negoci_id: unitats[0]?.id || '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+    setShowArticleModal(true)
+  }
+  const openEditArticle = (a: FinArticle) => {
+    setEditingArticleId(a.id)
+    setNewArticle({ codi: a.codi || '', nom: a.nom, descripcio: a.descripcio || '', categoria: a.categoria, unitat_negoci_id: a.unitat_negoci_id, preu_base: a.preu_base, iva_percentatge: a.iva_percentatge, irpf_percentatge: a.irpf_percentatge || 0, causa_exempcio: a.causa_exempcio || '', actiu: a.actiu })
+    setShowArticleModal(true)
+  }
+  const handleSaveArticle = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createFinArticle(newArticle)
-      showNotify('success', 'Article / Servei creat al catàleg!')
+      if (editingArticleId) {
+        await updateFinArticle(editingArticleId, newArticle)
+        showNotify('success', 'Article / Servei actualitzat correctament!')
+      } else {
+        await createFinArticle(newArticle)
+        showNotify('success', 'Article / Servei creat al catàleg!')
+      }
       setShowArticleModal(false)
-      setNewArticle({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent', unitat_negoci_id: unitats[0]?.id || '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
       const arts = await listFinArticles()
       setArticles(arts)
     } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error creant article')
+      showNotify('error', err.response?.data?.error || 'Error desant article')
     }
   }
 
-  const handleCreateClient = async (e: React.FormEvent) => {
+  // 5. Clients
+  const openCreateClient = () => {
+    setEditingClientId(null)
+    setNewClient({ nom_fiscal: '', tipus_id_fiscal: 'NIF', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', email: '', telefon: '', notes: '', actiu: true })
+    setShowClientModal(true)
+  }
+  const openEditClient = (c: FinClient) => {
+    setEditingClientId(c.id)
+    setNewClient({ nom_fiscal: c.nom_fiscal, tipus_id_fiscal: c.tipus_id_fiscal || 'NIF', nif_cif: c.nif_cif || '', adreca: c.adreca || '', cp: c.cp || '', poblacio: c.poblacio || '', provincia: c.provincia || '', pais: c.pais || 'Espanya', email: c.email || '', telefon: c.telefon || '', notes: c.notes || '', actiu: c.actiu })
+    setShowClientModal(true)
+  }
+  const handleSaveClient = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createFinClient(newClient)
-      showNotify('success', 'Client fiscal creat!')
+      if (editingClientId) {
+        await updateFinClient(editingClientId, newClient)
+        showNotify('success', 'Client fiscal actualitzat!')
+      } else {
+        await createFinClient(newClient)
+        showNotify('success', 'Client fiscal creat!')
+      }
       setShowClientModal(false)
-      setNewClient({ nom_fiscal: '', tipus_id_fiscal: 'NIF', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', email: '', telefon: '', notes: '', actiu: true })
       const cl = await listFinClients()
       setClients(cl)
     } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error creant client')
+      showNotify('error', err.response?.data?.error || 'Error desant client')
     }
   }
 
-  const handleCreateProveidor = async (e: React.FormEvent) => {
+  // 6. Proveïdors
+  const openCreateProveidor = () => {
+    setEditingProveidorId(null)
+    setNewProveidor({ nom_fiscal: '', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', iban: '', email: '', telefon: '', iva_defecte: 21, irpf_defecte: 0, unitat_negoci_defecte_id: '', notes: '', actiu: true })
+    setShowProveidorModal(true)
+  }
+  const openEditProveidor = (p: FinProveidor) => {
+    setEditingProveidorId(p.id)
+    setNewProveidor({ nom_fiscal: p.nom_fiscal, nif_cif: p.nif_cif || '', adreca: p.adreca || '', cp: p.cp || '', poblacio: p.poblacio || '', provincia: p.provincia || '', pais: p.pais || 'Espanya', iban: p.iban || '', email: p.email || '', telefon: p.telefon || '', iva_defecte: p.iva_defecte || 21, irpf_defecte: p.irpf_defecte || 0, unitat_negoci_defecte_id: p.unitat_negoci_defecte_id || '', notes: p.notes || '', actiu: p.actiu })
+    setShowProveidorModal(true)
+  }
+  const handleSaveProveidor = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createFinProveidor(newProveidor)
-      showNotify('success', 'Proveïdor fiscal registrat!')
+      if (editingProveidorId) {
+        await updateFinProveidor(editingProveidorId, newProveidor)
+        showNotify('success', 'Proveïdor fiscal actualitzat!')
+      } else {
+        await createFinProveidor(newProveidor)
+        showNotify('success', 'Proveïdor fiscal registrat!')
+      }
       setShowProveidorModal(false)
-      setNewProveidor({ nom_fiscal: '', nif_cif: '', adreca: '', cp: '', poblacio: '', provincia: '', pais: 'Espanya', iban: '', email: '', telefon: '', iva_defecte: 21, irpf_defecte: 0, unitat_negoci_defecte_id: '', notes: '', actiu: true })
       const pr = await listFinProveidors()
       setProveidors(pr)
     } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error creant proveïdor')
+      showNotify('error', err.response?.data?.error || 'Error desant proveïdor')
     }
   }
 
@@ -1514,7 +1617,7 @@ export const FinanceAdminPage: React.FC = () => {
                   <p className="text-xs text-slate-500">Centres de cost i línies d'activitat per a totalitzacions i P&L (Ex: Entrenaments, Training Camps, etc.).</p>
                 </div>
                 <button
-                  onClick={() => setShowUnitatModal(true)}
+                  onClick={openCreateUnitat}
                   className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" /> Nova Unitat
@@ -1530,6 +1633,7 @@ export const FinanceAdminPage: React.FC = () => {
                       <th className="p-3">Descripció</th>
                       <th className="p-3">Sèrie Defecte</th>
                       <th className="p-3 text-center">Estat</th>
+                      <th className="p-3 text-right">Accions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1545,6 +1649,16 @@ export const FinanceAdminPage: React.FC = () => {
                           ) : (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiva</span>
                           )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => openEditUnitat(u)}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
+                            title="Editar unitat"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1565,7 +1679,7 @@ export const FinanceAdminPage: React.FC = () => {
                   <p className="text-xs text-slate-500">Numeració correlativa legal per a factures ordinàries i rectificatives (abonaments).</p>
                 </div>
                 <button
-                  onClick={() => setShowSerieModal(true)}
+                  onClick={openCreateSerie}
                   className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" /> Nova Sèrie
@@ -1583,6 +1697,7 @@ export const FinanceAdminPage: React.FC = () => {
                       <th className="p-3">Prefix</th>
                       <th className="p-3 text-right">Últim Número emès</th>
                       <th className="p-3 text-center">Estat</th>
+                      <th className="p-3 text-right">Accions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1607,6 +1722,16 @@ export const FinanceAdminPage: React.FC = () => {
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiva</span>
                           )}
                         </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => openEditSerie(s)}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
+                            title="Editar sèrie i comptadors"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1626,7 +1751,7 @@ export const FinanceAdminPage: React.FC = () => {
                   <p className="text-xs text-slate-500">Configuració dinàmica dels percentatges tributaris aplicables a vendes, compres i articles (gens de hardcoded).</p>
                 </div>
                 <button
-                  onClick={() => setShowImpostModal(true)}
+                  onClick={openCreateImpost}
                   className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" /> Nou Tipus d'Impost
@@ -1672,13 +1797,23 @@ export const FinanceAdminPage: React.FC = () => {
                           )}
                         </td>
                         <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleDeleteImpost(imp.id)}
-                            className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50"
-                            title="Eliminar aquest tipus tributari"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => openEditImpost(imp)}
+                              className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
+                              title="Editar impost"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteImpost(imp.id)}
+                              className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                              title="Eliminar aquest tipus tributari"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1699,7 +1834,7 @@ export const FinanceAdminPage: React.FC = () => {
                   <p className="text-xs text-slate-500">Articles predefinits per a factures i subscripcions recurrents (preus base, tipus d'IVA i unitat de negoci).</p>
                 </div>
                 <button
-                  onClick={() => setShowArticleModal(true)}
+                  onClick={openCreateArticle}
                   className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" /> Nou Article
@@ -1717,6 +1852,7 @@ export const FinanceAdminPage: React.FC = () => {
                       <th className="p-3 text-right">Preu Base</th>
                       <th className="p-3 text-right">IVA (%)</th>
                       <th className="p-3 text-center">Estat</th>
+                      <th className="p-3 text-right">Accions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1738,6 +1874,16 @@ export const FinanceAdminPage: React.FC = () => {
                           ) : (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
                           )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => openEditArticle(art)}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
+                            title="Editar article"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1770,7 +1916,7 @@ export const FinanceAdminPage: React.FC = () => {
                     Sincronitzar Atletes
                   </button>
                   <button
-                    onClick={() => setShowClientModal(true)}
+                    onClick={openCreateClient}
                     className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
                   >
                     <Plus className="w-4 h-4" /> Nou Client
@@ -1788,6 +1934,7 @@ export const FinanceAdminPage: React.FC = () => {
                       <th className="p-3">Email & Telèfon</th>
                       <th className="p-3">Població</th>
                       <th className="p-3 text-center">Estat</th>
+                      <th className="p-3 text-right">Accions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1804,6 +1951,16 @@ export const FinanceAdminPage: React.FC = () => {
                           ) : (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
                           )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => openEditClient(c)}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
+                            title="Editar client"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1824,7 +1981,7 @@ export const FinanceAdminPage: React.FC = () => {
                   <p className="text-xs text-slate-500">Mestres de proveïdors per a despeses i factures de compra rebudes.</p>
                 </div>
                 <button
-                  onClick={() => setShowProveidorModal(true)}
+                  onClick={openCreateProveidor}
                   className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
                 >
                   <Plus className="w-4 h-4" /> Nou Proveïdor
@@ -1841,6 +1998,7 @@ export const FinanceAdminPage: React.FC = () => {
                       <th className="p-3">Email</th>
                       <th className="p-3">IVA Defecte</th>
                       <th className="p-3 text-center">Estat</th>
+                      <th className="p-3 text-right">Accions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -1857,6 +2015,16 @@ export const FinanceAdminPage: React.FC = () => {
                           ) : (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
                           )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => openEditProveidor(pr)}
+                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
+                            title="Editar proveïdor"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -2524,15 +2692,17 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL NOVA UNITAT DE NEGOCI */}
+      {/* MODAL UNITAT DE NEGOCI (CREAR / EDITAR) */}
       {showUnitatModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border space-y-4">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-base text-slate-900">Nova Unitat de Negoci Analítica</h3>
+              <h3 className="font-bold text-base text-slate-900">
+                {editingUnitatId ? 'Editar Unitat de Negoci' : 'Nova Unitat de Negoci Analítica'}
+              </h3>
               <button onClick={() => setShowUnitatModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
-            <form onSubmit={handleCreateUnitat} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveUnitat} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700">Codi Identificador *</label>
                 <input
@@ -2565,6 +2735,17 @@ export const FinanceAdminPage: React.FC = () => {
                   className="w-full mt-1 p-2 border rounded-xl"
                 />
               </div>
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-2 font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={newUnitat.activa}
+                    onChange={e => setNewUnitat({ ...newUnitat, activa: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  <span>Unitat Activa</span>
+                </label>
+              </div>
               <div className="pt-3 border-t flex justify-end gap-2">
                 <button
                   type="button"
@@ -2574,7 +2755,7 @@ export const FinanceAdminPage: React.FC = () => {
                   Cancel·lar
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
-                  Crear Unitat
+                  {editingUnitatId ? 'Desar Canvis' : 'Crear Unitat'}
                 </button>
               </div>
             </form>
@@ -2582,15 +2763,17 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL NOVA SÈRIE DE FACTURACIÓ */}
+      {/* MODAL SÈRIE DE FACTURACIÓ (CREAR / EDITAR) */}
       {showSerieModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border space-y-4">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-base text-slate-900">Nova Sèrie de Facturació</h3>
+              <h3 className="font-bold text-base text-slate-900">
+                {editingSerieId ? 'Editar Sèrie de Facturació' : 'Nova Sèrie de Facturació'}
+              </h3>
               <button onClick={() => setShowSerieModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
-            <form onSubmit={handleCreateSerie} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveSerie} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-bold text-slate-700">Codi Sèrie *</label>
@@ -2637,6 +2820,28 @@ export const FinanceAdminPage: React.FC = () => {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Últim Número Emès</label>
+                  <input
+                    type="number"
+                    value={newSerie.ultim_numero || 0}
+                    onChange={e => setNewSerie({ ...newSerie, ultim_numero: parseInt(e.target.value) || 0 })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono"
+                  />
+                </div>
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={newSerie.activa}
+                      onChange={e => setNewSerie({ ...newSerie, activa: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded"
+                    />
+                    <span>Sèrie Activa</span>
+                  </label>
+                </div>
+              </div>
               <div>
                 <label className="font-bold text-slate-700">Descripció</label>
                 <input
@@ -2656,7 +2861,7 @@ export const FinanceAdminPage: React.FC = () => {
                   Cancel·lar
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
-                  Crear Sèrie
+                  {editingSerieId ? 'Desar Canvis' : 'Crear Sèrie'}
                 </button>
               </div>
             </form>
@@ -2664,15 +2869,17 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL NOU IMPOST (IVA / IRPF) */}
+      {/* MODAL IMPOST IVA / IRPF (CREAR / EDITAR) */}
       {showImpostModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border space-y-4">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-base text-slate-900">Nou Tipus Tributari (IVA / IRPF)</h3>
+              <h3 className="font-bold text-base text-slate-900">
+                {editingImpostId ? 'Editar Tipus Tributari' : 'Nou Tipus Tributari (IVA / IRPF)'}
+              </h3>
               <button onClick={() => setShowImpostModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
-            <form onSubmit={handleCreateImpost} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveImpost} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700">Nom descriptiu *</label>
                 <input
@@ -2718,6 +2925,26 @@ export const FinanceAdminPage: React.FC = () => {
                   className="w-full mt-1 p-2 border rounded-xl"
                 />
               </div>
+              <div className="flex items-center gap-4 pt-1">
+                <label className="flex items-center gap-2 font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={newImpost.per_defecte}
+                    onChange={e => setNewImpost({ ...newImpost, per_defecte: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  <span>Per defecte</span>
+                </label>
+                <label className="flex items-center gap-2 font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={newImpost.actiu}
+                    onChange={e => setNewImpost({ ...newImpost, actiu: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  <span>Actiu</span>
+                </label>
+              </div>
               <div className="pt-3 border-t flex justify-end gap-2">
                 <button
                   type="button"
@@ -2727,7 +2954,7 @@ export const FinanceAdminPage: React.FC = () => {
                   Cancel·lar
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
-                  Desar Impost
+                  {editingImpostId ? 'Desar Canvis' : 'Desar Impost'}
                 </button>
               </div>
             </form>
@@ -2735,15 +2962,17 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL NOU ARTICLE / SERVEI */}
+      {/* MODAL ARTICLE / SERVEI (CREAR / EDITAR) */}
       {showArticleModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-base text-slate-900">Nou Article / Servei al Catàleg</h3>
+              <h3 className="font-bold text-base text-slate-900">
+                {editingArticleId ? 'Editar Article / Servei' : 'Nou Article / Servei al Catàleg'}
+              </h3>
               <button onClick={() => setShowArticleModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
-            <form onSubmit={handleCreateArticle} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveArticle} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-bold text-slate-700">Codi Article</label>
@@ -2819,6 +3048,29 @@ export const FinanceAdminPage: React.FC = () => {
                   </select>
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Retenció IRPF (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newArticle.irpf_percentatge || 0}
+                    onChange={e => setNewArticle({ ...newArticle, irpf_percentatge: parseFloat(e.target.value) || 0 })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono"
+                  />
+                </div>
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={newArticle.actiu}
+                      onChange={e => setNewArticle({ ...newArticle, actiu: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded"
+                    />
+                    <span>Article Actiu</span>
+                  </label>
+                </div>
+              </div>
               <div>
                 <label className="font-bold text-slate-700">Descripció addicional</label>
                 <textarea
@@ -2838,7 +3090,7 @@ export const FinanceAdminPage: React.FC = () => {
                   Cancel·lar
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
-                  Desar Article
+                  {editingArticleId ? 'Desar Canvis' : 'Desar Article'}
                 </button>
               </div>
             </form>
@@ -2846,15 +3098,17 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL NOU CLIENT */}
+      {/* MODAL CLIENT FISCAL (CREAR / EDITAR) */}
       {showClientModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-base text-slate-900">Nou Client Fiscal</h3>
+              <h3 className="font-bold text-base text-slate-900">
+                {editingClientId ? 'Editar Client Fiscal' : 'Nou Client Fiscal'}
+              </h3>
               <button onClick={() => setShowClientModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
-            <form onSubmit={handleCreateClient} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveClient} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700">Nom Fiscal / Raó Social *</label>
                 <input
@@ -2914,6 +3168,59 @@ export const FinanceAdminPage: React.FC = () => {
                   />
                 </div>
               </div>
+              <div>
+                <label className="font-bold text-slate-700">Adreça Postal</label>
+                <input
+                  type="text"
+                  placeholder="Carrer Major 12, 1r 2a"
+                  value={newClient.adreca}
+                  onChange={e => setNewClient({ ...newClient, adreca: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Codi Postal</label>
+                  <input
+                    type="text"
+                    placeholder="08001"
+                    value={newClient.cp}
+                    onChange={e => setNewClient({ ...newClient, cp: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Població</label>
+                  <input
+                    type="text"
+                    placeholder="Barcelona"
+                    value={newClient.poblacio}
+                    onChange={e => setNewClient({ ...newClient, poblacio: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Província</label>
+                  <input
+                    type="text"
+                    placeholder="Barcelona"
+                    value={newClient.provincia}
+                    onChange={e => setNewClient({ ...newClient, provincia: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-2 font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={newClient.actiu}
+                    onChange={e => setNewClient({ ...newClient, actiu: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  <span>Client Actiu</span>
+                </label>
+              </div>
               <div className="pt-3 border-t flex justify-end gap-2">
                 <button
                   type="button"
@@ -2923,7 +3230,7 @@ export const FinanceAdminPage: React.FC = () => {
                   Cancel·lar
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
-                  Desar Client
+                  {editingClientId ? 'Desar Canvis' : 'Desar Client'}
                 </button>
               </div>
             </form>
@@ -2931,15 +3238,17 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL NOU PROVEÏDOR */}
+      {/* MODAL PROVEÏDOR (CREAR / EDITAR) */}
       {showProveidorModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-base text-slate-900">Nou Proveïdor de Compra</h3>
+              <h3 className="font-bold text-base text-slate-900">
+                {editingProveidorId ? 'Editar Proveïdor' : 'Nou Proveïdor de Compra'}
+              </h3>
               <button onClick={() => setShowProveidorModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
-            <form onSubmit={handleCreateProveidor} className="space-y-3 text-xs">
+            <form onSubmit={handleSaveProveidor} className="space-y-3 text-xs">
               <div>
                 <label className="font-bold text-slate-700">Nom Fiscal del Proveïdor *</label>
                 <input
@@ -2973,6 +3282,28 @@ export const FinanceAdminPage: React.FC = () => {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Email Proveïdor</label>
+                  <input
+                    type="email"
+                    placeholder="info@proveidor.com"
+                    value={newProveidor.email}
+                    onChange={e => setNewProveidor({ ...newProveidor, email: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Telèfon</label>
+                  <input
+                    type="text"
+                    placeholder="+34 93..."
+                    value={newProveidor.telefon}
+                    onChange={e => setNewProveidor({ ...newProveidor, telefon: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="font-bold text-slate-700">IBAN del Proveïdor</label>
                 <input
@@ -2983,6 +3314,49 @@ export const FinanceAdminPage: React.FC = () => {
                   className="w-full mt-1 p-2 border rounded-xl font-mono"
                 />
               </div>
+              <div>
+                <label className="font-bold text-slate-700">Adreça Postal</label>
+                <input
+                  type="text"
+                  placeholder="Polígon Industrial Nord, nau 4"
+                  value={newProveidor.adreca}
+                  onChange={e => setNewProveidor({ ...newProveidor, adreca: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Codi Postal</label>
+                  <input
+                    type="text"
+                    placeholder="08220"
+                    value={newProveidor.cp}
+                    onChange={e => setNewProveidor({ ...newProveidor, cp: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Població</label>
+                  <input
+                    type="text"
+                    placeholder="Terrassa"
+                    value={newProveidor.poblacio}
+                    onChange={e => setNewProveidor({ ...newProveidor, poblacio: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-2 font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={newProveidor.actiu}
+                    onChange={e => setNewProveidor({ ...newProveidor, actiu: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  <span>Proveïdor Actiu</span>
+                </label>
+              </div>
               <div className="pt-3 border-t flex justify-end gap-2">
                 <button
                   type="button"
@@ -2992,7 +3366,7 @@ export const FinanceAdminPage: React.FC = () => {
                   Cancel·lar
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
-                  Desar Proveïdor
+                  {editingProveidorId ? 'Desar Canvis' : 'Desar Proveïdor'}
                 </button>
               </div>
             </form>
