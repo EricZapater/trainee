@@ -564,8 +564,54 @@ func (h *FinancesHandler) DownloadFacturaPDF(c *gin.Context) {
 }
 
 // ============================================================
-// 6. Portal de l'Atleta: "Les meves Factures"
+// 6. Portal de l'Usuari: "Les meves Factures i Dades Fiscals"
 // ============================================================
+
+func (h *FinancesHandler) GetMyFacturacio(c *gin.Context) {
+	userID := c.GetString("user_id")
+	client, err := h.Store.GetFinClientByUsuariID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if client == nil {
+		user, err := h.Store.GetUsuariByID(c.Request.Context(), userID)
+		nom := ""
+		email := ""
+		if err == nil && user != nil {
+			nom = user.Nom
+			if user.Cognoms != "" {
+				nom += " " + user.Cognoms
+			}
+			email = user.Email
+		}
+		c.JSON(http.StatusOK, models.FinClient{
+			NomFiscal:     nom,
+			TipusIDFiscal: "NIF",
+			NifCif:        "",
+			Email:         email,
+			Pais:          "Espanya",
+			Actiu:         true,
+		})
+		return
+	}
+	c.JSON(http.StatusOK, client)
+}
+
+func (h *FinancesHandler) UpdateMyFacturacio(c *gin.Context) {
+	userID := c.GetString("user_id")
+	var req models.UpsertFinClientRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	client, err := h.Store.UpsertFinClientByUsuariID(c.Request.Context(), userID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, client)
+}
 
 func (h *FinancesHandler) ListFacturesMe(c *gin.Context) {
 	userID := c.GetString("user_id")

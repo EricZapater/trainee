@@ -2,10 +2,12 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"trainee-backend/internal/models"
 )
 
@@ -310,6 +312,69 @@ func (s *PostgresStore) ListFinClients(ctx context.Context) ([]models.FinClient,
 		list = append(list, cl)
 	}
 	return list, rows.Err()
+}
+
+func (s *PostgresStore) GetFinClientByUsuariID(ctx context.Context, usuariID string) (*models.FinClient, error) {
+	var cl models.FinClient
+	err := s.pool.QueryRow(ctx, `
+		SELECT c.id, c.usuari_id,
+		       CASE WHEN u.id IS NOT NULL THEN TRIM(u.nom || ' ' || COALESCE(u.cognoms, '')) ELSE NULL END AS usuari_nom,
+		       c.nom_fiscal, c.tipus_id_fiscal, c.nif_cif, c.adreca, c.cp, c.poblacio, c.provincia, c.pais,
+		       c.email, c.telefon, c.notes, c.actiu, c.created_at, c.updated_at
+		FROM fin_clients c
+		LEFT JOIN usuaris u ON u.id = c.usuari_id
+		WHERE c.usuari_id = $1
+		LIMIT 1
+	`, usuariID).Scan(
+		&cl.ID, &cl.UsuariID, &cl.UsuariNom, &cl.NomFiscal, &cl.TipusIDFiscal, &cl.NifCif,
+		&cl.Adreca, &cl.CP, &cl.Poblacio, &cl.Provincia, &cl.Pais,
+		&cl.Email, &cl.Telefon, &cl.Notes, &cl.Actiu, &cl.CreatedAt, &cl.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &cl, nil
+}
+
+func (s *PostgresStore) UpsertFinClientByUsuariID(ctx context.Context, usuariID string, req models.UpsertFinClientRequest) (*models.FinClient, error) {
+	if req.TipusIDFiscal == "" {
+		req.TipusIDFiscal = "NIF"
+	}
+	if req.Pais == "" {
+		req.Pais = "ES"
+	}
+	var cl models.FinClient
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO fin_clients (usuari_id, nom_fiscal, tipus_id_fiscal, nif_cif, adreca, cp, poblacio, provincia, pais, email, telefon, notes, actiu)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true)
+		ON CONFLICT (usuari_id) DO UPDATE
+		SET nom_fiscal = EXCLUDED.nom_fiscal,
+		    tipus_id_fiscal = EXCLUDED.tipus_id_fiscal,
+		    nif_cif = EXCLUDED.nif_cif,
+		    adreca = EXCLUDED.adreca,
+		    cp = EXCLUDED.cp,
+		    poblacio = EXCLUDED.poblacio,
+		    provincia = EXCLUDED.provincia,
+		    pais = EXCLUDED.pais,
+		    email = EXCLUDED.email,
+		    telefon = EXCLUDED.telefon,
+		    notes = EXCLUDED.notes,
+		    updated_at = now()
+		RETURNING id, usuari_id, nom_fiscal, tipus_id_fiscal, nif_cif, adreca, cp, poblacio, provincia, pais, email, telefon, notes, actiu, created_at, updated_at
+	`,
+		usuariID, req.NomFiscal, req.TipusIDFiscal, req.NifCif, req.Adreca, req.CP, req.Poblacio, req.Provincia, req.Pais,
+		req.Email, req.Telefon, req.Notes,
+	).Scan(
+		&cl.ID, &cl.UsuariID, &cl.NomFiscal, &cl.TipusIDFiscal, &cl.NifCif, &cl.Adreca, &cl.CP, &cl.Poblacio, &cl.Provincia, &cl.Pais,
+		&cl.Email, &cl.Telefon, &cl.Notes, &cl.Actiu, &cl.CreatedAt, &cl.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &cl, nil
 }
 
 func (s *PostgresStore) CreateFinClient(ctx context.Context, req models.UpsertFinClientRequest) (*models.FinClient, error) {

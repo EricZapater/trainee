@@ -196,6 +196,8 @@ type Store interface {
 	UpdateFinUnitatNegoci(ctx context.Context, id string, req models.UpsertFinUnitatNegociRequest) (*models.FinUnitatNegoci, error)
 
 	ListFinClients(ctx context.Context) ([]models.FinClient, error)
+	GetFinClientByUsuariID(ctx context.Context, usuariID string) (*models.FinClient, error)
+	UpsertFinClientByUsuariID(ctx context.Context, usuariID string, req models.UpsertFinClientRequest) (*models.FinClient, error)
 	CreateFinClient(ctx context.Context, req models.UpsertFinClientRequest) (*models.FinClient, error)
 	UpdateFinClient(ctx context.Context, id string, req models.UpsertFinClientRequest) (*models.FinClient, error)
 	SyncAtletesToFinClients(ctx context.Context) (int64, error)

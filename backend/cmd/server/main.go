@@ -137,6 +137,8 @@ func main() {
 	authenticated := api.Group("")
 	authenticated.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireConsent(s, "v1.0"))
 	{
+		authenticated.GET("/auth/me", h.GetAuthMe)
+		authenticated.GET("/usuaris/me", h.GetAuthMe)
 		authenticated.POST("/auth/change-password", h.ChangePassword)
 		authenticated.PATCH("/usuaris/me/idioma", h.UpdateIdioma)
 		authenticated.PATCH("/usuaris/me/notificacions-tauler", h.UpdateNotificacionsTauler)
@@ -365,6 +367,9 @@ func main() {
 
 	// Factures per a l'Atleta i descàrrega PDF
 	authenticated.GET("/atletes/factures", financesHandler.ListFacturesMe)
+	authenticated.GET("/perfil/factures", financesHandler.ListFacturesMe)
+	authenticated.GET("/perfil/facturacio", financesHandler.GetMyFacturacio)
+	authenticated.PUT("/perfil/facturacio", financesHandler.UpdateMyFacturacio)
 	authenticated.GET("/finances/factures/:id/pdf", financesHandler.DownloadFacturaPDF)
 
 	publicRoutes := api.Group("/public")

@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { 
   Building2, 
-  TrendingUp, 
-  DollarSign, 
-  CreditCard, 
   RefreshCw, 
-  FileText, 
   Plus, 
   CheckCircle2, 
   AlertCircle, 
   Download, 
   Eye, 
-  Layers, 
   Trash2, 
-  ArrowDownLeft, 
   X,
   Users
 } from 'lucide-react'
@@ -62,8 +57,23 @@ import {
 
 type TabKey = 'resum' | 'tresoreria' | 'vendes' | 'subscripcions' | 'camps' | 'compres' | 'despeses' | 'config'
 
+const TAB_TITLES: Record<TabKey, string> = {
+  resum: 'Compte de Resultats (P&L)',
+  tresoreria: 'Previsió de Caixa (Cashflow)',
+  vendes: 'Vendes & Factures',
+  subscripcions: 'Subscripcions Recurrents',
+  camps: 'Training Camps',
+  compres: 'Factures de Compra',
+  despeses: 'Despeses Operatives',
+  config: 'Configuració & Mestres'
+}
+
 export const FinanceAdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabKey>('resum')
+  const [searchParams] = useSearchParams()
+  const rawTab = searchParams.get('tab') as TabKey
+  const activeTab: TabKey = ['resum', 'tresoreria', 'vendes', 'subscripcions', 'camps', 'compres', 'despeses', 'config'].includes(rawTab)
+    ? rawTab
+    : 'resum'
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -541,33 +551,13 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="glass-card p-1.5 flex items-center gap-1 overflow-x-auto text-xs font-bold">
-        {[
-          { key: 'resum', label: 'Compte de Resultats (P&L)', icon: TrendingUp },
-          { key: 'tresoreria', label: 'Previsió de Caixa (Cashflow)', icon: DollarSign },
-          { key: 'vendes', label: 'Vendes & Factures', icon: FileText },
-          { key: 'subscripcions', label: 'Subscripcions', icon: RefreshCw },
-          { key: 'camps', label: 'Training Camps', icon: Layers },
-          { key: 'compres', label: 'Compres Fiscals', icon: ArrowDownLeft },
-          { key: 'despeses', label: 'Despeses (Nòmines/Banc)', icon: CreditCard },
-          { key: 'config', label: 'Configuració & Mestres', icon: Building2 },
-        ].map(tab => {
-          const Icon = tab.icon
-          const isActive = activeTab === tab.key
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as TabKey)}
-              className={`px-3 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all ${
-                isActive ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              <span>{tab.label}</span>
-            </button>
-          )
-        })}
+      {/* Current section indicator */}
+      <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary border-b border-border pb-3">
+        <span className="text-text-muted">Administració</span>
+        <span className="text-text-muted">/</span>
+        <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full font-bold border border-emerald-200">
+          {TAB_TITLES[activeTab]}
+        </span>
       </div>
 
       {/* TAB 1: RESUM ANALÍTIC (P&L) */}

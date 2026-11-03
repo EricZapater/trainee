@@ -431,7 +431,9 @@ export const getFinInformeResultats = (params: { data_inici: string; data_fi: st
 export const getFinCashflowForecast = (params?: { horitzo_dies?: number; inclou_endarrerits?: boolean }) =>
   api.get<FinCashflowForecast>('/finances/tresoreria/cashflow', { params }).then(r => r.data)
 
-export const listMyFactures = () => api.get<FinFacturaVenda[]>('/atletes/factures').then(r => r.data)
+export const listMyFactures = () => api.get<FinFacturaVenda[]>('/perfil/factures').then(r => r.data)
+export const getMyFiscalProfile = () => api.get<FinClient>('/perfil/facturacio').then(r => r.data)
+export const updateMyFiscalProfile = (data: Partial<FinClient>) => api.put<FinClient>('/perfil/facturacio', data).then(r => r.data)
 
 export const uploadFinanceDocument = async (file: File) => {
   const formData = new FormData()

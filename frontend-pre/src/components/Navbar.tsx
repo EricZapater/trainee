@@ -27,7 +27,12 @@ import {
   FileSpreadsheet, 
   ChevronDown,
   Building2,
-  DollarSign
+  DollarSign,
+  TrendingUp,
+  RefreshCw,
+  ArrowDownLeft,
+  CreditCard,
+  User
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
@@ -70,12 +75,24 @@ export const Navbar: React.FC = () => {
     setOpenDropdown(prev => prev === key ? null : key)
   }
 
-  const trainingPaths = ['/calendar', '/wellness', '/informe', '/nutricio', '/factures']
+  const trainingPaths = ['/calendar', '/wellness', '/informe', '/nutricio', '/perfil', '/factures']
   const racesPaths = ['/competicions/atleta', '/team-races']
   const clubPaths = ['/anuncis', '/material', '/feedback']
   const planningPaths = ['/planning', '/competicions/entrenador', '/tests', '/weeks']
   const coachPaths = ['/dashboard', '/atletes', '/nutricio', '/entrenador/forms', '/forms']
   const adminPaths = ['/admin', '/activitats', '/forms', '/settings', '/logs']
+  const financePaths = ['/finances']
+
+  const financeSubmenu = [
+    { to: '/finances?tab=resum', label: 'Compte de Resultats (P&L)', desc: 'Totalitzacions vendes vs compres', icon: TrendingUp },
+    { to: '/finances?tab=tresoreria', label: 'Previsió de Caixa', desc: 'Cashflow i tresoreria projectada', icon: DollarSign },
+    { to: '/finances?tab=vendes', label: 'Vendes & Factures', desc: 'Emissió i conciliació de cobraments', icon: FileText },
+    { to: '/finances?tab=subscripcions', label: 'Subscripcions', desc: 'Quotes recurrents mensuals/trimestrals', icon: RefreshCw },
+    { to: '/finances?tab=camps', label: 'Training Camps', desc: 'Fites de pagament i quotes de camp', icon: Layers },
+    { to: '/finances?tab=compres', label: 'Factures de Compra', desc: 'Proveïdors, tiquets i deduïbles', icon: ArrowDownLeft },
+    { to: '/finances?tab=despeses', label: 'Despeses Operatives', desc: 'Nòmines, banc i despeses generals', icon: CreditCard },
+    { to: '/finances?tab=config', label: 'Configuració & Mestres', desc: 'Unitats negoci, sèries, articles i IVA', icon: Building2 },
+  ]
 
   return (
     <header className="sticky top-0 z-50 px-4 py-3 max-w-7xl mx-auto w-full">
@@ -164,15 +181,15 @@ export const Navbar: React.FC = () => {
                   </Link>
 
                   <Link
-                    to="/factures"
+                    to="/perfil"
                     className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
-                      isActive('/factures') ? 'bg-brand-50 text-brand-600 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                      isActive('/perfil') ? 'bg-brand-50 text-brand-600 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                     }`}
                   >
-                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <User className="w-4 h-4 text-emerald-600" />
                     <div>
-                      <p className="font-bold text-text-primary leading-tight">Les meves Factures</p>
-                      <p className="text-[11px] text-text-muted mt-0.5">Justificants i descàrrega PDF</p>
+                      <p className="font-bold text-text-primary leading-tight">Perfil & Facturació</p>
+                      <p className="text-[11px] text-text-muted mt-0.5">Dades fiscals i rebuts PDF</p>
                     </div>
                   </Link>
                 </div>
@@ -437,17 +454,47 @@ export const Navbar: React.FC = () => {
 
           {/* 5. Administració i Finances (Si té permís: Admin o Coach autoritzat) */}
           {hasFinanceAccess && (
-            <Link
-              to="/finances"
-              className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
-                isActive('/finances')
-                  ? 'bg-emerald-100 text-emerald-800 font-bold shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-              }`}
-            >
-              <Building2 className="w-4 h-4 text-emerald-600" />
-              <span>Administració</span>
-            </Link>
+            <div className="relative">
+              <button
+                onClick={() => toggleDropdown('finances')}
+                className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+                  openDropdown === 'finances' || isAnyActive(financePaths)
+                    ? 'bg-emerald-100 text-emerald-800 font-bold shadow-sm'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+                }`}
+              >
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                <span>Administració</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openDropdown === 'finances' ? 'rotate-180' : ''}`} />
+              </button>
+
+              {openDropdown === 'finances' && (
+                <div className="absolute right-0 mt-2 w-[500px] glass-card bg-bg-surface p-2.5 rounded-2xl shadow-xl border border-border grid grid-cols-2 gap-1.5 z-50 animate-fade-in text-xs font-medium">
+                  {financeSubmenu.map(item => {
+                    const Icon = item.icon
+                    const isItemActive = location.pathname === '/finances' && location.search === item.to.replace('/finances', '')
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setOpenDropdown(null)}
+                        className={`p-2 rounded-xl flex items-start gap-2.5 transition-colors ${
+                          isItemActive ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                        }`}
+                      >
+                        <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 flex-shrink-0 mt-0.5">
+                          <Icon className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-text-primary leading-tight text-xs">{item.label}</p>
+                          <p className="text-[11px] text-text-muted leading-tight mt-0.5">{item.desc}</p>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           )}
 
           {/* 6. Sistema & Admin */}
@@ -540,15 +587,21 @@ export const Navbar: React.FC = () => {
 
         {/* User Profile & Actions */}
         <div className="hidden lg:flex items-center gap-3">
-          <div className="flex items-center gap-2 pl-3 border-l border-border">
-            <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 font-bold text-xs flex items-center justify-center border border-brand-200">
+          <Link
+            to="/perfil"
+            className={`flex items-center gap-2 pl-3 py-1 pr-2.5 rounded-xl border border-transparent hover:border-brand-200 hover:bg-brand-50/50 transition-all ${
+              isActive('/perfil') ? 'bg-brand-50 border-brand-200 shadow-xs' : ''
+            }`}
+            title="El meu perfil i dades de facturació"
+          >
+            <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 font-bold text-xs flex items-center justify-center border border-brand-200 shadow-xs">
               {user?.nom?.charAt(0) || 'U'}
             </div>
             <div className="text-left text-xs">
               <p className="font-semibold text-text-primary leading-tight">{user?.nom}</p>
               <p className="text-text-muted capitalize">{user?.rol}</p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={handleLogout}
             title="Tancar sessió"
@@ -572,15 +625,19 @@ export const Navbar: React.FC = () => {
         <div className="lg:hidden glass-card mt-2 p-4 flex flex-col gap-4 animate-fade-in max-h-[85vh] overflow-y-auto">
           {/* User Profile Header */}
           <div className="pb-3 border-b border-border flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 font-bold text-sm flex items-center justify-center">
+            <Link 
+              to="/perfil" 
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            >
+              <div className="w-9 h-9 rounded-full bg-brand-50 text-brand-600 font-bold text-sm flex items-center justify-center border border-brand-200">
                 {user?.nom?.charAt(0)}
               </div>
               <div>
                 <p className="font-bold text-sm text-text-primary">{user?.nom} {user?.cognoms}</p>
                 <p className="text-xs text-text-muted">{user?.email} • <span className="capitalize">{user?.rol}</span></p>
               </div>
-            </div>
+            </Link>
             <button
               onClick={handleLogout}
               className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
@@ -630,12 +687,12 @@ export const Navbar: React.FC = () => {
                 <Apple className="w-4 h-4 text-amber-500" /> Estratègia Nutricional
               </Link>
               <Link
-                to="/factures"
+                to="/perfil"
                 className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
-                  isActive('/factures') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover'
+                  isActive('/perfil') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover'
                 }`}
               >
-                <FileText className="w-4 h-4 text-emerald-600" /> Les meves Factures
+                <User className="w-4 h-4 text-emerald-600" /> El meu Perfil & Facturació
               </Link>
             </div>
           )}
@@ -789,14 +846,23 @@ export const Navbar: React.FC = () => {
                 <Building2 className="w-3.5 h-3.5 text-emerald-600" />
                 Mòdul d'Administració
               </p>
-              <Link
-                to="/finances"
-                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
-                  isActive('/finances') ? 'bg-emerald-100 text-emerald-800' : 'text-text-secondary hover:bg-bg-hover'
-                }`}
-              >
-                <DollarSign className="w-4 h-4 text-emerald-600" /> Finances & Resultats
-              </Link>
+              {financeSubmenu.map(item => {
+                const Icon = item.icon
+                const isItemActive = location.pathname === '/finances' && location.search === item.to.replace('/finances', '')
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={() => setMobileOpen(false)}
+                    className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                      isItemActive ? 'bg-emerald-100 text-emerald-800' : 'text-text-secondary hover:bg-bg-hover'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
             </div>
           )}
 

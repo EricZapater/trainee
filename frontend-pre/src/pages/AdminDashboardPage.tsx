@@ -60,7 +60,8 @@ export const AdminDashboardPage: React.FC = () => {
         email: res.user.email,
         rol: res.user.rol,
         actiu: res.user.actiu,
-        idioma: res.user.idioma
+        idioma: res.user.idioma,
+        es_administracio: res.user.es_administracio ?? targetUser.es_administracio
       })
 
       showNotification('success', `Has entrat com a ${res.user.nom} (${res.user.rol})`)

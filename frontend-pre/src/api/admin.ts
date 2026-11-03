@@ -21,6 +21,7 @@ export interface ImpersonateResponse {
     cognoms?: string
     email: string
     rol: 'atleta' | 'entrenador' | 'admin'
+    es_administracio?: boolean
     idioma?: string
     actiu: boolean
   }

@@ -23,7 +23,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { MaterialManagerPage } from './pages/MaterialManagerPage'
 import { NutricioManagerPage } from './pages/NutricioManagerPage'
 import { FinanceAdminPage } from './pages/FinanceAdminPage'
-import { AthleteInvoicesPage } from './pages/AthleteInvoicesPage'
+import { ProfilePage } from './pages/ProfilePage'
 import { FormsManagerPage } from './pages/FormsManagerPage'
 import { FormBuilderPage } from './pages/FormBuilderPage'
 import { FormResponsesPage } from './pages/FormResponsesPage'
@@ -267,7 +267,15 @@ const AppContent: React.FC = () => {
             path="/factures"
             element={
               <ProtectedRoute>
-                <AthleteInvoicesPage />
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />
