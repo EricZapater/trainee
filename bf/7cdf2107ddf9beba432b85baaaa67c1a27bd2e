@@ -1,0 +1,34 @@
+backend/cmd/server/main.go
+  h_42175f19913982 140-141,370-372
+backend/internal/handlers/finances.go
+  h_42175f19913982 567,570-615
+backend/internal/store/finances_masters.go
+  h_42175f19913982 5,10,317-379
+backend/internal/store/store.go
+  h_42175f19913982 199-200
+frontend-pre/src/App.tsx
+  h_42175f19913982 26,270-278
+frontend-pre/src/api/admin.ts
+  h_42175f19913982 24
+frontend-pre/src/api/finances.ts
+  h_42175f19913982 434-436
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 30-35,78,84-95,184,186,189,191-192,457-497,590-597,604,628-633,640,690,692,695,849-865
+frontend-pre/src/pages/AdminDashboardPage.tsx
+  h_42175f19913982 63-64
+frontend-pre/src/pages/FinanceAdminPage.tsx
+  h_42175f19913982 2,60-70,72-76,554-560
+frontend-pre/src/pages/ProfilePage.tsx
+  h_42175f19913982 1-540
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bf7cdf2107ddf9beba432b85baaaa67c1a27bd2e",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
