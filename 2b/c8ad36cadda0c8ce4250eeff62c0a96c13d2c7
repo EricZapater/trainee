@@ -1,0 +1,58 @@
+backend/cmd/server/main.go
+  h_42175f19913982 110,283,289-369
+backend/internal/handlers/admin.go
+  h_42175f19913982 12,59-66,71-86
+backend/internal/handlers/auth.go
+  h_42175f19913982 119-128
+backend/internal/handlers/finances.go
+  h_42175f19913982 1-850
+backend/internal/middleware/role.go
+  h_42175f19913982 7,33-73
+backend/internal/models/finances.go
+  h_42175f19913982 1-596
+backend/internal/models/models.go
+  h_42175f19913982 16,25-28
+backend/internal/pdf/invoice.go
+  h_42175f19913982 1-348
+backend/internal/store/finances_masters.go
+  h_42175f19913982 1-910
+backend/internal/store/finances_operations.go
+  h_42175f19913982 1-1699
+backend/internal/store/store.go
+  h_42175f19913982 20,181-248
+backend/internal/store/usuaris.go
+  h_42175f19913982 17,19,34,37,47,50,110,121,129-142
+backend/migrations/000043_create_finances_module.down.sql
+  h_42175f19913982 1-17
+backend/migrations/000043_create_finances_module.up.sql
+  h_42175f19913982 1-360
+frontend-pre/src/App.tsx
+  h_42175f19913982 25-26,266-281
+frontend-pre/src/api/admin.ts
+  h_42175f19913982 9,44-48
+frontend-pre/src/api/finances.ts
+  h_42175f19913982 1-443
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 28-30,34,73,165-177,438-453,632-639,785-802
+frontend-pre/src/context/AuthContext.tsx
+  h_42175f19913982 14,114,131
+frontend-pre/src/pages/AdminDashboardPage.tsx
+  h_42175f19913982 16,96-107,220,243-264,322-338
+frontend-pre/src/pages/AthleteInvoicesPage.tsx
+  h_42175f19913982 1-165
+frontend-pre/src/pages/FinanceAdminPage.tsx
+  h_42175f19913982 1-1857
+frontend-pre/src/types/index.ts
+  h_42175f19913982 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2bc8ad36cadda0c8ce4250eeff62c0a96c13d2c7",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
