@@ -542,11 +542,15 @@ export const FinanceAdminPage: React.FC = () => {
   const handleSaveUnitat = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const payload = {
+        ...newUnitat,
+        serie_defecte_id: newUnitat.serie_defecte_id ? newUnitat.serie_defecte_id : null
+      }
       if (editingUnitatId) {
-        await updateFinUnitatNegoci(editingUnitatId, newUnitat)
+        await updateFinUnitatNegoci(editingUnitatId, payload)
         showNotify('success', 'Unitat de negoci actualitzada correctament!')
       } else {
-        await createFinUnitatNegoci(newUnitat)
+        await createFinUnitatNegoci(payload)
         showNotify('success', 'Unitat de negoci creada correctament!')
       }
       setShowUnitatModal(false)
@@ -2734,6 +2738,24 @@ export const FinanceAdminPage: React.FC = () => {
                   onChange={e => setNewUnitat({ ...newUnitat, descripcio: e.target.value })}
                   className="w-full mt-1 p-2 border rounded-xl"
                 />
+              </div>
+              <div>
+                <label className="font-bold text-slate-700">Sèrie de Facturació per Defecte</label>
+                <select
+                  value={newUnitat.serie_defecte_id || ''}
+                  onChange={e => setNewUnitat({ ...newUnitat, serie_defecte_id: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl font-medium"
+                >
+                  <option value="">-- Sèrie global per defecte --</option>
+                  {series.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.codi} {s.prefix ? `(${s.prefix})` : ''} — {s.descripcio || s.tipus} {!s.activa ? '(Inactiva)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Les noves factures i subscripcions associades a aquesta unitat faran servir aquesta sèrie de manera automàtica.
+                </p>
               </div>
               <div className="flex items-center gap-2 pt-1">
                 <label className="flex items-center gap-2 font-bold text-slate-700">
