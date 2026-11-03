@@ -217,15 +217,38 @@ export const FinanceAdminPage: React.FC = () => {
   })
 
   const [showCampModal, setShowCampModal] = useState(false)
-  const [newCamp, setNewCamp] = useState({
+  const [newCamp, setNewCamp] = useState<{
+    client_id: string
+    article_id?: string
+    unitat_negoci_id: string
+    entrenador_id?: string
+    titol_camp: string
+    periode_camp_inici: string
+    periode_camp_fi: string
+    total_base_pactada: number
+    iva_percentatge: number
+    irpf_percentatge: number
+    notes?: string
+    fites: Array<{
+      ordre: number
+      concepte_fita: string
+      data_prevista: string
+      base_imposable: number
+      iva_percentatge: number
+      irpf_percentatge: number
+    }>
+  }>({
     client_id: '',
+    article_id: '',
     unitat_negoci_id: '',
+    entrenador_id: '',
     titol_camp: '',
     periode_camp_inici: new Date().toISOString().split('T')[0],
     periode_camp_fi: new Date().toISOString().split('T')[0],
     total_base_pactada: 0,
     iva_percentatge: 21,
     irpf_percentatge: 0,
+    notes: '',
     fites: [
       { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: new Date().toISOString().split('T')[0], base_imposable: 0, iva_percentatge: 21, irpf_percentatge: 0 },
       { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: new Date().toISOString().split('T')[0], base_imposable: 0, iva_percentatge: 21, irpf_percentatge: 0 }
@@ -516,10 +539,159 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
+  const openCreateCamp = () => {
+    const today = new Date().toISOString().split('T')[0]
+    const campArticle = articles.find(a => a.categoria === 'training_camp') || articles[0]
+    const defUnitat = campArticle?.unitat_negoci_id || unitats[0]?.id || ''
+    const basePreu = campArticle?.preu_base || 0
+    const p1 = Math.round(basePreu * 0.3 * 100) / 100
+    const p2 = Math.round((basePreu - p1) * 100) / 100
+
+    setNewCamp({
+      client_id: clients[0]?.id || '',
+      article_id: campArticle?.id || '',
+      unitat_negoci_id: defUnitat,
+      entrenador_id: '',
+      titol_camp: campArticle?.nom || '',
+      periode_camp_inici: today,
+      periode_camp_fi: today,
+      total_base_pactada: basePreu,
+      iva_percentatge: campArticle?.iva_percentatge ?? 21,
+      irpf_percentatge: 0,
+      notes: '',
+      fites: basePreu > 0 ? [
+        { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: today, base_imposable: p1, iva_percentatge: campArticle?.iva_percentatge ?? 21, irpf_percentatge: 0 },
+        { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: today, base_imposable: p2, iva_percentatge: campArticle?.iva_percentatge ?? 21, irpf_percentatge: 0 }
+      ] : [
+        { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: today, base_imposable: 0, iva_percentatge: 21, irpf_percentatge: 0 },
+        { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: today, base_imposable: 0, iva_percentatge: 21, irpf_percentatge: 0 }
+      ]
+    })
+    setShowCampModal(true)
+  }
+
+  const addFitaCamp = () => {
+    const nextOrdre = newCamp.fites.length + 1
+    const defaultData = newCamp.periode_camp_inici || new Date().toISOString().split('T')[0]
+    setNewCamp(prev => ({
+      ...prev,
+      fites: [
+        ...prev.fites,
+        {
+          ordre: nextOrdre,
+          concepte_fita: `Pagament ${nextOrdre}`,
+          data_prevista: defaultData,
+          base_imposable: 0,
+          iva_percentatge: prev.iva_percentatge,
+          irpf_percentatge: prev.irpf_percentatge
+        }
+      ]
+    }))
+  }
+
+  const removeFitaCamp = (index: number) => {
+    if (newCamp.fites.length <= 1) return
+    const updated = newCamp.fites.filter((_, i) => i !== index).map((f, i) => ({ ...f, ordre: i + 1 }))
+    setNewCamp(prev => ({ ...prev, fites: updated }))
+  }
+
+  const applyPresetCamp = (preset: '1' | '2' | '3' | '4' | 'iguals') => {
+    const tot = newCamp.total_base_pactada || 0
+    const dt = newCamp.periode_camp_inici || new Date().toISOString().split('T')[0]
+    const iva = newCamp.iva_percentatge
+    const irpf = newCamp.irpf_percentatge
+
+    if (preset === '1') {
+      setNewCamp(prev => ({
+        ...prev,
+        fites: [
+          { ordre: 1, concepte_fita: 'Pagament Únic (100%)', data_prevista: dt, base_imposable: tot, iva_percentatge: iva, irpf_percentatge: irpf }
+        ]
+      }))
+    } else if (preset === '2') {
+      const p1 = Math.round(tot * 0.3 * 100) / 100
+      const p2 = Math.round((tot - p1) * 100) / 100
+      setNewCamp(prev => ({
+        ...prev,
+        fites: [
+          { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: dt, base_imposable: p1, iva_percentatge: iva, irpf_percentatge: irpf },
+          { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: dt, base_imposable: p2, iva_percentatge: iva, irpf_percentatge: irpf }
+        ]
+      }))
+    } else if (preset === '3') {
+      const p1 = Math.round(tot * 0.3 * 100) / 100
+      const p2 = Math.round(tot * 0.35 * 100) / 100
+      const p3 = Math.round((tot - p1 - p2) * 100) / 100
+      setNewCamp(prev => ({
+        ...prev,
+        fites: [
+          { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: dt, base_imposable: p1, iva_percentatge: iva, irpf_percentatge: irpf },
+          { ordre: 2, concepte_fita: '2n Pagament 35%', data_prevista: dt, base_imposable: p2, iva_percentatge: iva, irpf_percentatge: irpf },
+          { ordre: 3, concepte_fita: 'Pagament Final 35%', data_prevista: dt, base_imposable: p3, iva_percentatge: iva, irpf_percentatge: irpf }
+        ]
+      }))
+    } else if (preset === '4') {
+      const p1 = Math.round(tot * 0.25 * 100) / 100
+      const p2 = p1
+      const p3 = p1
+      const p4 = Math.round((tot - p1 - p2 - p3) * 100) / 100
+      setNewCamp(prev => ({
+        ...prev,
+        fites: [
+          { ordre: 1, concepte_fita: '1r Pagament (Reserva 25%)', data_prevista: dt, base_imposable: p1, iva_percentatge: iva, irpf_percentatge: irpf },
+          { ordre: 2, concepte_fita: '2n Pagament (25%)', data_prevista: dt, base_imposable: p2, iva_percentatge: iva, irpf_percentatge: irpf },
+          { ordre: 3, concepte_fita: '3r Pagament (25%)', data_prevista: dt, base_imposable: p3, iva_percentatge: iva, irpf_percentatge: irpf },
+          { ordre: 4, concepte_fita: '4t Pagament Final (25%)', data_prevista: dt, base_imposable: p4, iva_percentatge: iva, irpf_percentatge: irpf }
+        ]
+      }))
+    } else if (preset === 'iguals') {
+      const n = newCamp.fites.length || 1
+      const part = Math.round((tot / n) * 100) / 100
+      const updated = newCamp.fites.map((f, i) => {
+        if (i === n - 1) {
+          return { ...f, base_imposable: Math.round((tot - part * (n - 1)) * 100) / 100 }
+        }
+        return { ...f, base_imposable: part }
+      })
+      setNewCamp(prev => ({ ...prev, fites: updated }))
+    }
+  }
+
+  const adjustLastFitaCamp = () => {
+    const tot = newCamp.total_base_pactada || 0
+    if (newCamp.fites.length === 0) return
+    const others = newCamp.fites.slice(0, -1).reduce((acc, f) => acc + (f.base_imposable || 0), 0)
+    const diff = Math.round((tot - others) * 100) / 100
+    const updated = [...newCamp.fites]
+    updated[updated.length - 1].base_imposable = diff >= 0 ? diff : 0
+    setNewCamp(prev => ({ ...prev, fites: updated }))
+  }
+
+  const adjustTotalToFitesCamp = () => {
+    const sum = Math.round(newCamp.fites.reduce((acc, f) => acc + (f.base_imposable || 0), 0) * 100) / 100
+    setNewCamp(prev => ({ ...prev, total_base_pactada: sum }))
+  }
+
   const handleCreateCamp = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!newCamp.fites || newCamp.fites.length === 0) {
+      showNotify('error', 'Cal definir com a mínim 1 fita de pagament')
+      return
+    }
+    const sumaFites = Math.round(newCamp.fites.reduce((acc, f) => acc + (f.base_imposable || 0), 0) * 100) / 100
+    const totalPactat = Math.round((newCamp.total_base_pactada || 0) * 100) / 100
+    if (Math.abs(sumaFites - totalPactat) > 0.05) {
+      showNotify('error', `La suma de les fites (${sumaFites.toFixed(2)} €) no coincideix amb el total pactat (${totalPactat.toFixed(2)} €). Ajusta-ho abans de desar.`)
+      return
+    }
     try {
-      await createFinPlaCamp(newCamp)
+      const payload = {
+        ...newCamp,
+        unitat_negoci_id: newCamp.unitat_negoci_id || unitats[0]?.id || '',
+        article_id: newCamp.article_id ? newCamp.article_id : null,
+        entrenador_id: newCamp.entrenador_id ? newCamp.entrenador_id : null
+      }
+      await createFinPlaCamp(payload as any)
       showNotify('success', 'Pla de Training Camp registrat amb les seves fites!')
       setShowCampModal(false)
       loadPlansCamp()
@@ -819,7 +991,7 @@ export const FinanceAdminPage: React.FC = () => {
           )}
           {activeTab === 'camps' && (
             <button
-              onClick={() => setShowCampModal(true)}
+              onClick={openCreateCamp}
               className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
             >
               <Plus className="w-4 h-4" /> Nou Pla de Camp
@@ -1302,7 +1474,7 @@ export const FinanceAdminPage: React.FC = () => {
               <p className="text-xs text-slate-500">Bestretes i terminis de pagament amb factura independent per no avançar l'IVA</p>
             </div>
             <button
-              onClick={() => setShowCampModal(true)}
+              onClick={openCreateCamp}
               className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" /> Nou Training Camp
@@ -2208,139 +2380,375 @@ export const FinanceAdminPage: React.FC = () => {
       )}
 
       {/* MODAL CREAR TRAINING CAMP */}
-      {showCampModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-lg text-slate-900">Nou Training Camp</h3>
-              <button onClick={() => setShowCampModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
+      {showCampModal && (() => {
+        const sumaFites = Math.round(newCamp.fites.reduce((acc, f) => acc + (f.base_imposable || 0), 0) * 100) / 100
+        const totalPactat = Math.round((newCamp.total_base_pactada || 0) * 100) / 100
+        const diferencia = Math.round((totalPactat - sumaFites) * 100) / 100
+        const esQuadrat = Math.abs(diferencia) <= 0.01
 
-            <form onSubmit={handleCreateCamp} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700">Client / Atleta</label>
-                <select
-                  value={newCamp.client_id}
-                  onChange={e => setNewCamp({ ...newCamp, client_id: e.target.value })}
-                  className="w-full mt-1 p-2 border rounded-xl"
-                  required
-                >
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700">Nom de l'Estada / Camp</label>
-                <input
-                  type="text"
-                  value={newCamp.titol_camp}
-                  onChange={e => setNewCamp({ ...newCamp, titol_camp: e.target.value })}
-                  placeholder="Ex: Stage Trail Pirineus 2026"
-                  className="w-full mt-1 p-2 border rounded-xl"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border space-y-4 max-h-[92vh] overflow-y-auto">
+              <div className="flex items-center justify-between pb-3 border-b">
                 <div>
-                  <label className="font-bold text-slate-700">Data Inici Camp</label>
+                  <h3 className="font-bold text-lg text-slate-900">Nou Training Camp</h3>
+                  <p className="text-xs text-slate-500">1 Article global dividit en N pagaments amb facturació independent</p>
+                </div>
+                <button onClick={() => setShowCampModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+              </div>
+
+              <form onSubmit={handleCreateCamp} className="space-y-4 text-xs">
+                {/* 1. Article del Catàleg */}
+                <div>
+                  <label className="font-bold text-slate-700">Article / Servei del Catàleg (opcional)</label>
+                  <select
+                    value={newCamp.article_id || ''}
+                    onChange={e => {
+                      const artId = e.target.value
+                      const art = articles.find(a => a.id === artId)
+                      if (art) {
+                        const tot = art.preu_base || 0
+                        const p1 = Math.round(tot * 0.3 * 100) / 100
+                        const p2 = Math.round((tot - p1) * 100) / 100
+                        setNewCamp(prev => ({
+                          ...prev,
+                          article_id: art.id,
+                          titol_camp: art.nom,
+                          unitat_negoci_id: art.unitat_negoci_id || prev.unitat_negoci_id,
+                          total_base_pactada: tot,
+                          iva_percentatge: art.iva_percentatge ?? 21,
+                          fites: tot > 0 ? [
+                            { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: prev.periode_camp_inici, base_imposable: p1, iva_percentatge: art.iva_percentatge ?? 21, irpf_percentatge: 0 },
+                            { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: prev.periode_camp_fi, base_imposable: p2, iva_percentatge: art.iva_percentatge ?? 21, irpf_percentatge: 0 }
+                          ] : prev.fites
+                        }))
+                      } else {
+                        setNewCamp(prev => ({ ...prev, article_id: '' }))
+                      }
+                    }}
+                    className="w-full mt-1 p-2 border rounded-xl font-medium"
+                  >
+                    <option value="">-- Personalitzat / Cap article vinculat --</option>
+                    {articles.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.nom} ({a.preu_base.toFixed(2)} € + {a.iva_percentatge}% IVA) {a.categoria === 'training_camp' ? '⭐ (Training Camp)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Client i Unitat de Negoci */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700">Client / Atleta *</label>
+                    <select
+                      value={newCamp.client_id}
+                      onChange={e => setNewCamp({ ...newCamp, client_id: e.target.value })}
+                      className="w-full mt-1 p-2 border rounded-xl"
+                      required
+                    >
+                      <option value="">-- Selecciona client --</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal} ({c.nif_cif})</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Unitat de Negoci *</label>
+                    <select
+                      value={newCamp.unitat_negoci_id}
+                      onChange={e => setNewCamp({ ...newCamp, unitat_negoci_id: e.target.value })}
+                      className="w-full mt-1 p-2 border rounded-xl"
+                      required
+                    >
+                      {unitats.map(u => (
+                        <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 3. Nom de l'Estada */}
+                <div>
+                  <label className="font-bold text-slate-700">Nom de l'Estada / Camp *</label>
                   <input
-                    type="date"
-                    value={newCamp.periode_camp_inici}
-                    onChange={e => setNewCamp({ ...newCamp, periode_camp_inici: e.target.value })}
+                    type="text"
+                    value={newCamp.titol_camp}
+                    onChange={e => setNewCamp({ ...newCamp, titol_camp: e.target.value })}
+                    placeholder="Ex: Stage Trail Pirineus 2026"
                     className="w-full mt-1 p-2 border rounded-xl"
                     required
                   />
                 </div>
-                <div>
-                  <label className="font-bold text-slate-700">Data Fi Camp</label>
-                  <input
-                    type="date"
-                    value={newCamp.periode_camp_fi}
-                    onChange={e => setNewCamp({ ...newCamp, periode_camp_fi: e.target.value })}
-                    className="w-full mt-1 p-2 border rounded-xl"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div>
-                <label className="font-bold text-slate-700">Total Pactat (€)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newCamp.total_base_pactada}
-                  onChange={e => {
-                    const tot = parseFloat(e.target.value) || 0
-                    setNewCamp({
-                      ...newCamp,
-                      total_base_pactada: tot,
-                      fites: [
-                        { ...newCamp.fites[0], base_imposable: Math.round(tot * 0.3 * 100) / 100 },
-                        { ...newCamp.fites[1], base_imposable: Math.round(tot * 0.7 * 100) / 100 }
-                      ]
-                    })
-                  }}
-                  className="w-full mt-1 p-2 border rounded-xl font-bold"
-                  required
-                />
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
-                <span className="font-bold text-slate-700">Fites de Pagament automàtiques (30% i 70%):</span>
-                {newCamp.fites.map((f, i) => (
-                  <div key={i} className="flex gap-2">
+                {/* 4. Dates de Celebració del Camp */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700">Data Inici Estada (Camp) *</label>
                     <input
-                      type="text"
-                      value={f.concepte_fita}
+                      type="date"
+                      value={newCamp.periode_camp_inici}
                       onChange={e => {
-                        const nextF = [...newCamp.fites]
-                        nextF[i].concepte_fita = e.target.value
-                        setNewCamp({ ...newCamp, fites: nextF })
+                        const dt = e.target.value
+                        setNewCamp(prev => ({
+                          ...prev,
+                          periode_camp_inici: dt,
+                          fites: prev.fites.map((f, i) => i === 0 ? { ...f, data_prevista: dt } : f)
+                        }))
                       }}
-                      className="flex-1 p-1.5 border rounded-lg text-xs"
+                      className="w-full mt-1 p-2 border rounded-xl"
+                      required
                     />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Data Fi Estada (Camp) *</label>
+                    <input
+                      type="date"
+                      value={newCamp.periode_camp_fi}
+                      onChange={e => {
+                        const dt = e.target.value
+                        setNewCamp(prev => ({
+                          ...prev,
+                          periode_camp_fi: dt,
+                          fites: prev.fites.map((f, i) => i === prev.fites.length - 1 ? { ...f, data_prevista: dt } : f)
+                        }))
+                      }}
+                      className="w-full mt-1 p-2 border rounded-xl"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* 5. Total Pactat i IVA */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700">Total Base Imposable Pactada (€) *</label>
                     <input
                       type="number"
                       step="0.01"
-                      value={f.base_imposable}
+                      value={newCamp.total_base_pactada}
                       onChange={e => {
-                        const nextF = [...newCamp.fites]
-                        nextF[i].base_imposable = parseFloat(e.target.value) || 0
-                        setNewCamp({ ...newCamp, fites: nextF })
+                        const tot = parseFloat(e.target.value) || 0
+                        setNewCamp({ ...newCamp, total_base_pactada: tot })
                       }}
-                      className="w-24 p-1.5 border rounded-lg text-xs font-bold"
-                    />
-                    <input
-                      type="date"
-                      value={f.data_prevista}
-                      onChange={e => {
-                        const nextF = [...newCamp.fites]
-                        nextF[i].data_prevista = e.target.value
-                        setNewCamp({ ...newCamp, fites: nextF })
-                      }}
-                      className="w-32 p-1.5 border rounded-lg text-xs"
+                      className="w-full mt-1 p-2 border rounded-xl font-bold font-mono text-emerald-800"
+                      required
                     />
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Tipus d'IVA (%)</label>
+                    <select
+                      value={newCamp.iva_percentatge}
+                      onChange={e => {
+                        const iva = parseFloat(e.target.value) || 0
+                        setNewCamp(prev => ({
+                          ...prev,
+                          iva_percentatge: iva,
+                          fites: prev.fites.map(f => ({ ...f, iva_percentatge: iva }))
+                        }))
+                      }}
+                      className="w-full mt-1 p-2 border rounded-xl font-bold"
+                    >
+                      <option value={21}>21% (General)</option>
+                      <option value={10}>10% (Reduït)</option>
+                      <option value={4}>4% (Superreduït)</option>
+                      <option value={0}>0% (Exempt)</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCampModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
-                >
-                  Cancel·lar
-                </button>
-                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
-                  Crear Camp & Fites
-                </button>
-              </div>
-            </form>
+                {/* 6. BLOC DE FITES DE PAGAMENT (N TERMINIS) */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                    <div>
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <span>Fites de Pagament Programades</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
+                          {newCamp.fites.length} {newCamp.fites.length === 1 ? 'pagament' : 'pagaments'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">Cada termini generarà una factura independent quan es premi "Facturar Fita".</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addFitaCamp}
+                      className="btn-primary py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1 text-[11px] font-bold self-start sm:self-auto"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Afegir Pagament
+                    </button>
+                  </div>
+
+                  {/* Barra de Presets / Plantilles ràpides */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-[11px] font-bold text-slate-400">Repartiments ràpids:</span>
+                    <button
+                      type="button"
+                      onClick={() => applyPresetCamp('1')}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border rounded-lg text-[10px] font-bold transition-colors"
+                    >
+                      1 Pagament (100%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPresetCamp('2')}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border rounded-lg text-[10px] font-bold transition-colors"
+                    >
+                      2 Pagaments (30% / 70%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPresetCamp('3')}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border rounded-lg text-[10px] font-bold transition-colors"
+                    >
+                      3 Pagaments (30% / 35% / 35%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPresetCamp('4')}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border rounded-lg text-[10px] font-bold transition-colors"
+                    >
+                      4 Pagaments (25% x 4)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPresetCamp('iguals')}
+                      className="px-2 py-1 bg-white hover:bg-slate-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-bold transition-colors"
+                      title="Reparteix el total entre el nombre actual de fites"
+                    >
+                      Parts iguals
+                    </button>
+                  </div>
+
+                  {/* Llista de Fites */}
+                  <div className="space-y-2 pt-2">
+                    <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-400 uppercase px-1">
+                      <div className="col-span-1 text-center">#</div>
+                      <div className="col-span-5">Concepte Fita / Termini</div>
+                      <div className="col-span-3 text-right">Base Imposable (€)</div>
+                      <div className="col-span-2">Data Prevista</div>
+                      <div className="col-span-1 text-center"></div>
+                    </div>
+
+                    {newCamp.fites.map((f, i) => (
+                      <div key={i} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-slate-200 shadow-xs">
+                        <div className="col-span-1 text-center font-bold text-slate-400 text-xs">
+                          #{f.ordre}
+                        </div>
+                        <div className="col-span-5">
+                          <input
+                            type="text"
+                            required
+                            placeholder="Ex: Reserva 30%"
+                            value={f.concepte_fita}
+                            onChange={e => {
+                              const nextF = [...newCamp.fites]
+                              nextF[i].concepte_fita = e.target.value
+                              setNewCamp({ ...newCamp, fites: nextF })
+                            }}
+                            className="w-full p-1.5 border rounded-lg text-xs"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={f.base_imposable}
+                            onChange={e => {
+                              const nextF = [...newCamp.fites]
+                              nextF[i].base_imposable = parseFloat(e.target.value) || 0
+                              setNewCamp({ ...newCamp, fites: nextF })
+                            }}
+                            className="w-full p-1.5 border rounded-lg text-xs font-bold font-mono text-right"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="date"
+                            required
+                            value={f.data_prevista}
+                            onChange={e => {
+                              const nextF = [...newCamp.fites]
+                              nextF[i].data_prevista = e.target.value
+                              setNewCamp({ ...newCamp, fites: nextF })
+                            }}
+                            className="w-full p-1.5 border rounded-lg text-xs"
+                          />
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <button
+                            type="button"
+                            disabled={newCamp.fites.length <= 1}
+                            onClick={() => removeFitaCamp(i)}
+                            className="p-1 rounded text-slate-400 hover:text-rose-600 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+                            title={newCamp.fites.length <= 1 ? "Com a mínim cal 1 fita" : "Eliminar aquest pagament"}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Resum de Quadratura */}
+                  <div className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row items-center justify-between gap-2 ${
+                    esQuadrat ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-amber-50/80 border-amber-300 text-amber-900'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold">Total Pactat: {totalPactat.toFixed(2)} €</span>
+                      <span>|</span>
+                      <span>Suma Fites: <strong>{sumaFites.toFixed(2)} €</strong></span>
+                      {esQuadrat ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900">
+                          ✓ Quadrat
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900">
+                          {diferencia > 0 ? `Falten ${diferencia.toFixed(2)} €` : `Sobren ${Math.abs(diferencia).toFixed(2)} €`}
+                        </span>
+                      )}
+                    </div>
+                    {!esQuadrat && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={adjustLastFitaCamp}
+                          className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-bold"
+                          title="Assigna la diferència a l'últim termini de pagament"
+                        >
+                          Ajustar a l'última fita
+                        </button>
+                        <button
+                          type="button"
+                          onClick={adjustTotalToFitesCamp}
+                          className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded text-[10px] font-bold"
+                          title="Modifica el total pactat perquè sumi les fites actuals"
+                        >
+                          Ajustar Total Pactat
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCampModal(false)}
+                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                  >
+                    Cancel·lar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700 font-bold"
+                  >
+                    Crear Camp & Fites ({newCamp.fites.length})
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* MODAL CREAR FACTURA VENDA */}
       {showFacturaModal && (
