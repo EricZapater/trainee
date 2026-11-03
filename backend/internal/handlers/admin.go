@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"trainee-backend/internal/auth"
 	"trainee-backend/internal/mailer"
+	"trainee-backend/internal/models"
 	"trainee-backend/internal/store"
 )
 
@@ -55,13 +56,32 @@ func (h *AdminHandler) Impersonate(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
 		"user": gin.H{
-			"id":     targetUser.ID,
-			"nom":    targetUser.Nom,
-			"email":  targetUser.Email,
-			"rol":    targetUser.Rol,
-			"idioma": targetUser.Idioma,
+			"id":               targetUser.ID,
+			"nom":              targetUser.Nom,
+			"cognoms":          targetUser.Cognoms,
+			"email":            targetUser.Email,
+			"rol":              targetUser.Rol,
+			"es_administracio": targetUser.EsAdministracio,
+			"actiu":            targetUser.Actiu,
+			"idioma":           targetUser.Idioma,
 		},
 	})
+}
+
+func (h *AdminHandler) ToggleUsuariAdministracio(c *gin.Context) {
+	targetID := c.Param("id")
+	var req models.ToggleUsuariAdministracioRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.Store.UpdateUsuariAdministracio(c.Request.Context(), targetID, req.EsAdministracio); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "permís d'administració actualitzat", "es_administracio": req.EsAdministracio})
 }
 
 func generateRandomPassword(length int) (string, error) {

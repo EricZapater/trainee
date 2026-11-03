@@ -116,6 +116,16 @@ func (h *Handler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, models.AuthResponse{Token: token, Usuari: *user})
 }
 
+func (h *Handler) GetAuthMe(c *gin.Context) {
+	userID := c.GetString("user_id")
+	user, err := h.Store.GetUsuariByID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "usuari no trobat"})
+		return
+	}
+	c.JSON(http.StatusOK, user)
+}
+
 func (h *Handler) MagicLogin(c *gin.Context) {
 	var req struct {
 		Token string `json:"token" binding:"required"`

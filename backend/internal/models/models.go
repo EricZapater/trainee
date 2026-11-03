@@ -13,12 +13,17 @@ type Usuari struct {
 	Email               string    `json:"email"`
 	PasswordHash        string    `json:"-"`
 	Rol                 string    `json:"rol"`
+	EsAdministracio     bool      `json:"es_administracio"`
 	Actiu               bool      `json:"actiu"`
 	Idioma              string    `json:"idioma"`
 	NotificacionsTauler bool      `json:"notificacions_tauler"`
 	BrevoID             *string   `json:"brevo_id"`
 	BrevoSyncStatus     string    `json:"brevo_sync_status"`
 	CreatedAt           time.Time `json:"created_at"`
+}
+
+type ToggleUsuariAdministracioRequest struct {
+	EsAdministracio bool `json:"es_administracio"`
 }
 
 type Entrenador struct {

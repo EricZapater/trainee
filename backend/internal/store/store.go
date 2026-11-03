@@ -17,6 +17,7 @@ type Store interface {
 	UpdateUsuariNotificacionsTauler(ctx context.Context, id string, notificacionsTauler bool) error
 	UpdateUsuariProfile(ctx context.Context, id, nom, cognoms, email string, notificacionsTauler *bool) error
 	ToggleUserStatus(ctx context.Context, usuariID string, actiu bool, changedBy *string) error
+	UpdateUsuariAdministracio(ctx context.Context, usuariID string, esAdministracio bool) error
 	GetUserStatusHistory(ctx context.Context, usuariID string) ([]models.UserStatusHistory, error)
 	ForceBrevoSync(ctx context.Context, id string) error
 
@@ -177,6 +178,74 @@ type Store interface {
 	DeleteTeamCompetition(ctx context.Context, teamCompetitionID, usuariID string, isCoachOrAdmin bool) error
 	JoinTeamCompetition(ctx context.Context, teamCompetitionID, usuariID string, req models.JoinTeamCompetitionRequest) error
 	LeaveTeamCompetition(ctx context.Context, teamCompetitionID, usuariID string) error
+
+	// Administració i Finances
+	GetFinConfiguracioEmpresa(ctx context.Context) (*models.FinConfiguracioEmpresa, error)
+	UpdateFinConfiguracioEmpresa(ctx context.Context, req models.FinConfiguracioEmpresa) (*models.FinConfiguracioEmpresa, error)
+	ListFinImpostos(ctx context.Context) ([]models.FinImpost, error)
+	CreateFinImpost(ctx context.Context, req models.UpsertFinImpostRequest) (*models.FinImpost, error)
+	UpdateFinImpost(ctx context.Context, id string, req models.UpsertFinImpostRequest) (*models.FinImpost, error)
+	DeleteFinImpost(ctx context.Context, id string) error
+
+	ListFinSeries(ctx context.Context) ([]models.FinSerie, error)
+	CreateFinSerie(ctx context.Context, req models.UpsertFinSerieRequest) (*models.FinSerie, error)
+	UpdateFinSerie(ctx context.Context, id string, req models.UpsertFinSerieRequest) (*models.FinSerie, error)
+
+	ListFinUnitatsNegoci(ctx context.Context) ([]models.FinUnitatNegoci, error)
+	CreateFinUnitatNegoci(ctx context.Context, req models.UpsertFinUnitatNegociRequest) (*models.FinUnitatNegoci, error)
+	UpdateFinUnitatNegoci(ctx context.Context, id string, req models.UpsertFinUnitatNegociRequest) (*models.FinUnitatNegoci, error)
+
+	ListFinClients(ctx context.Context) ([]models.FinClient, error)
+	CreateFinClient(ctx context.Context, req models.UpsertFinClientRequest) (*models.FinClient, error)
+	UpdateFinClient(ctx context.Context, id string, req models.UpsertFinClientRequest) (*models.FinClient, error)
+	SyncAtletesToFinClients(ctx context.Context) (int64, error)
+
+	ListFinProveidors(ctx context.Context) ([]models.FinProveidor, error)
+	CreateFinProveidor(ctx context.Context, req models.UpsertFinProveidorRequest) (*models.FinProveidor, error)
+	UpdateFinProveidor(ctx context.Context, id string, req models.UpsertFinProveidorRequest) (*models.FinProveidor, error)
+
+	ListFinArticles(ctx context.Context) ([]models.FinArticle, error)
+	CreateFinArticle(ctx context.Context, req models.UpsertFinArticleRequest) (*models.FinArticle, error)
+	UpdateFinArticle(ctx context.Context, id string, req models.UpsertFinArticleRequest) (*models.FinArticle, error)
+
+	ListFinSubscripcions(ctx context.Context) ([]models.FinSubscripcio, error)
+	CreateFinSubscripcio(ctx context.Context, req models.UpsertFinSubscripcioRequest) (*models.FinSubscripcio, error)
+	UpdateFinSubscripcio(ctx context.Context, id string, req models.UpsertFinSubscripcioRequest) (*models.FinSubscripcio, error)
+	GenerateDraftsFromSubscripcions(ctx context.Context, cutoffDate string) (int, error)
+
+	ListFinPlansCamp(ctx context.Context) ([]models.FinPlaCamp, error)
+	CreateFinPlaCamp(ctx context.Context, req models.CreateFinPlaCampRequest) (*models.FinPlaCamp, error)
+	GenerateDraftFromCampFita(ctx context.Context, fitaID string) (*models.FinFacturaVenda, error)
+
+	GetFinFacturaVendaByID(ctx context.Context, id string) (*models.FinFacturaVenda, error)
+	ListFinFacturesVenda(ctx context.Context, estatDoc, estatCob, unitatID, entrenadorID string) ([]models.FinFacturaVenda, error)
+	ListFinFacturesByUsuari(ctx context.Context, usuariID string) ([]models.FinFacturaVenda, error)
+	CreateFinFacturaVenda(ctx context.Context, req models.UpsertFinFacturaVendaRequest) (*models.FinFacturaVenda, error)
+	UpdateFinFacturaVenda(ctx context.Context, id string, req models.UpsertFinFacturaVendaRequest) (*models.FinFacturaVenda, error)
+	DeleteFinFacturaVenda(ctx context.Context, id string) error
+	EmetreFinFacturaVenda(ctx context.Context, id string, req models.EmetreFacturaRequest) (*models.FinFacturaVenda, error)
+	ConciliarFinFacturaVenda(ctx context.Context, id string, req models.ConciliarDocumentRequest) (*models.FinFacturaVenda, error)
+	MarcarImpagadaFinFacturaVenda(ctx context.Context, id string, req models.MarcarImpagatRequest) (*models.FinFacturaVenda, error)
+	CrearAbonamentFacturaVenda(ctx context.Context, origenID string, req models.CrearAbonamentRequest) (*models.FinFacturaVenda, error)
+
+	ListFinCompres(ctx context.Context, estatPag, unitatID, entrenadorID string) ([]models.FinCompra, error)
+	CreateFinCompra(ctx context.Context, req models.UpsertFinCompraRequest) (*models.FinCompra, error)
+	UpdateFinCompra(ctx context.Context, id string, req models.UpsertFinCompraRequest) (*models.FinCompra, error)
+	DeleteFinCompra(ctx context.Context, id string) error
+	ConciliarFinCompra(ctx context.Context, id string, req models.ConciliarDocumentRequest) error
+
+	ListFinDespeses(ctx context.Context, estatPag, unitatID, entrenadorID string) ([]models.FinDespesa, error)
+	CreateFinDespesa(ctx context.Context, req models.UpsertFinDespesaRequest) (*models.FinDespesa, error)
+	UpdateFinDespesa(ctx context.Context, id string, req models.UpsertFinDespesaRequest) (*models.FinDespesa, error)
+	DeleteFinDespesa(ctx context.Context, id string) error
+	ConciliarFinDespesa(ctx context.Context, id string, req models.ConciliarDocumentRequest) error
+
+	ListFinRecurrentsSortida(ctx context.Context) ([]models.FinRecurrentSortida, error)
+	CreateFinRecurrentSortida(ctx context.Context, req models.UpsertFinRecurrentSortidaRequest) (*models.FinRecurrentSortida, error)
+	DeleteFinRecurrentSortida(ctx context.Context, id string) error
+
+	GetFinInformeResultats(ctx context.Context, dataInici, dataFi, mode string) (*models.FinInformeResultatsResponse, error)
+	GetFinCashflowForecast(ctx context.Context, horitzoDies int, inclouEndarrerits bool) (*models.FinCashflowForecastResponse, error)
 }
 
 

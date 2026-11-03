@@ -6,6 +6,7 @@ export interface AdminUser {
   cognoms: string
   email: string
   rol: 'atleta' | 'entrenador' | 'admin'
+  es_administracio?: boolean
   actiu: boolean
   idioma?: string
   brevo_sync_status?: string
@@ -37,6 +38,11 @@ export async function impersonateUser(id: string): Promise<ImpersonateResponse> 
 
 export async function resetUserPassword(id: string): Promise<{ message: string }> {
   const res = await api.post<{ message: string }>(`/admin/usuaris/${id}/reset-password`)
+  return res.data
+}
+
+export async function toggleUserAdministracio(id: string, es_administracio: boolean): Promise<{ message: string; es_administracio: boolean }> {
+  const res = await api.patch<{ message: string; es_administracio: boolean }>(`/admin/usuaris/${id}/administracio`, { es_administracio })
   return res.data
 }
 

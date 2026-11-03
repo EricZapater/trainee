@@ -25,11 +25,13 @@ import {
   Settings as SettingsIcon, 
   Terminal, 
   FileSpreadsheet, 
-  ChevronDown
+  ChevronDown,
+  Building2,
+  DollarSign
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
-  const { user, isAuthenticated, isEntrenador, isAtleta, isAdmin, logout } = useAuth()
+  const { user, isAuthenticated, isEntrenador, isAtleta, isAdmin, hasFinanceAccess, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   
@@ -68,7 +70,7 @@ export const Navbar: React.FC = () => {
     setOpenDropdown(prev => prev === key ? null : key)
   }
 
-  const trainingPaths = ['/calendar', '/wellness', '/informe', '/nutricio']
+  const trainingPaths = ['/calendar', '/wellness', '/informe', '/nutricio', '/factures']
   const racesPaths = ['/competicions/atleta', '/team-races']
   const clubPaths = ['/anuncis', '/material', '/feedback']
   const planningPaths = ['/planning', '/competicions/entrenador', '/tests', '/weeks']
@@ -158,6 +160,19 @@ export const Navbar: React.FC = () => {
                     <div>
                       <p className="font-bold text-text-primary leading-tight">Pla Nutricional</p>
                       <p className="text-[11px] text-text-muted mt-0.5">Carbohidrats i avituallament</p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    to="/factures"
+                    className={`px-3 py-2.5 rounded-xl flex items-center gap-2.5 transition-colors ${
+                      isActive('/factures') ? 'bg-brand-50 text-brand-600 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <div>
+                      <p className="font-bold text-text-primary leading-tight">Les meves Factures</p>
+                      <p className="text-[11px] text-text-muted mt-0.5">Justificants i descàrrega PDF</p>
                     </div>
                   </Link>
                 </div>
@@ -420,7 +435,22 @@ export const Navbar: React.FC = () => {
             </div>
           )}
 
-          {/* 5. Administració i Sistema (Only if admin) */}
+          {/* 5. Administració i Finances (Si té permís: Admin o Coach autoritzat) */}
+          {hasFinanceAccess && (
+            <Link
+              to="/finances"
+              className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+                isActive('/finances')
+                  ? 'bg-emerald-100 text-emerald-800 font-bold shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              <Building2 className="w-4 h-4 text-emerald-600" />
+              <span>Administració</span>
+            </Link>
+          )}
+
+          {/* 6. Sistema & Admin */}
           {isAdmin && (
             <div className="relative">
               <button
@@ -599,6 +629,14 @@ export const Navbar: React.FC = () => {
               >
                 <Apple className="w-4 h-4 text-amber-500" /> Estratègia Nutricional
               </Link>
+              <Link
+                to="/factures"
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/factures') ? 'bg-brand-50 text-brand-600' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <FileText className="w-4 h-4 text-emerald-600" /> Les meves Factures
+              </Link>
             </div>
           )}
 
@@ -740,6 +778,24 @@ export const Navbar: React.FC = () => {
                 }`}
               >
                 <FileSpreadsheet className="w-4 h-4 text-indigo-500" /> Formularis Dinàmics
+              </Link>
+            </div>
+          )}
+
+          {/* Section: Administració i Finances (Si té permís) */}
+          {hasFinanceAccess && (
+            <div className="space-y-1 pt-2 border-t border-border">
+              <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider px-2 mb-1.5 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                Mòdul d'Administració
+              </p>
+              <Link
+                to="/finances"
+                className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-colors ${
+                  isActive('/finances') ? 'bg-emerald-100 text-emerald-800' : 'text-text-secondary hover:bg-bg-hover'
+                }`}
+              >
+                <DollarSign className="w-4 h-4 text-emerald-600" /> Finances & Resultats
               </Link>
             </div>
           )}

@@ -14,9 +14,9 @@ func (s *PostgresStore) CreateUsuari(ctx context.Context, nom, cognoms, email, p
 	err := s.pool.QueryRow(ctx,
 		`INSERT INTO usuaris (nom, cognoms, email, password_hash, rol, idioma, notificacions_tauler)
 		 VALUES ($1, $2, $3, $4, $5, $6, true)
-		 RETURNING id, nom, cognoms, email, password_hash, rol, actiu, idioma, notificacions_tauler, brevo_id, brevo_sync_status, created_at`,
+		 RETURNING id, nom, cognoms, email, password_hash, rol, es_administracio, actiu, idioma, notificacions_tauler, brevo_id, brevo_sync_status, created_at`,
 		nom, cognoms, email, passwordHash, rol, idioma,
-	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.NotificacionsTauler, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
+	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.EsAdministracio, &u.Actiu, &u.Idioma, &u.NotificacionsTauler, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -31,10 +31,10 @@ func (s *PostgresStore) CreateUsuari(ctx context.Context, nom, cognoms, email, p
 func (s *PostgresStore) GetUsuariByEmail(ctx context.Context, email string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, nom, cognoms, email, password_hash, rol, actiu, idioma, notificacions_tauler, brevo_id, brevo_sync_status, created_at
+		`SELECT id, nom, cognoms, email, password_hash, rol, es_administracio, actiu, idioma, notificacions_tauler, brevo_id, brevo_sync_status, created_at
 		 FROM usuaris WHERE email = $1`,
 		email,
-	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.NotificacionsTauler, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
+	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.EsAdministracio, &u.Actiu, &u.Idioma, &u.NotificacionsTauler, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -44,10 +44,10 @@ func (s *PostgresStore) GetUsuariByEmail(ctx context.Context, email string) (*mo
 func (s *PostgresStore) GetUsuariByID(ctx context.Context, id string) (*models.Usuari, error) {
 	var u models.Usuari
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, nom, cognoms, email, password_hash, rol, actiu, idioma, notificacions_tauler, brevo_id, brevo_sync_status, created_at
+		`SELECT id, nom, cognoms, email, password_hash, rol, es_administracio, actiu, idioma, notificacions_tauler, brevo_id, brevo_sync_status, created_at
 		 FROM usuaris WHERE id = $1`,
 		id,
-	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.Actiu, &u.Idioma, &u.NotificacionsTauler, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
+	).Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.PasswordHash, &u.Rol, &u.EsAdministracio, &u.Actiu, &u.Idioma, &u.NotificacionsTauler, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func (s *PostgresStore) UpdateUsuariProfile(ctx context.Context, id, nom, cognom
 
 func (s *PostgresStore) ListAllUsuaris(ctx context.Context) ([]models.Usuari, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, nom, cognoms, email, rol, actiu, idioma, notificacions_tauler, brevo_id, brevo_sync_status, created_at
+		`SELECT id, nom, cognoms, email, rol, es_administracio, actiu, idioma, notificacions_tauler, brevo_id, brevo_sync_status, created_at
 		 FROM usuaris ORDER BY nom`,
 	)
 	if err != nil {
@@ -118,12 +118,26 @@ func (s *PostgresStore) ListAllUsuaris(ctx context.Context) ([]models.Usuari, er
 	var usuaris []models.Usuari
 	for rows.Next() {
 		var u models.Usuari
-		if err := rows.Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.Rol, &u.Actiu, &u.Idioma, &u.NotificacionsTauler, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Nom, &u.Cognoms, &u.Email, &u.Rol, &u.EsAdministracio, &u.Actiu, &u.Idioma, &u.NotificacionsTauler, &u.BrevoID, &u.BrevoSyncStatus, &u.CreatedAt); err != nil {
 			return nil, err
 		}
 		usuaris = append(usuaris, u)
 	}
 	return usuaris, rows.Err()
+}
+
+func (s *PostgresStore) UpdateUsuariAdministracio(ctx context.Context, usuariID string, esAdministracio bool) error {
+	tag, err := s.pool.Exec(ctx,
+		`UPDATE usuaris SET es_administracio = $1 WHERE id = $2 AND rol = 'entrenador'`,
+		esAdministracio, usuariID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("només es pot modificar el rol d'administració a usuaris amb rol entrenador")
+	}
+	return nil
 }
 
 func (s *PostgresStore) ListEntrenadors(ctx context.Context) ([]models.Entrenador, error) {

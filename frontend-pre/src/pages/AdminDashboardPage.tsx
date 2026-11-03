@@ -13,7 +13,7 @@ import {
   UserX,
   Users
 } from 'lucide-react'
-import { getUsuaris, impersonateUser, resetUserPassword, type AdminUser } from '../api/admin'
+import { getUsuaris, impersonateUser, resetUserPassword, toggleUserAdministracio, type AdminUser } from '../api/admin'
 
 export const AdminDashboardPage: React.FC = () => {
   const { user, impersonate } = useAuth()
@@ -90,6 +90,18 @@ export const AdminDashboardPage: React.FC = () => {
     } catch (err: any) {
       console.error('Error reset password:', err)
       showNotification('error', err.response?.data?.error || 'Error enviant correu de recuperació.')
+    }
+  }
+
+  const handleToggleAdministracio = async (targetUser: AdminUser) => {
+    const nextVal = !targetUser.es_administracio
+    try {
+      await toggleUserAdministracio(targetUser.id, nextVal)
+      setUsuaris(prev => prev.map(u => u.id === targetUser.id ? { ...u, es_administracio: nextVal } : u))
+      showNotification('success', `Permisos d'administració ${nextVal ? 'activats' : 'desactivats'} per a ${targetUser.nom}`)
+    } catch (err: any) {
+      console.error('Error toggle administracio:', err)
+      showNotification('error', err.response?.data?.error || 'No s\'ha pogut modificar el permís d\'administració.')
     }
   }
 
@@ -205,6 +217,7 @@ export const AdminDashboardPage: React.FC = () => {
                   <th className="py-3 px-4">Usuari</th>
                   <th className="py-3 px-4">Correu Electrònic</th>
                   <th className="py-3 px-4">Rol</th>
+                  <th className="py-3 px-4">Administració</th>
                   <th className="py-3 px-4">Estat</th>
                   <th className="py-3 px-4 text-right">Accions</th>
                 </tr>
@@ -226,6 +239,28 @@ export const AdminDashboardPage: React.FC = () => {
                     </td>
                     <td className="py-3.5 px-4">
                       {getRoleBadge(u.rol)}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {u.rol === 'admin' ? (
+                        <span className="text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                          Accés Total (Admin)
+                        </span>
+                      ) : u.rol === 'entrenador' ? (
+                        <button
+                          onClick={() => handleToggleAdministracio(u)}
+                          className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all flex items-center gap-1.5 ${
+                            u.es_administracio
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                          }`}
+                          title="Fes clic per commutar l'accés a finances"
+                        >
+                          <span className={`w-2 h-2 rounded-full ${u.es_administracio ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                          {u.es_administracio ? 'Autoritzat' : 'Sense permís'}
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-text-muted">-</span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
@@ -283,6 +318,23 @@ export const AdminDashboardPage: React.FC = () => {
                   </div>
                   {getRoleBadge(u.rol)}
                 </div>
+
+                {u.rol === 'entrenador' && (
+                  <div className="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-200">
+                    <span className="text-xs font-semibold text-slate-700">Mòdul d'Administració:</span>
+                    <button
+                      onClick={() => handleToggleAdministracio(u)}
+                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-all flex items-center gap-1.5 ${
+                        u.es_administracio
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                          : 'bg-white text-slate-500 border-slate-300'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${u.es_administracio ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                      {u.es_administracio ? 'Autoritzat' : 'Sense permís'}
+                    </button>
+                  </div>
+                )}
 
                 <div className="pt-2 border-t border-border-light flex items-center justify-between gap-2">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${

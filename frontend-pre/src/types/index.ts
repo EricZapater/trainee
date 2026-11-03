@@ -4,6 +4,7 @@ export interface Usuari {
   cognoms: string
   email: string
   rol: 'atleta' | 'entrenador' | 'admin'
+  es_administracio?: boolean
   actiu: boolean
   idioma?: string
   notificacions_tauler?: boolean

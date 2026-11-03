@@ -107,6 +107,7 @@ func main() {
 	systemLogsHandler := handlers.NewSystemLogsHandler(s)
 	settingsHandler := handlers.NewSettingsHandler(s, jm)
 	adminHandler := handlers.NewAdminHandler(s, mailService, cfg.JWTSecret)
+	financesHandler := handlers.NewFinancesHandler(s, fileUploader)
 
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -279,10 +280,92 @@ func main() {
 	{
 		adminRoutes.GET("/system-logs", systemLogsHandler.GetSystemLogs)
 		adminRoutes.GET("/usuaris", adminHandler.GetUsuaris)
+		adminRoutes.PATCH("/usuaris/:id/administracio", adminHandler.ToggleUsuariAdministracio)
 		adminRoutes.POST("/impersonate/:id", adminHandler.Impersonate)
 		adminRoutes.POST("/usuaris/:id/reset-password", adminHandler.ResetPassword)
 		adminRoutes.POST("/usuaris/:id/brevo-sync", adminHandler.ForceBrevoSync)
 	}
+
+	// Mòdul d'Administració i Finances (Protegit: Admin o Entrenador amb es_administracio=true)
+	financesRoutes := api.Group("/finances")
+	financesRoutes.Use(middleware.JWTAuth(cfg.JWTSecret), middleware.RequireConsent(s, "v1.0"), middleware.RequireAdministracio(s))
+	{
+		// Configuració i Mestres
+		financesRoutes.GET("/configuracio", financesHandler.GetConfiguracioEmpresa)
+		financesRoutes.PUT("/configuracio", financesHandler.UpdateConfiguracioEmpresa)
+		financesRoutes.GET("/impostos", financesHandler.ListImpostos)
+		financesRoutes.POST("/impostos", financesHandler.CreateImpost)
+		financesRoutes.PUT("/impostos/:id", financesHandler.UpdateImpost)
+		financesRoutes.DELETE("/impostos/:id", financesHandler.DeleteImpost)
+
+		financesRoutes.GET("/series", financesHandler.ListSeries)
+		financesRoutes.POST("/series", financesHandler.CreateSerie)
+		financesRoutes.PUT("/series/:id", financesHandler.UpdateSerie)
+
+		financesRoutes.GET("/unitats-negoci", financesHandler.ListUnitatsNegoci)
+		financesRoutes.POST("/unitats-negoci", financesHandler.CreateUnitatNegoci)
+		financesRoutes.PUT("/unitats-negoci/:id", financesHandler.UpdateUnitatNegoci)
+
+		financesRoutes.GET("/clients", financesHandler.ListClients)
+		financesRoutes.POST("/clients", financesHandler.CreateClient)
+		financesRoutes.PUT("/clients/:id", financesHandler.UpdateClient)
+		financesRoutes.POST("/clients/sync-atletes", financesHandler.SyncAtletesToClients)
+
+		financesRoutes.GET("/proveidors", financesHandler.ListProveidors)
+		financesRoutes.POST("/proveidors", financesHandler.CreateProveidor)
+		financesRoutes.PUT("/proveidors/:id", financesHandler.UpdateProveidor)
+
+		financesRoutes.GET("/articles", financesHandler.ListArticles)
+		financesRoutes.POST("/articles", financesHandler.CreateArticle)
+		financesRoutes.PUT("/articles/:id", financesHandler.UpdateArticle)
+
+		// Operativa Vendes, Subscripcions i Camps
+		financesRoutes.GET("/subscripcions", financesHandler.ListSubscripcions)
+		financesRoutes.POST("/subscripcions", financesHandler.CreateSubscripcio)
+		financesRoutes.PUT("/subscripcions/:id", financesHandler.UpdateSubscripcio)
+		financesRoutes.POST("/subscripcions/generar-remesa", financesHandler.BatchGenerateSubscripcions)
+
+		financesRoutes.GET("/plans-camp", financesHandler.ListPlansCamp)
+		financesRoutes.POST("/plans-camp", financesHandler.CreatePlaCamp)
+		financesRoutes.POST("/plans-camp/fites/:fita_id/facturar", financesHandler.FacturarCampFita)
+
+		financesRoutes.GET("/factures", financesHandler.ListFacturesVenda)
+		financesRoutes.GET("/factures/:id", financesHandler.GetFacturaVenda)
+		financesRoutes.POST("/factures", financesHandler.CreateFacturaVenda)
+		financesRoutes.PUT("/factures/:id", financesHandler.UpdateFacturaVenda)
+		financesRoutes.DELETE("/factures/:id", financesHandler.DeleteFacturaVenda)
+		financesRoutes.POST("/factures/:id/emetre", financesHandler.EmetreFacturaVenda)
+		financesRoutes.POST("/factures/:id/conciliar", financesHandler.ConciliarFacturaVenda)
+		financesRoutes.POST("/factures/:id/marcar-impagada", financesHandler.MarcarImpagadaFacturaVenda)
+		financesRoutes.POST("/factures/:id/abonament", financesHandler.CrearAbonamentFacturaVenda)
+
+		// Compres i Despeses
+		financesRoutes.GET("/compres", financesHandler.ListCompres)
+		financesRoutes.POST("/compres", financesHandler.CreateCompra)
+		financesRoutes.PUT("/compres/:id", financesHandler.UpdateCompra)
+		financesRoutes.DELETE("/compres/:id", financesHandler.DeleteCompra)
+		financesRoutes.POST("/compres/:id/conciliar", financesHandler.ConciliarCompra)
+		financesRoutes.POST("/upload", financesHandler.UploadDocument)
+
+		financesRoutes.GET("/despeses", financesHandler.ListDespeses)
+		financesRoutes.POST("/despeses", financesHandler.CreateDespesa)
+		financesRoutes.PUT("/despeses/:id", financesHandler.UpdateDespesa)
+		financesRoutes.DELETE("/despeses/:id", financesHandler.DeleteDespesa)
+		financesRoutes.POST("/despeses/:id/conciliar", financesHandler.ConciliarDespesa)
+
+		financesRoutes.GET("/recurrents-sortida", financesHandler.ListRecurrentsSortida)
+		financesRoutes.POST("/recurrents-sortida", financesHandler.CreateRecurrentSortida)
+		financesRoutes.DELETE("/recurrents-sortida/:id", financesHandler.DeleteRecurrentSortida)
+
+		// Informes Analítics i Tresoreria
+		financesRoutes.GET("/informes/resultats", financesHandler.GetInformeResultats)
+		financesRoutes.GET("/informes/resultats/csv", financesHandler.ExportInformeCSV)
+		financesRoutes.GET("/tresoreria/cashflow", financesHandler.GetCashflowForecast)
+	}
+
+	// Factures per a l'Atleta i descàrrega PDF
+	authenticated.GET("/atletes/factures", financesHandler.ListFacturesMe)
+	authenticated.GET("/finances/factures/:id/pdf", financesHandler.DownloadFacturaPDF)
 
 	publicRoutes := api.Group("/public")
 	{
