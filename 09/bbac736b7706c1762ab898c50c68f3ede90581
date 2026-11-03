@@ -1,0 +1,24 @@
+backend/internal/handlers/finances.go
+  h_42175f19913982 323-354,356,369
+backend/internal/models/finances.go
+  h_42175f19913982 231-232
+backend/internal/store/finances_masters.go
+  h_42175f19913982 349-354,356
+backend/migrations/000044_fix_fin_clients_unique.down.sql
+  h_42175f19913982 1-2
+backend/migrations/000044_fix_fin_clients_unique.up.sql
+  h_42175f19913982 1-23
+frontend-pre/src/pages/FinanceAdminPage.tsx
+  h_42175f19913982 13-18,24-25,27,29,31,34,36,59-61,109-111,114-133,245,255-262,267,269,274,277-286,518-613,679,681-720,1359,1361-1386,1389-1404,1406-1407,1410,1412-1418,1421,1423-1426,1430,1432-1435,1439,1441-1499,1503-1504,1506-1515,1517-1518,1520,1524-1553,1555,1557-1569,1571-1572,1575-2072,2526-3001
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "09bbac736b7706c1762ab898c50c68f3ede90581",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
