@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { ConfirmModal } from '../components/ConfirmModal'
 import { 
   Building2, 
   RefreshCw, 
@@ -257,6 +258,36 @@ export const FinanceAdminPage: React.FC = () => {
 
   const [uploadingFile, setUploadingFile] = useState(false)
 
+  // Dialogs i Pop-ups estilitzats amb React
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    confirmText?: string
+    cancelText?: string
+    variant?: 'danger' | 'warning' | 'info' | 'success'
+    onConfirm: () => void | Promise<void>
+  } | null>(null)
+
+  const [conciliarModal, setConciliarModal] = useState<{
+    isOpen: boolean
+    facturaId: string
+    numeroFactura?: string
+    dataConciliacio: string
+  } | null>(null)
+
+  const [impagatModal, setImpagatModal] = useState<{
+    isOpen: boolean
+    facturaId: string
+    numeroFactura?: string
+    motiu: string
+  } | null>(null)
+
+  const [batchSubsModal, setBatchSubsModal] = useState<{
+    isOpen: boolean
+    cutoffDate: string
+  } | null>(null)
+
   useEffect(() => {
     loadInitialData()
   }, [])
@@ -429,35 +460,70 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleEmetreFactura = async (id: string) => {
-    if (!window.confirm('Segur que vols emetre aquesta factura? S\'assignarà número correlatiu de sèrie i no es podrà modificar.')) return
-    try {
-      await emetreFinFacturaVenda(id)
-      showNotify('success', 'Factura emesa amb èxit!')
-      loadFactures()
-    } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error emetent la factura')
-    }
+  const handleEmetreFactura = (id: string, numeroComplet?: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Emetre Factura Oficial',
+      message: `Segur que vols emetre la factura ${numeroComplet ? `"${numeroComplet}"` : ''}? S'assignarà un número correlatiu definitiu de sèrie legal i el document quedarà bloquejat per a Veri*factu. No es podrà modificar ni esborrar.`,
+      confirmText: 'Emetre Factura',
+      cancelText: 'Cancel·lar',
+      variant: 'warning',
+      onConfirm: async () => {
+        try {
+          await emetreFinFacturaVenda(id)
+          showNotify('success', 'Factura emesa amb èxit!')
+          loadFactures()
+        } catch (err: any) {
+          showNotify('error', err.response?.data?.error || 'Error emetent la factura')
+        } finally {
+          setConfirmDialog(null)
+        }
+      }
+    })
   }
 
-  const handleConciliarFactura = async (id: string) => {
-    const dataConc = window.prompt('Introdueix la data real de validació al banc (YYYY-MM-DD):', new Date().toISOString().split('T')[0])
-    if (!dataConc) return
+  const handleConciliarFactura = (id: string, numeroComplet?: string) => {
+    setConciliarModal({
+      isOpen: true,
+      facturaId: id,
+      numeroFactura: numeroComplet,
+      dataConciliacio: new Date().toISOString().split('T')[0]
+    })
+  }
+
+  const submitConciliarFactura = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!conciliarModal) return
     try {
-      await conciliarFinFacturaVenda(id, { data_conciliacio: dataConc })
+      await conciliarFinFacturaVenda(conciliarModal.facturaId, {
+        data_conciliacio: conciliarModal.dataConciliacio
+      })
       showNotify('success', 'Cobrament conciliat i validat a caixa!')
+      setConciliarModal(null)
       loadFactures()
     } catch (err: any) {
       showNotify('error', err.response?.data?.error || 'Error conciliant la factura')
     }
   }
 
-  const handleMarcarImpagada = async (id: string) => {
-    const motiu = window.prompt('Motiu de l\'impagat o incidència:')
-    if (motiu === null) return
+  const handleMarcarImpagada = (id: string, numeroComplet?: string) => {
+    setImpagatModal({
+      isOpen: true,
+      facturaId: id,
+      numeroFactura: numeroComplet,
+      motiu: ''
+    })
+  }
+
+  const submitMarcarImpagada = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!impagatModal) return
     try {
-      await marcarImpagadaFinFacturaVenda(id, { motiu_impagament: motiu })
+      await marcarImpagadaFinFacturaVenda(impagatModal.facturaId, {
+        motiu_impagament: impagatModal.motiu || 'Sense motiu especificat'
+      })
       showNotify('success', 'Factura marcada com a impagada')
+      setImpagatModal(null)
       loadFactures()
     } catch (err: any) {
       showNotify('error', err.response?.data?.error || 'Error marcant impagat')
@@ -480,15 +546,26 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleDeleteFactura = async (id: string) => {
-    if (!window.confirm('Vols eliminar aquest esborrany?')) return
-    try {
-      await deleteFinFacturaVenda(id)
-      showNotify('success', 'Esborrany eliminat')
-      loadFactures()
-    } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error eliminant esborrany')
-    }
+  const handleDeleteFactura = (id: string, numeroComplet?: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Eliminar Esborrany de Factura',
+      message: `Vols eliminar permanentment l'esborrany ${numeroComplet ? `"${numeroComplet}"` : ''}? Aquesta acció no es pot desfer.`,
+      confirmText: 'Eliminar Esborrany',
+      cancelText: 'Cancel·lar',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteFinFacturaVenda(id)
+          showNotify('success', 'Esborrany eliminat')
+          loadFactures()
+        } catch (err: any) {
+          showNotify('error', err.response?.data?.error || 'Error eliminant esborrany')
+        } finally {
+          setConfirmDialog(null)
+        }
+      }
+    })
   }
 
   const handleCreateCompra = async (e: React.FormEvent) => {
@@ -527,12 +604,20 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleBatchGenerateSubs = async () => {
-    const cutoff = window.prompt('Generar esborranys per a subscripcions amb venciment fins a (YYYY-MM-DD):', new Date().toISOString().split('T')[0])
-    if (!cutoff) return
+  const openBatchGenerateSubs = () => {
+    setBatchSubsModal({
+      isOpen: true,
+      cutoffDate: new Date().toISOString().split('T')[0]
+    })
+  }
+
+  const submitBatchGenerateSubs = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!batchSubsModal) return
     try {
-      const res = await batchGenerateSubscripcions(cutoff)
+      const res = await batchGenerateSubscripcions(batchSubsModal.cutoffDate)
       showNotify('success', `S'han generat ${res.drafts_created} esborranys de factura pendents de revisió!`)
+      setBatchSubsModal(null)
       loadFactures()
     } catch (err: any) {
       showNotify('error', err.response?.data?.error || 'Error generant la remesa')
@@ -791,16 +876,27 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleDeleteImpost = async (id: string) => {
-    if (!window.confirm('Vols desactivar/eliminar aquest tipus d\'IVA?')) return
-    try {
-      await deleteFinImpost(id)
-      showNotify('success', 'Tipus d\'impost eliminat')
-      const imp = await listFinImpostos()
-      setImpostos(imp)
-    } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error eliminant impost')
-    }
+  const handleDeleteImpost = (id: string, nom?: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: "Eliminar Tipus d'Impost",
+      message: `Segur que vols eliminar o desactivar el tipus tributari ${nom ? `"${nom}"` : ''} del catàleg?`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancel·lar',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteFinImpost(id)
+          showNotify('success', 'Tipus d\'impost eliminat')
+          const imp = await listFinImpostos()
+          setImpostos(imp)
+        } catch (err: any) {
+          showNotify('error', err.response?.data?.error || 'Error eliminant impost')
+        } finally {
+          setConfirmDialog(null)
+        }
+      }
+    })
   }
 
   // 4. Articles
@@ -890,15 +986,26 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleFacturarFita = async (fitaId: string) => {
-    if (!window.confirm('Vols generar una factura independent per a aquest termini de pagament?')) return
-    try {
-      await facturarCampFita(fitaId)
-      showNotify('success', 'Factura generada per a la fita del Camp!')
-      loadPlansCamp()
-    } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error facturant la fita')
-    }
+  const handleFacturarFita = (fitaId: string, concepteFita?: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Facturar Fita del Camp',
+      message: `Vols generar un nou esborrany de factura independent per a aquest termini de pagament ${concepteFita ? `("${concepteFita}")` : ''}?`,
+      confirmText: 'Generar Factura',
+      cancelText: 'Cancel·lar',
+      variant: 'info',
+      onConfirm: async () => {
+        try {
+          await facturarCampFita(fitaId)
+          showNotify('success', 'Factura generada per a la fita del Camp!')
+          loadPlansCamp()
+        } catch (err: any) {
+          showNotify('error', err.response?.data?.error || 'Error facturant la fita')
+        } finally {
+          setConfirmDialog(null)
+        }
+      }
+    })
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'compra') => {
@@ -1348,13 +1455,13 @@ export const FinanceAdminPage: React.FC = () => {
                           {!isEmesa && (
                             <>
                               <button
-                                onClick={() => handleEmetreFactura(f.id)}
+                                onClick={() => handleEmetreFactura(f.id, f.numero_complet || f.concepte)}
                                 className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold"
                               >
                                 Emetre
                               </button>
                               <button
-                                onClick={() => handleDeleteFactura(f.id)}
+                                onClick={() => handleDeleteFactura(f.id, f.numero_complet || f.concepte)}
                                 className="p-1 text-slate-400 hover:text-rose-600"
                                 title="Eliminar esborrany"
                               >
@@ -1366,7 +1473,7 @@ export const FinanceAdminPage: React.FC = () => {
                           {isEmesa && !isPagada && (
                             <>
                               <button
-                                onClick={() => handleConciliarFactura(f.id)}
+                                onClick={() => handleConciliarFactura(f.id, f.numero_complet || f.concepte)}
                                 className="px-2 py-1 bg-slate-100 hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold"
                                 title="Conciliar pagament validat"
                               >
@@ -1374,7 +1481,7 @@ export const FinanceAdminPage: React.FC = () => {
                               </button>
                               {!isImpagada && (
                                 <button
-                                  onClick={() => handleMarcarImpagada(f.id)}
+                                  onClick={() => handleMarcarImpagada(f.id, f.numero_complet || f.concepte)}
                                   className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold"
                                 >
                                   Impagat
@@ -1416,7 +1523,7 @@ export const FinanceAdminPage: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={handleBatchGenerateSubs}
+                onClick={openBatchGenerateSubs}
                 className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Facturar pendents del mes
@@ -1513,7 +1620,7 @@ export const FinanceAdminPage: React.FC = () => {
                             </span>
                           ) : (
                             <button
-                              onClick={() => handleFacturarFita(f.id)}
+                              onClick={() => handleFacturarFita(f.id, f.concepte_fita)}
                               className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold shadow-sm"
                             >
                               Facturar Fita
@@ -1983,7 +2090,7 @@ export const FinanceAdminPage: React.FC = () => {
                               <span>Editar</span>
                             </button>
                             <button
-                              onClick={() => handleDeleteImpost(imp.id)}
+                              onClick={() => handleDeleteImpost(imp.id, imp.nom)}
                               className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
                               title="Eliminar aquest tipus tributari"
                             >
@@ -3797,6 +3904,165 @@ export const FinanceAdminPage: React.FC = () => {
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
                   {editingProveidorId ? 'Desar Canvis' : 'Desar Proveïdor'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* POP-UP DE CONFIRMACIÓ GENÈRIC ESTILITZAT */}
+      {confirmDialog && (
+        <ConfirmModal
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmText={confirmDialog.confirmText}
+          cancelText={confirmDialog.cancelText}
+          variant={confirmDialog.variant}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
+        />
+      )}
+
+      {/* POP-UP CONCILIACIÓ BANCÀRIA DE COBRAMENT */}
+      {conciliarModal?.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Validar Cobrament i Conciliació</h3>
+                  {conciliarModal.numeroFactura && (
+                    <p className="text-xs text-emerald-800 font-mono font-bold">{conciliarModal.numeroFactura}</p>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setConciliarModal(null)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={submitConciliarFactura} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Data real de cobrament / apunt bancari *</label>
+                <input
+                  type="date"
+                  required
+                  value={conciliarModal.dataConciliacio}
+                  onChange={e => setConciliarModal({ ...conciliarModal, dataConciliacio: e.target.value })}
+                  className="w-full mt-1 p-2.5 border rounded-xl font-medium"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  La factura passarà a estat "Pagada" i es registrarà aquest dia com a data de conciliació oficial a caixa.
+                </p>
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConciliarModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700 font-bold">
+                  Confirmar Cobrament
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* POP-UP REGISTRAR IMPAGAT */}
+      {impagatModal?.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Registrar Impagat</h3>
+                  {impagatModal.numeroFactura && (
+                    <p className="text-xs text-rose-700 font-mono font-bold">{impagatModal.numeroFactura}</p>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setImpagatModal(null)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={submitMarcarImpagada} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Motiu de l'impagat o incidència *</label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="Ex: Rebut retornat pel banc, client pendent de resposta a avisos..."
+                  value={impagatModal.motiu}
+                  onChange={e => setImpagatModal({ ...impagatModal, motiu: e.target.value })}
+                  className="w-full mt-1 p-2.5 border rounded-xl"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Aquesta factura passarà a estat "Impagada" i s'inclourà al llistat de seguiment de morositat.
+                </p>
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setImpagatModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-rose-600 hover:bg-rose-700 font-bold">
+                  Marcar com a Impagada
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* POP-UP GENERAR REMESA DE SUBSCRIPCIONS */}
+      {batchSubsModal?.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                  <RefreshCw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">Generar Remesa de Subscripcions</h3>
+                  <p className="text-xs text-slate-500">Facturació massiva de quotes recurrents</p>
+                </div>
+              </div>
+              <button onClick={() => setBatchSubsModal(null)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+            <form onSubmit={submitBatchGenerateSubs} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Generar factures per a quotes amb venciment fins a *</label>
+                <input
+                  type="date"
+                  required
+                  value={batchSubsModal.cutoffDate}
+                  onChange={e => setBatchSubsModal({ ...batchSubsModal, cutoffDate: e.target.value })}
+                  className="w-full mt-1 p-2.5 border rounded-xl font-medium"
+                />
+                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                  Es crearan factures en estat esborrany per a totes les quotes actives que tinguin propera data de facturació anterior o igual a aquest dia. Les podràs revisar abans d'emetre-les.
+                </p>
+              </div>
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBatchSubsModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-indigo-600 hover:bg-indigo-700 font-bold">
+                  Generar Esborranys
                 </button>
               </div>
             </form>
