@@ -1,0 +1,16 @@
+frontend-pre/src/components/ConfirmModal.tsx
+  h_42175f19913982 1-95
+frontend-pre/src/pages/FinanceAdminPage.tsx
+  h_42175f19913982 3,261-290,463-482,485-496,498-500,502,509-520,522-524,526,549-568,607-616,618,620,879-899,989-1008,1458,1464,1476,1484,1526,1623,2093,3913-4071
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7ed717dcf137e5fb52239550a5d3caa7212d878c",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
