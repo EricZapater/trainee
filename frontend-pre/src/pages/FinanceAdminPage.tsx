@@ -1061,50 +1061,6 @@ export const FinanceAdminPage: React.FC = () => {
             1 NIF/CIF fiscal, 3 Unitats de Negoci, Facturació d'Entrenaments i Camps, Compres, Despeses i Previsió de Caixa.
           </p>
         </div>
-
-        {/* Action Shortcut segons la secció activa */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {activeTab === 'vendes' && (
-            <button
-              onClick={() => setShowFacturaModal(true)}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> Nova Venda
-            </button>
-          )}
-          {activeTab === 'compres' && (
-            <button
-              onClick={() => setShowCompraModal(true)}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 shadow-sm text-white"
-            >
-              <Plus className="w-4 h-4" /> Nova Compra
-            </button>
-          )}
-          {activeTab === 'despeses' && (
-            <button
-              onClick={() => setShowDespesaModal(true)}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 shadow-sm text-white"
-            >
-              <Plus className="w-4 h-4" /> Nova Despesa
-            </button>
-          )}
-          {activeTab === 'subscripcions' && (
-            <button
-              onClick={() => setShowSubModal(true)}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> Nova Subscripció
-            </button>
-          )}
-          {activeTab === 'camps' && (
-            <button
-              onClick={openCreateCamp}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> Nou Pla de Camp
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Current section indicator */}
