@@ -144,3 +144,51 @@ jobs:
               docker compose up -d --no-deps $SERVICES
               docker image prune -af
             fi
+
+      # ============================================================
+      # REGISTRE A RAWCRAFT MONITOR
+      # ============================================================
+      - name: 🚀 Registrar Desplegament a RawCraft Monitor
+        if: always()
+        env:
+          RAWCRAFT_API_KEY: ${{ secrets.RAWCRAFT_API_KEY }}
+          HEAD_COMMIT_MSG: ${{ github.event.head_commit.message || github.ref_name }}
+        run: |
+          SERVICES=()
+          if [ "${{ needs.build-and-push-images.outputs.build_pre }}" = "true" ]; then
+            SERVICES+=("trainee-pre-back" "trainee-pre-front")
+          fi
+          if [ "${{ needs.build-and-push-images.outputs.build_pro }}" = "true" ]; then
+            SERVICES+=("trainee-pro-back" "trainee-pro-front")
+          fi
+
+          if [ ${#SERVICES[@]} -eq 0 ]; then
+            echo "Cap servei desplegat per registrar a RawCraft Monitor."
+            exit 0
+          fi
+
+          if [ -z "$RAWCRAFT_API_KEY" ]; then
+            echo "⚠️ Advertència: El secret RAWCRAFT_API_KEY no està definit a GitHub Secrets. Ometent registre."
+            exit 0
+          fi
+
+          COMMIT_MSG_JSON=$(echo "$HEAD_COMMIT_MSG" | jq -sR .)
+          STATUS="${{ job.status == 'success' && 'SUCCESS' || 'FAILED' }}"
+
+          for PRODUCT in "${SERVICES[@]}"; do
+            echo "🚀 Registrant desplegament a RawCraft Monitor per a: $PRODUCT (Estat: $STATUS)..."
+            curl -fsSL -X POST https://api.monitor.ericzapater.cat/api/v1/deploys \
+              -H "Content-Type: application/json" \
+              -H "X-Agent-Key: $RAWCRAFT_API_KEY" \
+              -d '{
+                "product_name": "'"$PRODUCT"'",
+                "environment": "production",
+                "version": "${{ github.ref_name }}",
+                "commit_sha": "${{ github.sha }}",
+                "commit_message": '"$COMMIT_MSG_JSON"',
+                "branch": "${{ github.ref_name }}",
+                "deployed_by": "${{ github.actor }}",
+                "status": "'"$STATUS"'"
+              }'
+            echo ""
+          done
