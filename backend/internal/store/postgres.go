@@ -32,6 +32,10 @@ func (s *PostgresStore) SetBrevo(b BrevoSync) {
 	s.brevo = b
 }
 
+func (s *PostgresStore) Ping(ctx context.Context) error {
+	return s.pool.Ping(ctx)
+}
+
 func (s *PostgresStore) Close() {
 	s.pool.Close()
 }

@@ -121,6 +121,25 @@ func main() {
 
 	api := r.Group("/api")
 
+	// Endpoint de health check (actiu només a PRE / no producció)
+	if cfg.Env != "production" {
+		healthHandler := func(c *gin.Context) {
+			dbStatus := "connected"
+			httpStatus := 200
+			if err := s.Ping(c.Request.Context()); err != nil {
+				dbStatus = "disconnected: " + err.Error()
+				httpStatus = 503
+			}
+			c.JSON(httpStatus, gin.H{
+				"status":   "ok",
+				"env":      cfg.Env,
+				"database": dbStatus,
+			})
+		}
+		r.GET("/health", healthHandler)
+		api.GET("/health", healthHandler)
+	}
+
 	api.POST("/auth/register", h.Register)
 	api.POST("/auth/login", h.Login)
 	api.POST("/auth/magic-login", h.MagicLogin)
