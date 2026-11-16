@@ -111,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isEntrenador = user?.rol === 'entrenador' || user?.rol === 'admin'
   const isAtleta = user?.rol === 'atleta' || user?.rol === 'admin'
   const isAdmin = user?.rol === 'admin'
-  const hasFinanceAccess = isAdmin || (user?.rol === 'entrenador' && Boolean(user?.es_administracio))
+  const hasFinanceAccess = isEntrenador
 
   return (
     <AuthContext.Provider

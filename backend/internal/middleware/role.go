@@ -31,8 +31,7 @@ func RequireRole(role string) gin.HandlerFunc {
 	}
 }
 
-// RequireAdministracio permet l'accés exclusivament a usuaris amb rol 'admin'
-// o bé a entrenadors actius amb el flag 'es_administracio = true'.
+// RequireAdministracio permet l'accés a usuaris amb rol 'admin' o 'entrenador'.
 func RequireAdministracio(s store.Store) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("rol")
@@ -43,31 +42,12 @@ func RequireAdministracio(s store.Store) gin.HandlerFunc {
 		}
 
 		uRoleStr, _ := userRole.(string)
-		if uRoleStr == "admin" {
+		if uRoleStr == "admin" || uRoleStr == "entrenador" {
 			c.Next()
 			return
 		}
 
-		if uRoleStr != "entrenador" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "accés restringit a administració"})
-			c.Abort()
-			return
-		}
-
-		userID := c.GetString("user_id")
-		if userID == "" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "usuari no identificat"})
-			c.Abort()
-			return
-		}
-
-		u, err := s.GetUsuariByID(c.Request.Context(), userID)
-		if err != nil || !u.Actiu || !u.EsAdministracio {
-			c.JSON(http.StatusForbidden, gin.H{"error": "no tens permisos d'administració activats"})
-			c.Abort()
-			return
-		}
-
-		c.Next()
+		c.JSON(http.StatusForbidden, gin.H{"error": "accés restringit a administració"})
+		c.Abort()
 	}
 }

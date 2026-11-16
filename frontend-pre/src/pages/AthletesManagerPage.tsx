@@ -805,7 +805,7 @@ export const AthletesManagerPage: React.FC = () => {
                 <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
                 <span>Carregant dades econòmiques...</span>
               </div>
-            ) : economicaData && (
+            ) : economicaData ? (
               <form onSubmit={handleSaveEconomica} className="space-y-4 text-xs">
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                   <div>
@@ -827,15 +827,24 @@ export const AthletesManagerPage: React.FC = () => {
                     className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   >
                     <option value="">Sense quota recurrent vinculada</option>
-                    {articlesList.filter(a => a.es_recurrent).map(art => (
+                    {(articlesList.filter(a => a.es_recurrent || a.categoria === 'entrenament_recurrent').length > 0
+                      ? articlesList.filter(a => a.es_recurrent || a.categoria === 'entrenament_recurrent')
+                      : articlesList
+                    ).map(art => (
                       <option key={art.id} value={art.id}>
                         {art.nom} - {art.preu_base} € (+IVA) ({art.periodicitat_mesos === 1 ? 'Mensual' : art.periodicitat_mesos === 3 ? 'Trimestral' : art.periodicitat_mesos === 6 ? 'Semestral' : 'Anual'})
                       </option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Només es mostren els articles marcats com a 'Quota Recurrent' al catàleg.
-                  </p>
+                  {articlesList.length === 0 ? (
+                    <p className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-xl mt-1.5 border border-amber-200">
+                      ⚠️ Encara no hi ha cap article al catàleg. Ves a <strong>Administració &gt; Mestres & Configuració &gt; Articles</strong> per crear la teva primera quota.
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Només es mostren els articles marcats com a 'Quota Recurrent' al catàleg.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -975,6 +984,21 @@ export const AthletesManagerPage: React.FC = () => {
                   </button>
                 </div>
               </form>
+            ) : (
+              <div className="py-12 flex flex-col items-center justify-center gap-2 text-text-muted text-xs text-center">
+                <AlertTriangle className="w-8 h-8 text-amber-500" />
+                <span className="font-bold text-slate-800 text-sm">No s'han pogut carregar les dades de l'atleta</span>
+                <p className="text-slate-500 text-xs max-w-xs">
+                  Hi ha hagut un problema en comunicar amb el servidor.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => economicaAtleta && openEconomicaModal(economicaAtleta)}
+                  className="mt-2 px-3.5 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700 transition-colors"
+                >
+                  Reintentar
+                </button>
+              </div>
             )}
           </div>
         </div>
