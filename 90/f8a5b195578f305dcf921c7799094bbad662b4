@@ -1,0 +1,16 @@
+.env.example
+  h_42175f19913982 1-11
+backend/config/config.go
+  h_42175f19913982 3-6,14-18,31-76,81-86,88-89,111-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "90f8a5b195578f305dcf921c7799094bbad662b4",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
