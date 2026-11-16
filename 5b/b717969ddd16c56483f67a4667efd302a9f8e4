@@ -1,0 +1,16 @@
+frontend-pre/src/components/Navbar.tsx
+  h_42175f19913982 88-93,471,480,484-485,487
+frontend-pre/src/pages/FinanceAdminPage.tsx
+  h_42175f19913982 81,86,88,90,95-97,876,1731
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5bb717969ddd16c56483f67a4667efd302a9f8e4",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
