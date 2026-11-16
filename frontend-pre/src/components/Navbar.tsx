@@ -85,13 +85,12 @@ export const Navbar: React.FC = () => {
 
   const financeSubmenu = [
     { to: '/finances?tab=graella', label: '⚡ Facturació del Mes', desc: 'Llançament periòdic de quotes i venciments', icon: Zap },
-    { to: '/finances?tab=vendes', label: 'Vendes & Factures', desc: 'Emissió puntual, cobraments i Veri*factu', icon: FileText },
-    { to: '/finances?tab=compres', label: 'Factures de Compra', desc: 'Proveïdors, tiquets i centres de cost', icon: ArrowDownLeft },
-    { to: '/finances?tab=despeses', label: 'Despeses Operatives', desc: 'Nòmines, autònoms i quotes fixes dia 1', icon: CreditCard },
-    { to: '/finances?tab=tresoreria', label: 'Previsió de Caixa', desc: 'Flux de caixa mòbil i tresoreria dinàmica', icon: DollarSign },
-    { to: '/finances?tab=resum', label: 'Compte de Resultats (P&L)', desc: 'Totalitzacions vendes vs compres i marge', icon: TrendingUp },
-    { to: '/finances?tab=config', label: 'Configuració & Mestres', desc: 'Catàleg articles, sèries, IVA i empresa', icon: Building2 },
-    { to: '/atletes', label: 'Quotes dels Atletes', desc: 'Assignació de quota, IBAN i pausa facturació', icon: UserCheck },
+    { to: '/finances?tab=vendes', label: 'Vendes & Factures', desc: 'Factures puntuals i vendes a terminis', icon: FileText },
+    { to: '/finances?tab=compres', label: 'Compres & Proveïdors', desc: 'Factures de compra i centres de cost', icon: ArrowDownLeft },
+    { to: '/finances?tab=despeses', label: 'Despeses Operatives', desc: 'Nòmines, autònoms, IRPF i fixes dia 1', icon: CreditCard },
+    { to: '/finances?tab=resum', label: 'Visor de Marge (P&L)', desc: 'Vendes vs Compres i Despeses', icon: TrendingUp },
+    { to: '/finances?tab=tresoreria', label: 'Previsió de Caixa (Cashflow)', desc: 'Flux de caixa dinàmic mòbil', icon: DollarSign },
+    { to: '/finances?tab=config', label: 'Mestres & Configuració', desc: 'Articles, formes pagament, sèries i IVA', icon: Building2 },
   ]
 
   return (
@@ -469,7 +468,7 @@ export const Navbar: React.FC = () => {
               </button>
 
               {openDropdown === 'finances' && (
-                <div className="absolute right-0 mt-2 w-[500px] glass-card bg-bg-surface p-2.5 rounded-2xl shadow-xl border border-border grid grid-cols-2 gap-1.5 z-50 animate-fade-in text-xs font-medium">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 glass-card bg-bg-surface p-2 rounded-2xl shadow-xl border border-border flex flex-col gap-1 z-50 animate-fade-in text-xs font-medium">
                   {financeSubmenu.map(item => {
                     const Icon = item.icon
                     const isItemActive = location.pathname === '/finances' && location.search === item.to.replace('/finances', '')
@@ -478,14 +477,14 @@ export const Navbar: React.FC = () => {
                         key={item.to}
                         to={item.to}
                         onClick={() => setOpenDropdown(null)}
-                        className={`p-2 rounded-xl flex items-start gap-2.5 transition-colors ${
+                        className={`px-3 py-2 rounded-xl flex items-center gap-3 transition-colors ${
                           isItemActive ? 'bg-emerald-50 text-emerald-800 font-bold' : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                         }`}
                       >
-                        <div className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 flex-shrink-0 mt-0.5">
-                          <Icon className="w-3.5 h-3.5" />
+                        <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 flex-shrink-0">
+                          <Icon className="w-4 h-4" />
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="font-bold text-text-primary leading-tight text-xs">{item.label}</p>
                           <p className="text-[11px] text-text-muted leading-tight mt-0.5">{item.desc}</p>
                         </div>

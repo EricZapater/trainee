@@ -43,12 +43,6 @@ import {
   listFinArticles,
   createFinArticle,
   updateFinArticle,
-  listFinSubscripcions,
-  createFinSubscripcio,
-  batchGenerateSubscripcions,
-  listFinPlansCamp,
-  createFinPlaCamp,
-  facturarCampFita,
   listFinFacturesVenda,
   createFinFacturaVenda,
   emetreFinFacturaVenda,
@@ -74,8 +68,6 @@ import {
   type FinArticle,
   type FinClient,
   type FinProveidor,
-  type FinSubscripcio,
-  type FinPlaCamp,
   type FinFacturaVenda,
   type FinCompra,
   type FinDespesa,
@@ -86,29 +78,23 @@ import {
   type DynamicCashflowForecast
 } from '../api/finances'
 
-type TabKey = 'graella' | 'vendes' | 'compres' | 'despeses' | 'resum' | 'tresoreria' | 'subscripcions' | 'camps' | 'config'
+type TabKey = 'graella' | 'vendes' | 'compres' | 'despeses' | 'resum' | 'tresoreria' | 'config'
 
 const TAB_TITLES: Record<TabKey, string> = {
   graella: '⚡ Facturació del Mes',
   vendes: 'Vendes & Factures',
-  compres: 'Factures de Compra',
+  compres: 'Compres & Proveïdors',
   despeses: 'Despeses Operatives',
-  resum: 'Compte de Resultats (P&L)',
+  resum: 'Visor de Marge (P&L)',
   tresoreria: 'Previsió de Caixa (Cashflow)',
-  subscripcions: 'Subscripcions Recurrents',
-  camps: 'Training Camps',
-  config: 'Configuració & Mestres'
+  config: 'Mestres & Configuració'
 }
 
 export const FinanceAdminPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
-  const rawTab = searchParams.get('tab') as TabKey
-  const allowedTabs: TabKey[] = ['graella', 'vendes', 'compres', 'despeses', 'tresoreria', 'resum', 'config', 'subscripcions', 'camps']
-  const activeTab: TabKey = (rawTab === 'subscripcions'
-    ? 'graella'
-    : rawTab === 'camps'
-    ? 'vendes'
-    : (allowedTabs.includes(rawTab) ? rawTab : 'graella')) as TabKey
+  const rawTab = searchParams.get('tab')
+  const allowedTabs: TabKey[] = ['graella', 'vendes', 'compres', 'despeses', 'resum', 'tresoreria', 'config']
+  const activeTab: TabKey = allowedTabs.includes(rawTab as TabKey) ? (rawTab as TabKey) : 'graella'
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -179,8 +165,6 @@ export const FinanceAdminPage: React.FC = () => {
 
   // Operations state
   const [factures, setFactures] = useState<FinFacturaVenda[]>([])
-  const [subscripcions, setSubscripcions] = useState<FinSubscripcio[]>([])
-  const [plansCamp, setPlansCamp] = useState<FinPlaCamp[]>([])
   const [compres, setCompres] = useState<FinCompra[]>([])
   const [despeses, setDespeses] = useState<FinDespesa[]>([])
 
@@ -232,61 +216,6 @@ export const FinanceAdminPage: React.FC = () => {
     periode_fi: new Date().toISOString().split('T')[0]
   })
 
-  const [showSubModal, setShowSubModal] = useState(false)
-  const [newSub, setNewSub] = useState({
-    client_id: '',
-    article_id: '',
-    unitat_negoci_id: '',
-    periodicitat_mesos: 1 as 1 | 3 | 6 | 12,
-    concepte_personalitzat: '',
-    base_imposable: 0,
-    iva_percentatge: 21,
-    irpf_percentatge: 0,
-    dies_venciment: 5,
-    data_inici: new Date().toISOString().split('T')[0],
-    propera_data_facturacio: new Date().toISOString().split('T')[0],
-    activa: true
-  })
-
-  const [showCampModal, setShowCampModal] = useState(false)
-  const [newCamp, setNewCamp] = useState<{
-    client_id: string
-    article_id?: string
-    unitat_negoci_id: string
-    entrenador_id?: string
-    titol_camp: string
-    periode_camp_inici: string
-    periode_camp_fi: string
-    total_base_pactada: number
-    iva_percentatge: number
-    irpf_percentatge: number
-    notes?: string
-    fites: Array<{
-      ordre: number
-      concepte_fita: string
-      data_prevista: string
-      base_imposable: number
-      iva_percentatge: number
-      irpf_percentatge: number
-    }>
-  }>({
-    client_id: '',
-    article_id: '',
-    unitat_negoci_id: '',
-    entrenador_id: '',
-    titol_camp: '',
-    periode_camp_inici: new Date().toISOString().split('T')[0],
-    periode_camp_fi: new Date().toISOString().split('T')[0],
-    total_base_pactada: 0,
-    iva_percentatge: 21,
-    irpf_percentatge: 0,
-    notes: '',
-    fites: [
-      { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: new Date().toISOString().split('T')[0], base_imposable: 0, iva_percentatge: 21, irpf_percentatge: 0 },
-      { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: new Date().toISOString().split('T')[0], base_imposable: 0, iva_percentatge: 21, irpf_percentatge: 0 }
-    ]
-  })
-
   const [uploadingFile, setUploadingFile] = useState(false)
 
   // Dialogs i Pop-ups estilitzats amb React
@@ -314,11 +243,6 @@ export const FinanceAdminPage: React.FC = () => {
     motiu: string
   } | null>(null)
 
-  const [batchSubsModal, setBatchSubsModal] = useState<{
-    isOpen: boolean
-    cutoffDate: string
-  } | null>(null)
-
   useEffect(() => {
     loadInitialData()
   }, [])
@@ -331,8 +255,6 @@ export const FinanceAdminPage: React.FC = () => {
       loadDynamicCashflow()
     }
     if (activeTab === 'vendes') loadFactures()
-    if (activeTab === 'subscripcions') loadSubscripcions()
-    if (activeTab === 'camps') loadPlansCamp()
     if (activeTab === 'compres') loadCompres()
     if (activeTab === 'despeses') loadDespeses()
   }, [activeTab, reportMode, reportStart, reportEnd, horizonDies, inclouEndarrerits, cfPastMonths, cfFutureMonths])
@@ -468,26 +390,13 @@ export const FinanceAdminPage: React.FC = () => {
         setNewFactura(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
         setNewCompra(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
         setNewDespesa(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
-        setNewCamp(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
         setNewArticle(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
       }
       if (cl && cl.length > 0) {
         setNewFactura(prev => ({ ...prev, client_id: cl[0].id }))
-        setNewSub(prev => ({ ...prev, client_id: cl[0].id }))
-        setNewCamp(prev => ({ ...prev, client_id: cl[0].id }))
       }
       if (pr && pr.length > 0) {
         setNewCompra(prev => ({ ...prev, proveidor_id: pr[0].id }))
-      }
-      if (artList && artList.length > 0) {
-        setNewSub(prev => ({
-          ...prev,
-          article_id: artList[0].id,
-          unitat_negoci_id: artList[0].unitat_negoci_id || (un && un.length > 0 ? un[0].id : ''),
-          concepte_personalitzat: artList[0].nom,
-          base_imposable: artList[0].preu_base,
-          iva_percentatge: artList[0].iva_percentatge
-        }))
       }
     } catch (err: any) {
       console.error('Error carregant dades mestres:', err)
@@ -533,30 +442,6 @@ export const FinanceAdminPage: React.FC = () => {
       setFactures(f)
     } catch (err: any) {
       showNotify('error', 'Error carregant factures de venda')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadSubscripcions = async () => {
-    setLoading(true)
-    try {
-      const s = await listFinSubscripcions()
-      setSubscripcions(s)
-    } catch (err: any) {
-      showNotify('error', 'Error carregant subscripcions')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadPlansCamp = async () => {
-    setLoading(true)
-    try {
-      const p = await listFinPlansCamp()
-      setPlansCamp(p)
-    } catch (err: any) {
-      showNotify('error', 'Error carregant plans de training camps')
     } finally {
       setLoading(false)
     }
@@ -727,199 +612,6 @@ export const FinanceAdminPage: React.FC = () => {
       loadDespeses()
     } catch (err: any) {
       showNotify('error', err.response?.data?.error || 'Error registrant la despesa')
-    }
-  }
-
-  const handleCreateSub = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await createFinSubscripcio(newSub)
-      showNotify('success', 'Subscripció recurrent activada!')
-      setShowSubModal(false)
-      loadSubscripcions()
-    } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error creant subscripció')
-    }
-  }
-
-  const openBatchGenerateSubs = () => {
-    setBatchSubsModal({
-      isOpen: true,
-      cutoffDate: new Date().toISOString().split('T')[0]
-    })
-  }
-
-  const submitBatchGenerateSubs = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!batchSubsModal) return
-    try {
-      const res = await batchGenerateSubscripcions(batchSubsModal.cutoffDate)
-      showNotify('success', `S'han generat ${res.drafts_created} esborranys de factura pendents de revisió!`)
-      setBatchSubsModal(null)
-      loadFactures()
-    } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error generant la remesa')
-    }
-  }
-
-  const openCreateCamp = () => {
-    const today = new Date().toISOString().split('T')[0]
-    const campArticle = articles.find(a => a.categoria === 'training_camp') || articles[0]
-    const defUnitat = campArticle?.unitat_negoci_id || unitats[0]?.id || ''
-    const basePreu = campArticle?.preu_base || 0
-    const p1 = Math.round(basePreu * 0.3 * 100) / 100
-    const p2 = Math.round((basePreu - p1) * 100) / 100
-
-    setNewCamp({
-      client_id: clients[0]?.id || '',
-      article_id: campArticle?.id || '',
-      unitat_negoci_id: defUnitat,
-      entrenador_id: '',
-      titol_camp: campArticle?.nom || '',
-      periode_camp_inici: today,
-      periode_camp_fi: today,
-      total_base_pactada: basePreu,
-      iva_percentatge: campArticle?.iva_percentatge ?? 21,
-      irpf_percentatge: 0,
-      notes: '',
-      fites: basePreu > 0 ? [
-        { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: today, base_imposable: p1, iva_percentatge: campArticle?.iva_percentatge ?? 21, irpf_percentatge: 0 },
-        { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: today, base_imposable: p2, iva_percentatge: campArticle?.iva_percentatge ?? 21, irpf_percentatge: 0 }
-      ] : [
-        { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: today, base_imposable: 0, iva_percentatge: 21, irpf_percentatge: 0 },
-        { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: today, base_imposable: 0, iva_percentatge: 21, irpf_percentatge: 0 }
-      ]
-    })
-    setShowCampModal(true)
-  }
-
-  const addFitaCamp = () => {
-    const nextOrdre = newCamp.fites.length + 1
-    const defaultData = newCamp.periode_camp_inici || new Date().toISOString().split('T')[0]
-    setNewCamp(prev => ({
-      ...prev,
-      fites: [
-        ...prev.fites,
-        {
-          ordre: nextOrdre,
-          concepte_fita: `Pagament ${nextOrdre}`,
-          data_prevista: defaultData,
-          base_imposable: 0,
-          iva_percentatge: prev.iva_percentatge,
-          irpf_percentatge: prev.irpf_percentatge
-        }
-      ]
-    }))
-  }
-
-  const removeFitaCamp = (index: number) => {
-    if (newCamp.fites.length <= 1) return
-    const updated = newCamp.fites.filter((_, i) => i !== index).map((f, i) => ({ ...f, ordre: i + 1 }))
-    setNewCamp(prev => ({ ...prev, fites: updated }))
-  }
-
-  const applyPresetCamp = (preset: '1' | '2' | '3' | '4' | 'iguals') => {
-    const tot = newCamp.total_base_pactada || 0
-    const dt = newCamp.periode_camp_inici || new Date().toISOString().split('T')[0]
-    const iva = newCamp.iva_percentatge
-    const irpf = newCamp.irpf_percentatge
-
-    if (preset === '1') {
-      setNewCamp(prev => ({
-        ...prev,
-        fites: [
-          { ordre: 1, concepte_fita: 'Pagament Únic (100%)', data_prevista: dt, base_imposable: tot, iva_percentatge: iva, irpf_percentatge: irpf }
-        ]
-      }))
-    } else if (preset === '2') {
-      const p1 = Math.round(tot * 0.3 * 100) / 100
-      const p2 = Math.round((tot - p1) * 100) / 100
-      setNewCamp(prev => ({
-        ...prev,
-        fites: [
-          { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: dt, base_imposable: p1, iva_percentatge: iva, irpf_percentatge: irpf },
-          { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: dt, base_imposable: p2, iva_percentatge: iva, irpf_percentatge: irpf }
-        ]
-      }))
-    } else if (preset === '3') {
-      const p1 = Math.round(tot * 0.3 * 100) / 100
-      const p2 = Math.round(tot * 0.35 * 100) / 100
-      const p3 = Math.round((tot - p1 - p2) * 100) / 100
-      setNewCamp(prev => ({
-        ...prev,
-        fites: [
-          { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: dt, base_imposable: p1, iva_percentatge: iva, irpf_percentatge: irpf },
-          { ordre: 2, concepte_fita: '2n Pagament 35%', data_prevista: dt, base_imposable: p2, iva_percentatge: iva, irpf_percentatge: irpf },
-          { ordre: 3, concepte_fita: 'Pagament Final 35%', data_prevista: dt, base_imposable: p3, iva_percentatge: iva, irpf_percentatge: irpf }
-        ]
-      }))
-    } else if (preset === '4') {
-      const p1 = Math.round(tot * 0.25 * 100) / 100
-      const p2 = p1
-      const p3 = p1
-      const p4 = Math.round((tot - p1 - p2 - p3) * 100) / 100
-      setNewCamp(prev => ({
-        ...prev,
-        fites: [
-          { ordre: 1, concepte_fita: '1r Pagament (Reserva 25%)', data_prevista: dt, base_imposable: p1, iva_percentatge: iva, irpf_percentatge: irpf },
-          { ordre: 2, concepte_fita: '2n Pagament (25%)', data_prevista: dt, base_imposable: p2, iva_percentatge: iva, irpf_percentatge: irpf },
-          { ordre: 3, concepte_fita: '3r Pagament (25%)', data_prevista: dt, base_imposable: p3, iva_percentatge: iva, irpf_percentatge: irpf },
-          { ordre: 4, concepte_fita: '4t Pagament Final (25%)', data_prevista: dt, base_imposable: p4, iva_percentatge: iva, irpf_percentatge: irpf }
-        ]
-      }))
-    } else if (preset === 'iguals') {
-      const n = newCamp.fites.length || 1
-      const part = Math.round((tot / n) * 100) / 100
-      const updated = newCamp.fites.map((f, i) => {
-        if (i === n - 1) {
-          return { ...f, base_imposable: Math.round((tot - part * (n - 1)) * 100) / 100 }
-        }
-        return { ...f, base_imposable: part }
-      })
-      setNewCamp(prev => ({ ...prev, fites: updated }))
-    }
-  }
-
-  const adjustLastFitaCamp = () => {
-    const tot = newCamp.total_base_pactada || 0
-    if (newCamp.fites.length === 0) return
-    const others = newCamp.fites.slice(0, -1).reduce((acc, f) => acc + (f.base_imposable || 0), 0)
-    const diff = Math.round((tot - others) * 100) / 100
-    const updated = [...newCamp.fites]
-    updated[updated.length - 1].base_imposable = diff >= 0 ? diff : 0
-    setNewCamp(prev => ({ ...prev, fites: updated }))
-  }
-
-  const adjustTotalToFitesCamp = () => {
-    const sum = Math.round(newCamp.fites.reduce((acc, f) => acc + (f.base_imposable || 0), 0) * 100) / 100
-    setNewCamp(prev => ({ ...prev, total_base_pactada: sum }))
-  }
-
-  const handleCreateCamp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newCamp.fites || newCamp.fites.length === 0) {
-      showNotify('error', 'Cal definir com a mínim 1 fita de pagament')
-      return
-    }
-    const sumaFites = Math.round(newCamp.fites.reduce((acc, f) => acc + (f.base_imposable || 0), 0) * 100) / 100
-    const totalPactat = Math.round((newCamp.total_base_pactada || 0) * 100) / 100
-    if (Math.abs(sumaFites - totalPactat) > 0.05) {
-      showNotify('error', `La suma de les fites (${sumaFites.toFixed(2)} €) no coincideix amb el total pactat (${totalPactat.toFixed(2)} €). Ajusta-ho abans de desar.`)
-      return
-    }
-    try {
-      const payload = {
-        ...newCamp,
-        unitat_negoci_id: newCamp.unitat_negoci_id || unitats[0]?.id || '',
-        article_id: newCamp.article_id ? newCamp.article_id : null,
-        entrenador_id: newCamp.entrenador_id ? newCamp.entrenador_id : null
-      }
-      await createFinPlaCamp(payload as any)
-      showNotify('success', 'Pla de Training Camp registrat amb les seves fites!')
-      setShowCampModal(false)
-      loadPlansCamp()
-    } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error creant el Training Camp')
     }
   }
 
@@ -1124,28 +816,6 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleFacturarFita = (fitaId: string, concepteFita?: string) => {
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Facturar Fita del Camp',
-      message: `Vols generar un nou esborrany de factura independent per a aquest termini de pagament ${concepteFita ? `("${concepteFita}")` : ''}?`,
-      confirmText: 'Generar Factura',
-      cancelText: 'Cancel·lar',
-      variant: 'info',
-      onConfirm: async () => {
-        try {
-          await facturarCampFita(fitaId)
-          showNotify('success', 'Factura generada per a la fita del Camp!')
-          loadPlansCamp()
-        } catch (err: any) {
-          showNotify('error', err.response?.data?.error || 'Error facturant la fita')
-        } finally {
-          setConfirmDialog(null)
-        }
-      }
-    })
-  }
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'compra') => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -1203,7 +873,7 @@ export const FinanceAdminPage: React.FC = () => {
 
       {/* Interactive Tabs Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-border text-xs font-bold">
-        {(['graella', 'vendes', 'compres', 'despeses', 'tresoreria', 'resum', 'config'] as TabKey[]).map(tab => (
+        {(['graella', 'vendes', 'compres', 'despeses', 'resum', 'tresoreria', 'config'] as TabKey[]).map(tab => (
           <button
             key={tab}
             onClick={() => setSearchParams({ tab })}
@@ -2058,131 +1728,7 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: SUBSCRIPCIONS */}
-      {activeTab === 'subscripcions' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">Motor de Subscripcions d'Entrenament</h2>
-              <p className="text-xs text-slate-500">Quotes recurrents mensuals, trimestrals, semestrals i anuals</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={openBatchGenerateSubs}
-                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Facturar pendents del mes
-              </button>
-              <button
-                onClick={() => setShowSubModal(true)}
-                className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" /> Nova Subscripció
-              </button>
-            </div>
-          </div>
-
-          <div className="glass-card overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold">
-                  <th className="py-2.5 px-4">Client</th>
-                  <th className="py-2.5 px-4">Article / Servei</th>
-                  <th className="py-2.5 px-4">Periodicitat</th>
-                  <th className="py-2.5 px-4 text-right">Base Imposable</th>
-                  <th className="py-2.5 px-4">Propera Facturació</th>
-                  <th className="py-2.5 px-4">Estat</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light font-medium">
-                {subscripcions.map(s => (
-                  <tr key={s.id} className="hover:bg-slate-50/60">
-                    <td className="py-3 px-4 font-bold text-slate-900">{s.client_nom}</td>
-                    <td className="py-3 px-4 text-slate-700">{s.concepte_personalitzat || s.article_nom}</td>
-                    <td className="py-3 px-4 font-semibold text-slate-600">
-                      {s.periodicitat_mesos === 1 ? 'Mensual (1m)' : s.periodicitat_mesos === 3 ? 'Trimestral (3m)' : s.periodicitat_mesos === 6 ? 'Semestral (6m)' : 'Anual (12m)'}
-                    </td>
-                    <td className="py-3 px-4 text-right font-black text-slate-900">{s.base_imposable.toFixed(2)} €</td>
-                    <td className="py-3 px-4 text-indigo-700 font-bold">{s.propera_data_facturacio}</td>
-                    <td className="py-3 px-4">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.activa ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
-                        {s.activa ? 'Activa' : 'Pausada'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: TRAINING CAMPS */}
-      {activeTab === 'camps' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">Plans de Training Camp (1 Article en N Pagaments)</h2>
-              <p className="text-xs text-slate-500">Bestretes i terminis de pagament amb factura independent per no avançar l'IVA</p>
-            </div>
-            <button
-              onClick={openCreateCamp}
-              className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Nou Training Camp
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {plansCamp.map(p => (
-              <div key={p.id} className="glass-card p-5 border border-border-light space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase text-slate-400">{p.unitat_negoci_nom}</span>
-                    <h3 className="font-bold text-base text-slate-900">{p.titol_camp}</h3>
-                    <div className="text-xs text-slate-600 font-medium">Client: <strong>{p.client_nom}</strong></div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Total Pactat</div>
-                    <div className="text-lg font-black text-emerald-700">{p.total_base_pactada.toFixed(2)} €</div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/60 space-y-2">
-                  <div className="text-xs font-bold text-slate-700">Fites de Pagament Programades:</div>
-                  <div className="space-y-1.5">
-                    {p.fites.map(f => (
-                      <div key={f.id} className="flex items-center justify-between text-xs bg-white p-2 rounded-lg border border-slate-200">
-                        <div>
-                          <div className="font-semibold text-slate-800">{f.concepte_fita}</div>
-                          <div className="text-[11px] text-slate-400">Previst: {f.data_prevista}</div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-slate-900">{f.base_imposable.toFixed(2)} €</span>
-                          {f.factura_id ? (
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                              Facturat ({f.factura_numero || 'OK'})
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleFacturarFita(f.id, f.concepte_fita)}
-                              className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold shadow-sm"
-                            >
-                              Facturar Fita
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: COMPRES FISCALS */}
+      {/* TAB 3: COMPRES FISCALS */}
       {activeTab === 'compres' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -2869,544 +2415,6 @@ export const FinanceAdminPage: React.FC = () => {
           )}
         </div>
       )}
-
-      {/* MODAL CREAR SUBSCRIPCIÓ */}
-      {showSubModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-lg text-slate-900">Nova Subscripció Recurrent</h3>
-              <button onClick={() => setShowSubModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
-
-            <form onSubmit={handleCreateSub} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700">Client *</label>
-                <select
-                  value={newSub.client_id}
-                  onChange={e => setNewSub({ ...newSub, client_id: e.target.value })}
-                  className="w-full mt-1 p-2 border rounded-xl"
-                  required
-                >
-                  <option value="">-- Selecciona un client --</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal} {c.nif_cif ? `(${c.nif_cif})` : ''}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700">Article / Concepte del Catàleg *</label>
-                <select
-                  value={newSub.article_id}
-                  onChange={e => {
-                    const artId = e.target.value
-                    const art = articles.find(a => a.id === artId)
-                    if (art) {
-                      setNewSub({
-                        ...newSub,
-                        article_id: artId,
-                        unitat_negoci_id: art.unitat_negoci_id || newSub.unitat_negoci_id,
-                        concepte_personalitzat: art.nom,
-                        base_imposable: art.preu_base,
-                        iva_percentatge: art.iva_percentatge,
-                        irpf_percentatge: art.irpf_percentatge
-                      })
-                    } else {
-                      setNewSub({ ...newSub, article_id: artId })
-                    }
-                  }}
-                  className="w-full mt-1 p-2 border rounded-xl font-bold bg-white"
-                  required
-                >
-                  <option value="">-- Selecciona article / servei --</option>
-                  {articles.map(a => (
-                    <option key={a.id} value={a.id}>
-                      {a.nom} ({a.preu_base.toFixed(2)} € + {a.iva_percentatge}% IVA)
-                    </option>
-                  ))}
-                </select>
-                {articles.length === 0 && (
-                  <p className="text-rose-600 text-[11px] mt-1 font-semibold">
-                    No hi ha articles al catàleg. Ves a Configuració &gt; Articles per crear-ne un.
-                  </p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-bold text-slate-700">Unitat de Negoci *</label>
-                  <select
-                    value={newSub.unitat_negoci_id}
-                    onChange={e => setNewSub({ ...newSub, unitat_negoci_id: e.target.value })}
-                    className="w-full mt-1 p-2 border rounded-xl"
-                    required
-                  >
-                    <option value="">-- Selecciona unitat --</option>
-                    {unitats.map(u => (
-                      <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700">Concepte Personalitzat</label>
-                  <input
-                    type="text"
-                    value={newSub.concepte_personalitzat}
-                    onChange={e => setNewSub({ ...newSub, concepte_personalitzat: e.target.value })}
-                    placeholder="Ex: Entrenament Trail Running Pro"
-                    className="w-full mt-1 p-2 border rounded-xl"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="font-bold text-slate-700">Periodicitat</label>
-                  <select
-                    value={newSub.periodicitat_mesos}
-                    onChange={e => setNewSub({ ...newSub, periodicitat_mesos: parseInt(e.target.value) as any })}
-                    className="w-full mt-1 p-2 border rounded-xl font-bold"
-                  >
-                    <option value={1}>Mensual (1 mes)</option>
-                    <option value={3}>Trimestral (3 mesos)</option>
-                    <option value={6}>Semestral (6 mesos)</option>
-                    <option value={12}>Anual (12 mesos)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700">Base Imposable (€)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newSub.base_imposable}
-                    onChange={e => setNewSub({ ...newSub, base_imposable: parseFloat(e.target.value) || 0 })}
-                    className="w-full mt-1 p-2 border rounded-xl font-bold"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700">IVA (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newSub.iva_percentatge}
-                    onChange={e => setNewSub({ ...newSub, iva_percentatge: parseFloat(e.target.value) || 0 })}
-                    className="w-full mt-1 p-2 border rounded-xl font-bold"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="font-bold text-slate-700">Data Inici</label>
-                  <input
-                    type="date"
-                    value={newSub.data_inici}
-                    onChange={e => setNewSub({ ...newSub, data_inici: e.target.value })}
-                    className="w-full mt-1 p-2 border rounded-xl"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700">Propera Facturació</label>
-                  <input
-                    type="date"
-                    value={newSub.propera_data_facturacio}
-                    onChange={e => setNewSub({ ...newSub, propera_data_facturacio: e.target.value })}
-                    className="w-full mt-1 p-2 border rounded-xl"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSubModal(false)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
-                >
-                  Cancel·lar
-                </button>
-                <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
-                  Activar Subscripció
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL CREAR TRAINING CAMP */}
-      {showCampModal && (() => {
-        const sumaFites = Math.round(newCamp.fites.reduce((acc, f) => acc + (f.base_imposable || 0), 0) * 100) / 100
-        const totalPactat = Math.round((newCamp.total_base_pactada || 0) * 100) / 100
-        const diferencia = Math.round((totalPactat - sumaFites) * 100) / 100
-        const esQuadrat = Math.abs(diferencia) <= 0.01
-
-        return (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border space-y-4 max-h-[92vh] overflow-y-auto">
-              <div className="flex items-center justify-between pb-3 border-b">
-                <div>
-                  <h3 className="font-bold text-lg text-slate-900">Nou Training Camp</h3>
-                  <p className="text-xs text-slate-500">1 Article global dividit en N pagaments amb facturació independent</p>
-                </div>
-                <button onClick={() => setShowCampModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
-              </div>
-
-              <form onSubmit={handleCreateCamp} className="space-y-4 text-xs">
-                {/* 1. Article del Catàleg */}
-                <div>
-                  <label className="font-bold text-slate-700">Article / Servei del Catàleg (opcional)</label>
-                  <select
-                    value={newCamp.article_id || ''}
-                    onChange={e => {
-                      const artId = e.target.value
-                      const art = articles.find(a => a.id === artId)
-                      if (art) {
-                        const tot = art.preu_base || 0
-                        const p1 = Math.round(tot * 0.3 * 100) / 100
-                        const p2 = Math.round((tot - p1) * 100) / 100
-                        setNewCamp(prev => ({
-                          ...prev,
-                          article_id: art.id,
-                          titol_camp: art.nom,
-                          unitat_negoci_id: art.unitat_negoci_id || prev.unitat_negoci_id,
-                          total_base_pactada: tot,
-                          iva_percentatge: art.iva_percentatge ?? 21,
-                          fites: tot > 0 ? [
-                            { ordre: 1, concepte_fita: 'Reserva 30%', data_prevista: prev.periode_camp_inici, base_imposable: p1, iva_percentatge: art.iva_percentatge ?? 21, irpf_percentatge: 0 },
-                            { ordre: 2, concepte_fita: 'Pagament Final 70%', data_prevista: prev.periode_camp_fi, base_imposable: p2, iva_percentatge: art.iva_percentatge ?? 21, irpf_percentatge: 0 }
-                          ] : prev.fites
-                        }))
-                      } else {
-                        setNewCamp(prev => ({ ...prev, article_id: '' }))
-                      }
-                    }}
-                    className="w-full mt-1 p-2 border rounded-xl font-medium"
-                  >
-                    <option value="">-- Personalitzat / Cap article vinculat --</option>
-                    {articles.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.nom} ({a.preu_base.toFixed(2)} € + {a.iva_percentatge}% IVA) {a.categoria === 'training_camp' ? '⭐ (Training Camp)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 2. Client i Unitat de Negoci */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700">Client / Atleta *</label>
-                    <select
-                      value={newCamp.client_id}
-                      onChange={e => setNewCamp({ ...newCamp, client_id: e.target.value })}
-                      className="w-full mt-1 p-2 border rounded-xl"
-                      required
-                    >
-                      <option value="">-- Selecciona client --</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal} ({c.nif_cif})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700">Unitat de Negoci *</label>
-                    <select
-                      value={newCamp.unitat_negoci_id}
-                      onChange={e => setNewCamp({ ...newCamp, unitat_negoci_id: e.target.value })}
-                      className="w-full mt-1 p-2 border rounded-xl"
-                      required
-                    >
-                      {unitats.map(u => (
-                        <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* 3. Nom de l'Estada */}
-                <div>
-                  <label className="font-bold text-slate-700">Nom de l'Estada / Camp *</label>
-                  <input
-                    type="text"
-                    value={newCamp.titol_camp}
-                    onChange={e => setNewCamp({ ...newCamp, titol_camp: e.target.value })}
-                    placeholder="Ex: Stage Trail Pirineus 2026"
-                    className="w-full mt-1 p-2 border rounded-xl"
-                    required
-                  />
-                </div>
-
-                {/* 4. Dates de Celebració del Camp */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700">Data Inici Estada (Camp) *</label>
-                    <input
-                      type="date"
-                      value={newCamp.periode_camp_inici}
-                      onChange={e => {
-                        const dt = e.target.value
-                        setNewCamp(prev => ({
-                          ...prev,
-                          periode_camp_inici: dt,
-                          fites: prev.fites.map((f, i) => i === 0 ? { ...f, data_prevista: dt } : f)
-                        }))
-                      }}
-                      className="w-full mt-1 p-2 border rounded-xl"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700">Data Fi Estada (Camp) *</label>
-                    <input
-                      type="date"
-                      value={newCamp.periode_camp_fi}
-                      onChange={e => {
-                        const dt = e.target.value
-                        setNewCamp(prev => ({
-                          ...prev,
-                          periode_camp_fi: dt,
-                          fites: prev.fites.map((f, i) => i === prev.fites.length - 1 ? { ...f, data_prevista: dt } : f)
-                        }))
-                      }}
-                      className="w-full mt-1 p-2 border rounded-xl"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* 5. Total Pactat i IVA */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-bold text-slate-700">Total Base Imposable Pactada (€) *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={newCamp.total_base_pactada}
-                      onChange={e => {
-                        const tot = parseFloat(e.target.value) || 0
-                        setNewCamp({ ...newCamp, total_base_pactada: tot })
-                      }}
-                      className="w-full mt-1 p-2 border rounded-xl font-bold font-mono text-emerald-800"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700">Tipus d'IVA (%)</label>
-                    <select
-                      value={newCamp.iva_percentatge}
-                      onChange={e => {
-                        const iva = parseFloat(e.target.value) || 0
-                        setNewCamp(prev => ({
-                          ...prev,
-                          iva_percentatge: iva,
-                          fites: prev.fites.map(f => ({ ...f, iva_percentatge: iva }))
-                        }))
-                      }}
-                      className="w-full mt-1 p-2 border rounded-xl font-bold"
-                    >
-                      <option value={21}>21% (General)</option>
-                      <option value={10}>10% (Reduït)</option>
-                      <option value={4}>4% (Superreduït)</option>
-                      <option value={0}>0% (Exempt)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* 6. BLOC DE FITES DE PAGAMENT (N TERMINIS) */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
-                    <div>
-                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                        <span>Fites de Pagament Programades</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800">
-                          {newCamp.fites.length} {newCamp.fites.length === 1 ? 'pagament' : 'pagaments'}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500">Cada termini generarà una factura independent quan es premi "Facturar Fita".</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={addFitaCamp}
-                      className="btn-primary py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1 text-[11px] font-bold self-start sm:self-auto"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Afegir Pagament
-                    </button>
-                  </div>
-
-                  {/* Barra de Presets / Plantilles ràpides */}
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                    <span className="text-[11px] font-bold text-slate-400">Repartiments ràpids:</span>
-                    <button
-                      type="button"
-                      onClick={() => applyPresetCamp('1')}
-                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      1 Pagament (100%)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyPresetCamp('2')}
-                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      2 Pagaments (30% / 70%)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyPresetCamp('3')}
-                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      3 Pagaments (30% / 35% / 35%)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyPresetCamp('4')}
-                      className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      4 Pagaments (25% x 4)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyPresetCamp('iguals')}
-                      className="px-2 py-1 bg-white hover:bg-slate-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-bold transition-colors"
-                      title="Reparteix el total entre el nombre actual de fites"
-                    >
-                      Parts iguals
-                    </button>
-                  </div>
-
-                  {/* Llista de Fites */}
-                  <div className="space-y-2 pt-2">
-                    <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-400 uppercase px-1">
-                      <div className="col-span-1 text-center">#</div>
-                      <div className="col-span-5">Concepte Fita / Termini</div>
-                      <div className="col-span-3 text-right">Base Imposable (€)</div>
-                      <div className="col-span-2">Data Prevista</div>
-                      <div className="col-span-1 text-center"></div>
-                    </div>
-
-                    {newCamp.fites.map((f, i) => (
-                      <div key={i} className="grid grid-cols-12 gap-2 items-center bg-white p-2 rounded-xl border border-slate-200 shadow-xs">
-                        <div className="col-span-1 text-center font-bold text-slate-400 text-xs">
-                          #{f.ordre}
-                        </div>
-                        <div className="col-span-5">
-                          <input
-                            type="text"
-                            required
-                            placeholder="Ex: Reserva 30%"
-                            value={f.concepte_fita}
-                            onChange={e => {
-                              const nextF = [...newCamp.fites]
-                              nextF[i].concepte_fita = e.target.value
-                              setNewCamp({ ...newCamp, fites: nextF })
-                            }}
-                            className="w-full p-1.5 border rounded-lg text-xs"
-                          />
-                        </div>
-                        <div className="col-span-3">
-                          <input
-                            type="number"
-                            step="0.01"
-                            required
-                            value={f.base_imposable}
-                            onChange={e => {
-                              const nextF = [...newCamp.fites]
-                              nextF[i].base_imposable = parseFloat(e.target.value) || 0
-                              setNewCamp({ ...newCamp, fites: nextF })
-                            }}
-                            className="w-full p-1.5 border rounded-lg text-xs font-bold font-mono text-right"
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <input
-                            type="date"
-                            required
-                            value={f.data_prevista}
-                            onChange={e => {
-                              const nextF = [...newCamp.fites]
-                              nextF[i].data_prevista = e.target.value
-                              setNewCamp({ ...newCamp, fites: nextF })
-                            }}
-                            className="w-full p-1.5 border rounded-lg text-xs"
-                          />
-                        </div>
-                        <div className="col-span-1 text-center">
-                          <button
-                            type="button"
-                            disabled={newCamp.fites.length <= 1}
-                            onClick={() => removeFitaCamp(i)}
-                            className="p-1 rounded text-slate-400 hover:text-rose-600 disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
-                            title={newCamp.fites.length <= 1 ? "Com a mínim cal 1 fita" : "Eliminar aquest pagament"}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Resum de Quadratura */}
-                  <div className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row items-center justify-between gap-2 ${
-                    esQuadrat ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-amber-50/80 border-amber-300 text-amber-900'
-                  }`}>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold">Total Pactat: {totalPactat.toFixed(2)} €</span>
-                      <span>|</span>
-                      <span>Suma Fites: <strong>{sumaFites.toFixed(2)} €</strong></span>
-                      {esQuadrat ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900">
-                          ✓ Quadrat
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900">
-                          {diferencia > 0 ? `Falten ${diferencia.toFixed(2)} €` : `Sobren ${Math.abs(diferencia).toFixed(2)} €`}
-                        </span>
-                      )}
-                    </div>
-                    {!esQuadrat && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={adjustLastFitaCamp}
-                          className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-bold"
-                          title="Assigna la diferència a l'últim termini de pagament"
-                        >
-                          Ajustar a l'última fita
-                        </button>
-                        <button
-                          type="button"
-                          onClick={adjustTotalToFitesCamp}
-                          className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded text-[10px] font-bold"
-                          title="Modifica el total pactat perquè sumi les fites actuals"
-                        >
-                          Ajustar Total Pactat
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCampModal(false)}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
-                  >
-                    Cancel·lar
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700 font-bold"
-                  >
-                    Crear Camp & Fites ({newCamp.fites.length})
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )
-      })()}
 
       {/* MODAL CREAR FACTURA VENDA */}
       {showFacturaModal && (
@@ -4603,53 +3611,6 @@ export const FinanceAdminPage: React.FC = () => {
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-rose-600 hover:bg-rose-700 font-bold">
                   Marcar com a Impagada
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* POP-UP GENERAR REMESA DE SUBSCRIPCIONS */}
-      {batchSubsModal?.isOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
-                  <RefreshCw className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-base text-slate-900">Generar Remesa de Subscripcions</h3>
-                  <p className="text-xs text-slate-500">Facturació massiva de quotes recurrents</p>
-                </div>
-              </div>
-              <button onClick={() => setBatchSubsModal(null)}><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
-            <form onSubmit={submitBatchGenerateSubs} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700">Generar factures per a quotes amb venciment fins a *</label>
-                <input
-                  type="date"
-                  required
-                  value={batchSubsModal.cutoffDate}
-                  onChange={e => setBatchSubsModal({ ...batchSubsModal, cutoffDate: e.target.value })}
-                  className="w-full mt-1 p-2.5 border rounded-xl font-medium"
-                />
-                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                  Es crearan factures en estat esborrany per a totes les quotes actives que tinguin propera data de facturació anterior o igual a aquest dia. Les podràs revisar abans d'emetre-les.
-                </p>
-              </div>
-              <div className="pt-3 border-t flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBatchSubsModal(null)}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
-                >
-                  Cancel·lar
-                </button>
-                <button type="submit" className="btn-primary py-2 px-4 bg-indigo-600 hover:bg-indigo-700 font-bold">
-                  Generar Esborranys
                 </button>
               </div>
             </form>
