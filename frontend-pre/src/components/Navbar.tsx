@@ -29,7 +29,6 @@ import {
   Building2,
   DollarSign,
   TrendingUp,
-  RefreshCw,
   ArrowDownLeft,
   CreditCard,
   User,
@@ -86,14 +85,13 @@ export const Navbar: React.FC = () => {
 
   const financeSubmenu = [
     { to: '/finances?tab=graella', label: '⚡ Facturació del Mes', desc: 'Llançament periòdic de quotes i venciments', icon: Zap },
-    { to: '/finances?tab=resum', label: 'Compte de Resultats (P&L)', desc: 'Totalitzacions vendes vs compres', icon: TrendingUp },
-    { to: '/finances?tab=tresoreria', label: 'Previsió de Caixa', desc: 'Cashflow i tresoreria projectada', icon: DollarSign },
-    { to: '/finances?tab=vendes', label: 'Vendes & Factures', desc: 'Emissió i conciliació de cobraments', icon: FileText },
-    { to: '/finances?tab=subscripcions', label: 'Subscripcions', desc: 'Quotes recurrents mensuals/trimestrals', icon: RefreshCw },
-    { to: '/finances?tab=camps', label: 'Training Camps', desc: 'Fites de pagament i quotes de camp', icon: Layers },
-    { to: '/finances?tab=compres', label: 'Factures de Compra', desc: 'Proveïdors, tiquets i deduïbles', icon: ArrowDownLeft },
-    { to: '/finances?tab=despeses', label: 'Despeses Operatives', desc: 'Nòmines, banc i despeses generals', icon: CreditCard },
-    { to: '/finances?tab=config', label: 'Configuració & Mestres', desc: 'Unitats negoci, sèries, articles i IVA', icon: Building2 },
+    { to: '/finances?tab=vendes', label: 'Vendes & Factures', desc: 'Emissió puntual, cobraments i Veri*factu', icon: FileText },
+    { to: '/finances?tab=compres', label: 'Factures de Compra', desc: 'Proveïdors, tiquets i centres de cost', icon: ArrowDownLeft },
+    { to: '/finances?tab=despeses', label: 'Despeses Operatives', desc: 'Nòmines, autònoms i quotes fixes dia 1', icon: CreditCard },
+    { to: '/finances?tab=tresoreria', label: 'Previsió de Caixa', desc: 'Flux de caixa mòbil i tresoreria dinàmica', icon: DollarSign },
+    { to: '/finances?tab=resum', label: 'Compte de Resultats (P&L)', desc: 'Totalitzacions vendes vs compres i marge', icon: TrendingUp },
+    { to: '/finances?tab=config', label: 'Configuració & Mestres', desc: 'Catàleg articles, sèries, IVA i empresa', icon: Building2 },
+    { to: '/atletes', label: 'Quotes dels Atletes', desc: 'Assignació de quota, IBAN i pausa facturació', icon: UserCheck },
   ]
 
   return (

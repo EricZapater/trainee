@@ -103,9 +103,12 @@ const TAB_TITLES: Record<TabKey, string> = {
 export const FinanceAdminPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab') as TabKey
-  const activeTab: TabKey = ['graella', 'vendes', 'compres', 'despeses', 'resum', 'tresoreria', 'subscripcions', 'camps', 'config'].includes(rawTab)
-    ? rawTab
-    : 'graella'
+  const allowedTabs: TabKey[] = ['graella', 'vendes', 'compres', 'despeses', 'tresoreria', 'resum', 'config', 'subscripcions', 'camps']
+  const activeTab: TabKey = (rawTab === 'subscripcions'
+    ? 'graella'
+    : rawTab === 'camps'
+    ? 'vendes'
+    : (allowedTabs.includes(rawTab) ? rawTab : 'graella')) as TabKey
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -1200,7 +1203,7 @@ export const FinanceAdminPage: React.FC = () => {
 
       {/* Interactive Tabs Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-border text-xs font-bold">
-        {(['graella', 'vendes', 'compres', 'despeses', 'resum', 'tresoreria', 'config'] as TabKey[]).map(tab => (
+        {(['graella', 'vendes', 'compres', 'despeses', 'tresoreria', 'resum', 'config'] as TabKey[]).map(tab => (
           <button
             key={tab}
             onClick={() => setSearchParams({ tab })}
