@@ -178,7 +178,9 @@ type FinArticle struct {
 	Codi            string    `json:"codi"`
 	Nom             string    `json:"nom"`
 	Descripcio      string    `json:"descripcio"`
-	Categoria       string    `json:"categoria"` // entrenament_recurrent, training_camp, puntual
+	Categoria       string    `json:"categoria"` // entrenament_recurrent, training_camp, puntual, etc.
+	EsRecurrent     bool      `json:"es_recurrent"`
+	PeriodicitatMesos *int    `json:"periodicitat_mesos,omitempty"` // 1, 3, 6, 12
 	UnitatNegociID  string    `json:"unitat_negoci_id"`
 	UnitatNegociNom string    `json:"unitat_negoci_nom,omitempty"`
 	PreuBase        float64   `json:"preu_base"`
@@ -194,7 +196,9 @@ type UpsertFinArticleRequest struct {
 	Codi            string  `json:"codi"`
 	Nom             string  `json:"nom" binding:"required"`
 	Descripcio      string  `json:"descripcio"`
-	Categoria       string  `json:"categoria" binding:"required,oneof=entrenament_recurrent training_camp puntual"`
+	Categoria       string  `json:"categoria"`
+	EsRecurrent     bool    `json:"es_recurrent"`
+	PeriodicitatMesos *int  `json:"periodicitat_mesos"`
 	UnitatNegociID  string  `json:"unitat_negoci_id" binding:"required"`
 	PreuBase        float64 `json:"preu_base"`
 	IvaPercentatge  float64 `json:"iva_percentatge"`
@@ -402,7 +406,7 @@ type FinCompra struct {
 	ProveidorNom        string    `json:"proveidor_nom,omitempty"`
 	ProveidorNif        string    `json:"proveidor_nif,omitempty"`
 	NumFacturaProveidor string    `json:"num_factura_proveidor"`
-	UnitatNegociID      string    `json:"unitat_negoci_id"`
+	UnitatNegociID      *string   `json:"unitat_negoci_id"`
 	UnitatNegociNom     string    `json:"unitat_negoci_nom,omitempty"`
 	EntrenadorID        *string   `json:"entrenador_id"`
 	EntrenadorNom       *string   `json:"entrenador_nom,omitempty"`
@@ -427,7 +431,7 @@ type FinCompra struct {
 type UpsertFinCompraRequest struct {
 	ProveidorID         string  `json:"proveidor_id" binding:"required"`
 	NumFacturaProveidor string  `json:"num_factura_proveidor" binding:"required"`
-	UnitatNegociID      string  `json:"unitat_negoci_id" binding:"required"`
+	UnitatNegociID      *string `json:"unitat_negoci_id"`
 	EntrenadorID        *string `json:"entrenador_id"`
 	Concepte            string  `json:"concepte" binding:"required"`
 	BaseImposable       float64 `json:"base_imposable"`
@@ -445,14 +449,16 @@ type UpsertFinCompraRequest struct {
 
 type FinDespesa struct {
 	ID               string    `json:"id"`
-	Categoria        string    `json:"categoria"` // nomina, seguretat_social, banc, impostos, dietes, altres
+	Categoria        string    `json:"categoria"` // nomina, seguretat_social, banc, impostos, dietes, altres, autonoms, etc.
 	BeneficiariNom   string    `json:"beneficiari_nom"`
 	Concepte         string    `json:"concepte"`
-	UnitatNegociID   string    `json:"unitat_negoci_id"`
+	UnitatNegociID   *string   `json:"unitat_negoci_id"`
 	UnitatNegociNom  string    `json:"unitat_negoci_nom,omitempty"`
 	EntrenadorID     *string   `json:"entrenador_id"`
 	EntrenadorNom    *string   `json:"entrenador_nom,omitempty"`
 	ImportTotal      float64   `json:"import_total"`
+	EsRecurrent      bool      `json:"es_recurrent"`
+	DiaMesGeneracio  int       `json:"dia_mes_generacio"`
 	DataDevengo      string    `json:"data_devengo"`
 	DataVenciment    string    `json:"data_venciment"`
 	PeriodeInici     string    `json:"periode_inici"`
@@ -465,12 +471,14 @@ type FinDespesa struct {
 }
 
 type UpsertFinDespesaRequest struct {
-	Categoria        string  `json:"categoria" binding:"required,oneof=nomina seguretat_social banc impostos dietes altres"`
+	Categoria        string  `json:"categoria" binding:"required"`
 	BeneficiariNom   string  `json:"beneficiari_nom" binding:"required"`
 	Concepte         string  `json:"concepte" binding:"required"`
-	UnitatNegociID   string  `json:"unitat_negoci_id" binding:"required"`
+	UnitatNegociID   *string `json:"unitat_negoci_id"`
 	EntrenadorID     *string `json:"entrenador_id"`
 	ImportTotal      float64 `json:"import_total"`
+	EsRecurrent      bool    `json:"es_recurrent"`
+	DiaMesGeneracio  int     `json:"dia_mes_generacio"`
 	DataDevengo      string  `json:"data_devengo" binding:"required"`
 	DataVenciment    string  `json:"data_venciment" binding:"required"`
 	PeriodeInici     string  `json:"periode_inici" binding:"required"`
@@ -593,4 +601,108 @@ type FinCashflowForecastResponse struct {
 	DataSaldoMinim         string                   `json:"data_saldo_minim"`
 	EvolucioMensual        []FinCashflowMonthBucket `json:"evolucio_mensual"`
 	MovimentsProjectats    []FinCashflowItem        `json:"moviments_projectats"`
+}
+
+// Model per a la configuració econòmica de l'atleta (Fase 1)
+type AtletaEconomicaRequest struct {
+	ArticleQuotaID   *string `json:"article_quota_id"`
+	FormaPagament    string  `json:"forma_pagament"` // sepa_domiciliacio, transferencia, targeta, efectiu
+	Iban             string  `json:"iban"`
+	PausatFacturacio bool    `json:"pausat_facturacio"`
+}
+
+type AtletaEconomicaResponse struct {
+	UsuariID            string     `json:"usuari_id"`
+	Nom                 string     `json:"nom"`
+	Cognoms             string     `json:"cognoms"`
+	Email               string     `json:"email"`
+	NifCif              string     `json:"nif_cif"`
+	ArticleQuotaID      *string    `json:"article_quota_id"`
+	ArticleQuotaNom     *string    `json:"article_quota_nom,omitempty"`
+	ArticlePreuBase     *float64   `json:"article_preu_base,omitempty"`
+	ArticleIvaPct       *float64   `json:"article_iva_pct,omitempty"`
+	ArticleTotalPvp     *float64   `json:"article_total_pvp,omitempty"`
+	PeriodicitatMesos   *int       `json:"periodicitat_mesos,omitempty"`
+	CentreCostID        *string    `json:"centre_cost_id,omitempty"`
+	CentreCostNom       *string    `json:"centre_cost_nom,omitempty"`
+	FormaPagament       string     `json:"forma_pagament"`
+	Iban                string     `json:"iban"`
+	PausatFacturacio    bool       `json:"pausat_facturacio"`
+	PausatFacturacioPer *string    `json:"pausat_facturacio_per,omitempty"`
+	PausatData          *time.Time `json:"pausat_facturacio_data,omitempty"`
+}
+
+// Graella de Facturació Periòdica del Mes (Fase 1)
+type GraellaMesItem struct {
+	ID             string  `json:"id"` // usuari_id per quota o fita_id per venciment pactat
+	TipusOrigen    string  `json:"tipus_origen"` // "quota_recurrent" o "venciment_pactat"
+	UsuariID       *string `json:"usuari_id,omitempty"`
+	ClientID       string  `json:"client_id"`
+	ClientNom      string  `json:"client_nom"`
+	ClientNif      string  `json:"client_nif"`
+	Concepte       string  `json:"concepte"`
+	FormaPagament  string  `json:"forma_pagament"`
+	Iban           string  `json:"iban"`
+	CentreCostID   *string `json:"centre_cost_id,omitempty"`
+	CentreCostNom  *string `json:"centre_cost_nom,omitempty"`
+	ArticleID      *string `json:"article_id,omitempty"`
+	BaseImposable  float64 `json:"base_imposable"`
+	IvaPercentatge float64 `json:"iva_percentatge"`
+	IvaImport      float64 `json:"iva_import"`
+	TotalPvp       float64 `json:"total_pvp"`
+	Pausat         bool    `json:"pausat"`
+	DataVenciment  string  `json:"data_venciment"`
+	FitaID         *string `json:"fita_id,omitempty"`
+}
+
+type GraellaMesResponse struct {
+	Mes       string           `json:"mes"` // YYYY-MM
+	Items     []GraellaMesItem `json:"items"`
+	TotalPvp  float64          `json:"total_pvp"`
+	TotalBase float64          `json:"total_base"`
+	TotalIva  float64          `json:"total_iva"`
+	Count     int              `json:"count"`
+}
+
+type EmetreGraellaItemRequest struct {
+	ID             string  `json:"id"`
+	TipusOrigen    string  `json:"tipus_origen"` // "quota_recurrent" o "venciment_pactat"
+	ClientID       string  `json:"client_id"`
+	Concepte       string  `json:"concepte"`
+	BaseImposable  float64 `json:"base_imposable"`
+	IvaPercentatge float64 `json:"iva_percentatge"`
+	FitaID         *string `json:"fita_id,omitempty"`
+}
+
+type EmetreGraellaRequest struct {
+	Mes     string                     `json:"mes" binding:"required"` // YYYY-MM
+	SerieID *string                    `json:"serie_id"`
+	Items   []EmetreGraellaItemRequest `json:"items" binding:"required,min=1"`
+}
+
+type EmetreGraellaResponse struct {
+	FacturesCreades int      `json:"factures_creades"`
+	TotalFacturat   float64  `json:"total_facturat"`
+	FacturaIDs      []string `json:"factura_ids"`
+}
+
+// Cashflow amb Finestra Dinàmica (-X a +Y mesos)
+type CashflowMonthColumn struct {
+	MonthKey      string  `json:"month_key"` // YYYY-MM
+	Label         string  `json:"label"`     // Ex: "Abr 26"
+	Tipus         string  `json:"tipus"`     // "past", "current", "future"
+	SaldoInicial  float64 `json:"saldo_inicial"`
+	QuotesAtletes float64 `json:"quotes_atletes"`
+	VendesFites   float64 `json:"vendes_fites"`
+	Compres       float64 `json:"compres"`
+	Despeses      float64 `json:"despeses"`
+	Net           float64 `json:"net"`
+	SaldoFinal    float64 `json:"saldo_final"`
+}
+
+type DynamicCashflowForecast struct {
+	PastMonths   int                   `json:"past_months"`
+	FutureMonths int                   `json:"future_months"`
+	SaldoActual  float64               `json:"saldo_actual"`
+	Columns      []CashflowMonthColumn `json:"columns"`
 }

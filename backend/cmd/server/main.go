@@ -249,6 +249,9 @@ func main() {
 		entrenadorRoutes.POST("/atletes/:id/remind", h.SendManualReminder)
 		entrenadorRoutes.PATCH("/atletes/:id/absent", h.ToggleAtletaAbsent)
 		entrenadorRoutes.GET("/atletes/:id/tests", h.GetAtletaTestsTimeline)
+		entrenadorRoutes.GET("/atletes/:id/economica", financesHandler.GetAtletaEconomica)
+		entrenadorRoutes.PUT("/atletes/:id/economica", financesHandler.UpdateAtletaEconomica)
+		entrenadorRoutes.PATCH("/atletes/:id/pausa-facturacio", financesHandler.UpdateAtletaPausaFacturacio)
 		
 		entrenadorRoutes.POST("/tests", h.CreateTest)
 		entrenadorRoutes.GET("/tests/pendents", h.ListPendingTestsByEntrenador)
@@ -382,6 +385,15 @@ func main() {
 		financesRoutes.GET("/informes/resultats", financesHandler.GetInformeResultats)
 		financesRoutes.GET("/informes/resultats/csv", financesHandler.ExportInformeCSV)
 		financesRoutes.GET("/tresoreria/cashflow", financesHandler.GetCashflowForecast)
+		financesRoutes.GET("/tresoreria/dynamic-cashflow", financesHandler.GetDynamicCashflow)
+
+		// Gestió Econòmica d'Atletes & Graella Periòdica
+		financesRoutes.GET("/atletes/:id/economica", financesHandler.GetAtletaEconomica)
+		financesRoutes.PUT("/atletes/:id/economica", financesHandler.UpdateAtletaEconomica)
+		financesRoutes.PATCH("/atletes/:id/pausa-facturacio", financesHandler.UpdateAtletaPausaFacturacio)
+		financesRoutes.GET("/graella-mes", financesHandler.GetGraellaMes)
+		financesRoutes.POST("/graella-mes/emetre", financesHandler.EmetreGraella)
+		financesRoutes.POST("/despeses/generar-recurrents", financesHandler.GenerarDespesesRecurrentsMes)
 	}
 
 	// Factures per a l'Atleta i descàrrega PDF

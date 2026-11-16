@@ -925,3 +925,107 @@ func (h *FinancesHandler) GetCashflowForecast(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, fc)
 }
+
+func (h *FinancesHandler) GetAtletaEconomica(c *gin.Context) {
+	usuariID := c.Param("id")
+	res, err := h.Store.GetAtletaEconomica(c.Request.Context(), usuariID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *FinancesHandler) UpdateAtletaEconomica(c *gin.Context) {
+	usuariID := c.Param("id")
+	var req models.AtletaEconomicaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := h.Store.UpdateAtletaEconomica(c.Request.Context(), usuariID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *FinancesHandler) UpdateAtletaPausaFacturacio(c *gin.Context) {
+	usuariID := c.Param("id")
+	coachID, _ := c.Get("userID")
+	coachIDStr, _ := coachID.(string)
+
+	var req struct {
+		Pausat bool `json:"pausat"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.Store.UpdateAtletaPausaFacturacio(c.Request.Context(), usuariID, req.Pausat, coachIDStr); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "estat de pausa actualitzat", "pausat": req.Pausat})
+}
+
+func (h *FinancesHandler) GetGraellaMes(c *gin.Context) {
+	mes := c.Query("mes")
+	res, err := h.Store.GetGraellaMes(c.Request.Context(), mes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *FinancesHandler) EmetreGraella(c *gin.Context) {
+	var req models.EmetreGraellaRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := h.Store.EmetreGraella(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *FinancesHandler) GenerarDespesesRecurrentsMes(c *gin.Context) {
+	var req struct {
+		Mes string `json:"mes"`
+	}
+	_ = c.ShouldBindJSON(&req)
+	count, err := h.Store.GenerarDespesesRecurrentsMes(c.Request.Context(), req.Mes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"despeses_creades": count})
+}
+
+func (h *FinancesHandler) GetDynamicCashflow(c *gin.Context) {
+	past := 3
+	future := 6
+	if pStr := c.Query("past"); pStr != "" {
+		if val, err := strconv.Atoi(pStr); err == nil && val >= 0 {
+			past = val
+		}
+	}
+	if fStr := c.Query("future"); fStr != "" {
+		if val, err := strconv.Atoi(fStr); err == nil && val >= 0 {
+			future = val
+		}
+	}
+
+	res, err := h.Store.GetDynamicCashflowForecast(c.Request.Context(), past, future)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}

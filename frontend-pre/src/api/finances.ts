@@ -100,7 +100,9 @@ export interface FinArticle {
   codi: string
   nom: string
   descripcio: string
-  categoria: 'entrenament_recurrent' | 'training_camp' | 'puntual'
+  categoria: string
+  es_recurrent?: boolean
+  periodicitat_mesos?: 1 | 3 | 6 | 12
   unitat_negoci_id: string
   unitat_negoci_nom?: string
   preu_base: number
@@ -216,7 +218,7 @@ export interface FinCompra {
   proveidor_nom?: string
   proveidor_nif?: string
   num_factura_proveidor: string
-  unitat_negoci_id: string
+  unitat_negoci_id?: string | null
   unitat_negoci_nom?: string
   entrenador_id?: string | null
   entrenador_nom?: string
@@ -239,14 +241,16 @@ export interface FinCompra {
 
 export interface FinDespesa {
   id: string
-  categoria: 'nomina' | 'seguretat_social' | 'banc' | 'impostos' | 'dietes' | 'altres'
+  categoria: string
   beneficiari_nom: string
   concepte: string
-  unitat_negoci_id: string
+  unitat_negoci_id?: string | null
   unitat_negoci_nom?: string
   entrenador_id?: string | null
   entrenador_nom?: string
   import_total: number
+  es_recurrent?: boolean
+  dia_mes_generacio?: number
   data_devengo: string
   data_venciment: string
   periode_inici: string
@@ -443,3 +447,128 @@ export const uploadFinanceDocument = async (file: File) => {
   })
   return res.data.url
 }
+
+// ==========================================
+// MÒDUL RENOVAT: QUOTES, GRAELLA I CASHFLOW
+// ==========================================
+
+export interface AtletaEconomicaResponse {
+  usuari_id: string
+  nom: string
+  cognoms: string
+  email: string
+  nif_cif: string
+  article_quota_id?: string | null
+  article_quota_nom?: string
+  article_preu_base?: number
+  article_iva_pct?: number
+  article_total_pvp?: number
+  periodicitat_mesos?: number
+  centre_cost_id?: string | null
+  centre_cost_nom?: string
+  forma_pagament: string
+  iban: string
+  pausat_facturacio: boolean
+  pausat_facturacio_per?: string | null
+  pausat_facturacio_data?: string | null
+}
+
+export interface AtletaEconomicaRequest {
+  article_quota_id?: string | null
+  forma_pagament: string
+  iban: string
+  pausat_facturacio: boolean
+}
+
+export interface GraellaMesItem {
+  id: string
+  tipus_origen: 'quota_recurrent' | 'venciment_pactat'
+  usuari_id?: string
+  client_id: string
+  client_nom: string
+  client_nif: string
+  concepte: string
+  forma_pagament: string
+  iban: string
+  centre_cost_id?: string | null
+  centre_cost_nom?: string
+  article_id?: string | null
+  base_imposable: number
+  iva_percentatge: number
+  iva_import: number
+  total_pvp: number
+  pausat: boolean
+  data_venciment: string
+  fita_id?: string | null
+}
+
+export interface GraellaMesResponse {
+  mes: string
+  items: GraellaMesItem[]
+  total_pvp: number
+  total_base: number
+  total_iva: number
+  count: number
+}
+
+export interface EmetreGraellaRequest {
+  mes: string
+  serie_id?: string
+  items: {
+    id: string
+    tipus_origen: 'quota_recurrent' | 'venciment_pactat'
+    client_id: string
+    concepte: string
+    base_imposable: number
+    iva_percentatge: number
+    fita_id?: string | null
+  }[]
+}
+
+export interface EmetreGraellaResponse {
+  factures_creades: number
+  total_facturat: number
+  factura_ids: string[]
+}
+
+export interface CashflowMonthColumn {
+  month_key: string
+  label: string
+  tipus: 'past' | 'current' | 'future'
+  saldo_inicial: number
+  quotes_atletes: number
+  vendes_fites: number
+  compres: number
+  despeses: number
+  net: number
+  saldo_final: number
+}
+
+export interface DynamicCashflowForecast {
+  past_months: number
+  future_months: number
+  saldo_actual: number
+  columns: CashflowMonthColumn[]
+}
+
+export const getAtletaEconomica = (id: string) =>
+  api.get<AtletaEconomicaResponse>(`/finances/atletes/${id}/economica`).then(r => r.data)
+
+export const updateAtletaEconomica = (id: string, data: AtletaEconomicaRequest) =>
+  api.put<AtletaEconomicaResponse>(`/finances/atletes/${id}/economica`, data).then(r => r.data)
+
+export const updateAtletaPausaFacturacio = (id: string, pausat: boolean) =>
+  api.patch<{ message: string; pausat: boolean }>(`/finances/atletes/${id}/pausa-facturacio`, { pausat }).then(r => r.data)
+
+export const getGraellaMes = (mes?: string) =>
+  api.get<GraellaMesResponse>('/finances/graella-mes', { params: { mes } }).then(r => r.data)
+
+export const emetreGraella = (data: EmetreGraellaRequest) =>
+  api.post<EmetreGraellaResponse>('/finances/graella-mes/emetre', data).then(r => r.data)
+
+export const generarDespesesRecurrentsMes = (mes?: string) =>
+  api.post<{ despeses_creades: number }>('/finances/despeses/generar-recurrents', { mes }).then(r => r.data)
+
+export const getDynamicCashflow = (past?: number, future?: number) =>
+  api.get<DynamicCashflowForecast>('/finances/tresoreria/dynamic-cashflow', { params: { past, future } }).then(r => r.data)
+

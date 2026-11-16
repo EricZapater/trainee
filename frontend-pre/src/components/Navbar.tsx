@@ -32,7 +32,8 @@ import {
   RefreshCw,
   ArrowDownLeft,
   CreditCard,
-  User
+  User,
+  Zap
 } from 'lucide-react'
 
 export const Navbar: React.FC = () => {
@@ -84,6 +85,7 @@ export const Navbar: React.FC = () => {
   const financePaths = ['/finances']
 
   const financeSubmenu = [
+    { to: '/finances?tab=graella', label: '⚡ Facturació del Mes', desc: 'Llançament periòdic de quotes i venciments', icon: Zap },
     { to: '/finances?tab=resum', label: 'Compte de Resultats (P&L)', desc: 'Totalitzacions vendes vs compres', icon: TrendingUp },
     { to: '/finances?tab=tresoreria', label: 'Previsió de Caixa', desc: 'Cashflow i tresoreria projectada', icon: DollarSign },
     { to: '/finances?tab=vendes', label: 'Vendes & Factures', desc: 'Emissió i conciliació de cobraments', icon: FileText },

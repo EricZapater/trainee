@@ -17,7 +17,8 @@ import {
   Briefcase,
   Tag,
   Package,
-  Pencil
+  Pencil,
+  Zap
 } from 'lucide-react'
 import {
   getFinConfiguracio,
@@ -62,6 +63,10 @@ import {
   getFinInformeResultats,
   getFinCashflowForecast,
   uploadFinanceDocument,
+  getGraellaMes,
+  emetreGraella,
+  generarDespesesRecurrentsMes,
+  getDynamicCashflow,
   type FinConfiguracioEmpresa,
   type FinUnitatNegoci,
   type FinSerie,
@@ -75,28 +80,32 @@ import {
   type FinCompra,
   type FinDespesa,
   type FinInformeResultats,
-  type FinCashflowForecast
+  type FinCashflowForecast,
+  type GraellaMesResponse,
+  type EmetreGraellaResponse,
+  type DynamicCashflowForecast
 } from '../api/finances'
 
-type TabKey = 'resum' | 'tresoreria' | 'vendes' | 'subscripcions' | 'camps' | 'compres' | 'despeses' | 'config'
+type TabKey = 'graella' | 'vendes' | 'compres' | 'despeses' | 'resum' | 'tresoreria' | 'subscripcions' | 'camps' | 'config'
 
 const TAB_TITLES: Record<TabKey, string> = {
-  resum: 'Compte de Resultats (P&L)',
-  tresoreria: 'Previsió de Caixa (Cashflow)',
+  graella: '⚡ Facturació del Mes',
   vendes: 'Vendes & Factures',
-  subscripcions: 'Subscripcions Recurrents',
-  camps: 'Training Camps',
   compres: 'Factures de Compra',
   despeses: 'Despeses Operatives',
+  resum: 'Compte de Resultats (P&L)',
+  tresoreria: 'Previsió de Caixa (Cashflow)',
+  subscripcions: 'Subscripcions Recurrents',
+  camps: 'Training Camps',
   config: 'Configuració & Mestres'
 }
 
 export const FinanceAdminPage: React.FC = () => {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab') as TabKey
-  const activeTab: TabKey = ['resum', 'tresoreria', 'vendes', 'subscripcions', 'camps', 'compres', 'despeses', 'config'].includes(rawTab)
+  const activeTab: TabKey = ['graella', 'vendes', 'compres', 'despeses', 'resum', 'tresoreria', 'subscripcions', 'camps', 'config'].includes(rawTab)
     ? rawTab
-    : 'resum'
+    : 'graella'
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -110,6 +119,25 @@ export const FinanceAdminPage: React.FC = () => {
   const [horizonDies, setHorizonDies] = useState(90)
   const [inclouEndarrerits, setInclouEndarrerits] = useState(true)
   const [cashflowData, setCashflowData] = useState<FinCashflowForecast | null>(null)
+
+  // Dynamic Cashflow Window state (-X a +Y mesos, màx 12 mesos)
+  const [cfPastMonths, setCfPastMonths] = useState(3)
+  const [cfFutureMonths, setCfFutureMonths] = useState(6)
+  const [dynamicCfData, setDynamicCfData] = useState<DynamicCashflowForecast | null>(null)
+  const [dynamicCfLoading, setDynamicCfLoading] = useState(false)
+
+  // Graella Facturació Periòdica del Mes state
+  const [graellaMes, setGraellaMes] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [graellaData, setGraellaData] = useState<GraellaMesResponse | null>(null)
+  const [graellaSelected, setGraellaSelected] = useState<Record<string, boolean>>({})
+  const [graellaCustomAmounts, setGraellaCustomAmounts] = useState<Record<string, number>>({})
+  const [graellaCustomConcepts, setGraellaCustomConcepts] = useState<Record<string, string>>({})
+  const [graellaLoading, setGraellaLoading] = useState(false)
+  const [graellaEmitting, setGraellaEmitting] = useState(false)
+  const [graellaSuccess, setGraellaSuccess] = useState<EmetreGraellaResponse | null>(null)
 
   // Master data state
   const [config, setConfig] = useState<FinConfiguracioEmpresa | null>(null)
@@ -136,7 +164,7 @@ export const FinanceAdminPage: React.FC = () => {
 
   const [showArticleModal, setShowArticleModal] = useState(false)
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null)
-  const [newArticle, setNewArticle] = useState({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent' as 'entrenament_recurrent' | 'training_camp' | 'puntual', unitat_negoci_id: '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+  const [newArticle, setNewArticle] = useState({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
 
   const [showClientModal, setShowClientModal] = useState(false)
   const [editingClientId, setEditingClientId] = useState<string | null>(null)
@@ -293,14 +321,121 @@ export const FinanceAdminPage: React.FC = () => {
   }, [])
 
   useEffect(() => {
+    if (activeTab === 'graella') loadGraella()
     if (activeTab === 'resum') loadReport()
-    if (activeTab === 'tresoreria') loadCashflow()
+    if (activeTab === 'tresoreria') {
+      loadCashflow()
+      loadDynamicCashflow()
+    }
     if (activeTab === 'vendes') loadFactures()
     if (activeTab === 'subscripcions') loadSubscripcions()
     if (activeTab === 'camps') loadPlansCamp()
     if (activeTab === 'compres') loadCompres()
     if (activeTab === 'despeses') loadDespeses()
-  }, [activeTab, reportMode, reportStart, reportEnd, horizonDies, inclouEndarrerits])
+  }, [activeTab, reportMode, reportStart, reportEnd, horizonDies, inclouEndarrerits, cfPastMonths, cfFutureMonths])
+
+  const loadGraella = async (mes?: string) => {
+    const targetMes = mes || graellaMes
+    try {
+      setGraellaLoading(true)
+      const data = await getGraellaMes(targetMes)
+      setGraellaData(data)
+      const initialSelected: Record<string, boolean> = {}
+      const initialAmounts: Record<string, number> = {}
+      const initialConcepts: Record<string, string> = {}
+      data.items.forEach(it => {
+        initialSelected[it.id] = !it.pausat
+        initialAmounts[it.id] = it.base_imposable
+        initialConcepts[it.id] = it.concepte
+      })
+      setGraellaSelected(initialSelected)
+      setGraellaCustomAmounts(initialAmounts)
+      setGraellaCustomConcepts(initialConcepts)
+      setGraellaSuccess(null)
+    } catch (err: any) {
+      console.error(err)
+      showNotify('error', 'Error carregant la graella de facturació del mes')
+    } finally {
+      setGraellaLoading(false)
+    }
+  }
+
+  const loadDynamicCashflow = async (past?: number, future?: number) => {
+    const p = past !== undefined ? past : cfPastMonths
+    const f = future !== undefined ? future : cfFutureMonths
+    if (p + f > 12) {
+      showNotify('error', 'La finestra temporal no pot superar els 12 mesos (1 any).')
+      return
+    }
+    try {
+      setDynamicCfLoading(true)
+      const data = await getDynamicCashflow(p, f)
+      setDynamicCfData(data)
+    } catch (err: any) {
+      console.error(err)
+      showNotify('error', 'Error carregant la previsió dinàmica de tresoreria')
+    } finally {
+      setDynamicCfLoading(false)
+    }
+  }
+
+  const handleEmetreGraella = async () => {
+    if (!graellaData) return
+    const selectedItems = graellaData.items
+      .filter(it => graellaSelected[it.id])
+      .map(it => ({
+        id: it.id,
+        tipus_origen: it.tipus_origen,
+        client_id: it.client_id,
+        concepte: graellaCustomConcepts[it.id] || it.concepte,
+        base_imposable: graellaCustomAmounts[it.id] ?? it.base_imposable,
+        iva_percentatge: it.iva_percentatge,
+        fita_id: it.fita_id || null
+      }))
+
+    if (selectedItems.length === 0) {
+      showNotify('error', 'No hi ha cap element seleccionat per a emetre!')
+      return
+    }
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Emetre Factures del Mes',
+      message: `Segur que vols emetre ${selectedItems.length} factures oficials del mes ${graellaMes}? S'assignarà la sèrie legal consecutiva i els documents quedaran bloquejats i registrats.`,
+      confirmText: `Emetre ${selectedItems.length} Factures`,
+      cancelText: 'Cancel·lar',
+      variant: 'warning',
+      onConfirm: async () => {
+        try {
+          setGraellaEmitting(true)
+          const res = await emetreGraella({
+            mes: graellaMes,
+            items: selectedItems
+          })
+          setGraellaSuccess(res)
+          showNotify('success', `S'han emès ${res.factures_creades} factures correctament per un total de ${res.total_facturat.toFixed(2)} €!`)
+          loadGraella()
+          loadFactures()
+        } catch (err: any) {
+          showNotify('error', err.response?.data?.error || 'Error emetent factures de la graella')
+        } finally {
+          setGraellaEmitting(false)
+          setConfirmDialog(null)
+        }
+      }
+    })
+  }
+
+  const handleGenerarDespesesRecurrents = async () => {
+    try {
+      const res = await generarDespesesRecurrentsMes(graellaMes)
+      showNotify('success', `S'han generat ${res.despeses_creades} despeses recurrents del mes ${graellaMes}!`)
+      loadDespeses()
+      if (activeTab === 'tresoreria') loadDynamicCashflow()
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error generant despeses recurrents')
+    }
+  }
 
   const showNotify = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text })
@@ -902,12 +1037,12 @@ export const FinanceAdminPage: React.FC = () => {
   // 4. Articles
   const openCreateArticle = () => {
     setEditingArticleId(null)
-    setNewArticle({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent', unitat_negoci_id: unitats[0]?.id || '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+    setNewArticle({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: unitats[0]?.id || '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
     setShowArticleModal(true)
   }
   const openEditArticle = (a: FinArticle) => {
     setEditingArticleId(a.id)
-    setNewArticle({ codi: a.codi || '', nom: a.nom, descripcio: a.descripcio || '', categoria: a.categoria, unitat_negoci_id: a.unitat_negoci_id, preu_base: a.preu_base, iva_percentatge: a.iva_percentatge, irpf_percentatge: a.irpf_percentatge || 0, causa_exempcio: a.causa_exempcio || '', actiu: a.actiu })
+    setNewArticle({ codi: a.codi || '', nom: a.nom, descripcio: a.descripcio || '', categoria: a.categoria, es_recurrent: !!a.es_recurrent, periodicitat_mesos: (a.periodicitat_mesos || 1) as 1 | 3 | 6 | 12, unitat_negoci_id: a.unitat_negoci_id, preu_base: a.preu_base, iva_percentatge: a.iva_percentatge, irpf_percentatge: a.irpf_percentatge || 0, causa_exempcio: a.causa_exempcio || '', actiu: a.actiu })
     setShowArticleModal(true)
   }
   const handleSaveArticle = async (e: React.FormEvent) => {
@@ -1063,14 +1198,302 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Current section indicator */}
-      <div className="flex items-center gap-2 text-xs font-semibold text-text-secondary border-b border-border pb-3">
-        <span className="text-text-muted">Administració</span>
-        <span className="text-text-muted">/</span>
-        <span className="text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full font-bold border border-emerald-200">
-          {TAB_TITLES[activeTab]}
-        </span>
+      {/* Interactive Tabs Bar */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-border text-xs font-bold">
+        {(['graella', 'vendes', 'compres', 'despeses', 'resum', 'tresoreria', 'config'] as TabKey[]).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setSearchParams({ tab })}
+            className={`px-3 py-2 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === tab
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+            }`}
+          >
+            {tab === 'graella' && <Zap className="w-3.5 h-3.5 text-emerald-400" />}
+            {TAB_TITLES[tab]}
+          </button>
+        ))}
       </div>
+
+      {/* TAB 0: ⚡ GRAELLA DE FACTURACIÓ PERIÒDICA DEL MES */}
+      {activeTab === 'graella' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header de la Graella */}
+          <div className="glass-card p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Llançament Periòdic de Quotes & Venciments</span>
+              </div>
+              <h2 className="text-xl font-black text-text-primary mt-1">Facturació Mensual en Bloc</h2>
+              <p className="text-xs text-text-muted mt-0.5">
+                Revisa les quotes recurrents dels atletes i les fites de vendes que vencen aquest mes abans d'emetre.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+                <span className="font-bold text-slate-500">Mes:</span>
+                <input
+                  type="month"
+                  value={graellaMes}
+                  onChange={e => {
+                    setGraellaMes(e.target.value)
+                    loadGraella(e.target.value)
+                  }}
+                  className="bg-transparent font-bold text-slate-900 outline-none"
+                />
+              </div>
+
+              <button
+                onClick={() => loadGraella(graellaMes)}
+                disabled={graellaLoading}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
+                title="Refrescar dades del mes"
+              >
+                <RefreshCw className={`w-4 h-4 ${graellaLoading ? 'animate-spin text-emerald-600' : ''}`} />
+              </button>
+
+              <button
+                onClick={handleGenerarDespesesRecurrents}
+                className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1"
+                title="Generar les despeses fixes del dia 1 (autònoms, lloguer) per aquest mes"
+              >
+                <span>🔄 Generar Despeses Dia 1</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Banner d'èxit després d'emetre */}
+          {graellaSuccess && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg">
+                  ✓
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-emerald-950">
+                    S'han emès {graellaSuccess.factures_creades} factures correctament!
+                  </h4>
+                  <p className="text-xs text-emerald-700">
+                    Total facturat: <strong>{graellaSuccess.total_facturat.toFixed(2)} €</strong>. Tots els documents registrats amb número oficial correlatiu.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSearchParams({ tab: 'vendes' })}
+                className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-colors self-start sm:self-auto"
+              >
+                Veure Factures a Vendes →
+              </button>
+            </div>
+          )}
+
+          {/* Taula de Preselecció de la Graella */}
+          <div className="glass-card overflow-hidden">
+            <div className="p-4 border-b border-border flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (!graellaData) return
+                    const next: Record<string, boolean> = {}
+                    graellaData.items.forEach(it => { next[it.id] = true })
+                    setGraellaSelected(next)
+                  }}
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors"
+                >
+                  Seleccionar Tots
+                </button>
+                <button
+                  onClick={() => setGraellaSelected({})}
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors"
+                >
+                  Desmarcar Tots
+                </button>
+                <span className="text-slate-400">|</span>
+                <span className="text-text-muted">
+                  {graellaData ? `${graellaData.count} elements pendents` : 'Carregant...'}
+                </span>
+              </div>
+              <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                ✓ Sèrie activa per defecte assignada
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-border text-slate-500 font-bold text-[11px] uppercase tracking-wider">
+                    <th className="p-3 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={graellaData ? graellaData.items.length > 0 && graellaData.items.every(it => graellaSelected[it.id]) : false}
+                        onChange={e => {
+                          if (!graellaData) return
+                          const next: Record<string, boolean> = {}
+                          graellaData.items.forEach(it => { next[it.id] = e.target.checked })
+                          setGraellaSelected(next)
+                        }}
+                        className="rounded text-emerald-600"
+                      />
+                    </th>
+                    <th className="p-3">Tipus Origen</th>
+                    <th className="p-3">Atleta / Client</th>
+                    <th className="p-3">Concepte Factura</th>
+                    <th className="p-3">Forma de Pagament</th>
+                    <th className="p-3">Centre de Cost</th>
+                    <th className="p-3 text-right">Base Imposable</th>
+                    <th className="p-3 text-right">Total (PVP)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-slate-700">
+                  {graellaLoading ? (
+                    <tr>
+                      <td colSpan={8} className="p-12 text-center text-text-muted">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-emerald-600 mb-2" />
+                        Carregant graella del mes {graellaMes}...
+                      </td>
+                    </tr>
+                  ) : graellaData && graellaData.items.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-12 text-center text-text-muted">
+                        No hi ha cap quota ni venciment pendent de facturar pel mes {graellaMes}.
+                      </td>
+                    </tr>
+                  ) : graellaData && graellaData.items.map(it => {
+                    const isSelected = !!graellaSelected[it.id]
+                    const customBase = graellaCustomAmounts[it.id] ?? it.base_imposable
+                    const customConcept = graellaCustomConcepts[it.id] ?? it.concepte
+                    const ivaImp = customBase * (it.iva_percentatge / 100)
+                    const totalPvp = customBase + ivaImp
+
+                    return (
+                      <tr key={it.id} className={`hover:bg-slate-50/60 transition-colors ${!isSelected ? 'opacity-40 bg-slate-50/40' : ''}`}>
+                        <td className="p-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={e => setGraellaSelected({ ...graellaSelected, [it.id]: e.target.checked })}
+                            className="rounded text-emerald-600"
+                          />
+                        </td>
+                        <td className="p-3">
+                          {it.tipus_origen === 'quota_recurrent' ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              🔄 Quota
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              📅 Venciment Pactat
+                            </span>
+                          )}
+                          {it.pausat && (
+                            <span className="ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                              Pausat
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-slate-900">{it.client_nom}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">{it.client_nif || 'Sense NIF'}</div>
+                        </td>
+                        <td className="p-3">
+                          <input
+                            type="text"
+                            value={customConcept}
+                            onChange={e => setGraellaCustomConcepts({ ...graellaCustomConcepts, [it.id]: e.target.value })}
+                            className="w-full p-1 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded text-xs outline-none"
+                          />
+                        </td>
+                        <td className="p-3">
+                          <div className="font-medium text-slate-800">{it.forma_pagament}</div>
+                          {it.iban && <div className="text-[10px] text-slate-400 font-mono">{it.iban.slice(0, 10)}...</div>}
+                        </td>
+                        <td className="p-3">
+                          <span className="text-slate-600 font-medium">{it.centre_cost_nom || 'General'}</span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={customBase}
+                              onChange={e => setGraellaCustomAmounts({ ...graellaCustomAmounts, [it.id]: parseFloat(e.target.value) || 0 })}
+                              className="w-20 p-1 text-right border border-slate-200 rounded text-xs font-mono font-bold"
+                            />
+                            <span>€</span>
+                          </div>
+                        </td>
+                        <td className="p-3 text-right font-black text-slate-900">
+                          {totalPvp.toFixed(2)} €
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Barra d'accions totals (Sticky Footer) */}
+            {graellaData && graellaData.items.length > 0 && (() => {
+              const selectedCount = graellaData.items.filter(it => graellaSelected[it.id]).length
+              let sumBase = 0
+              let sumPvp = 0
+              graellaData.items.filter(it => graellaSelected[it.id]).forEach(it => {
+                const b = graellaCustomAmounts[it.id] ?? it.base_imposable
+                const p = b * (1 + it.iva_percentatge / 100)
+                sumBase += b
+                sumPvp += p
+              })
+              const sumIva = sumPvp - sumBase
+
+              return (
+                <div className="bg-slate-900 text-white p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-6 text-xs text-slate-300">
+                    <div>
+                      <div className="text-slate-400 text-[10px] uppercase font-bold">Seleccionats</div>
+                      <div className="text-lg font-black text-white">{selectedCount} factures</div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-700 hidden sm:block"></div>
+                    <div className="hidden sm:block">
+                      <div className="text-slate-400 text-[10px] uppercase font-bold">Base Imposable</div>
+                      <div className="text-sm font-bold text-slate-200">{sumBase.toFixed(2)} €</div>
+                    </div>
+                    <div className="hidden sm:block">
+                      <div className="text-slate-400 text-[10px] uppercase font-bold">IVA</div>
+                      <div className="text-sm font-bold text-slate-200">{sumIva.toFixed(2)} €</div>
+                    </div>
+                    <div className="h-8 w-px bg-slate-700"></div>
+                    <div>
+                      <div className="text-emerald-400 text-[10px] uppercase font-bold">Total a Facturar</div>
+                      <div className="text-xl sm:text-2xl font-black text-emerald-400">{sumPvp.toFixed(2)} €</div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleEmetreGraella}
+                    disabled={graellaEmitting || selectedCount === 0}
+                    className="w-full md:w-auto px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {graellaEmitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
+                        <span>Emetent factures...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 text-slate-950" />
+                        <span>Emetre Factures del Mes ({selectedCount})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: RESUM ANALÍTIC (P&L) */}
       {activeTab === 'resum' && (
@@ -1234,11 +1657,172 @@ export const FinanceAdminPage: React.FC = () => {
       )}
 
       {/* TAB 2: PREVISIÓ DE CAIXA (CASHFLOW) */}
-      {activeTab === 'tresoreria' && cashflowData && (
+      {activeTab === 'tresoreria' && (
         <div className="space-y-6">
+          {/* SECCIÓ DINÀMICA: FINESTRA TEMPORAL (-X A +Y MESOS) */}
+          <div className="glass-card p-5 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-border">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-purple-600 uppercase tracking-wider">Tresoreria Dinàmica</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                    Finestra màx 12 mesos
+                  </span>
+                </div>
+                <h3 className="text-lg font-black text-text-primary mt-0.5">Previsió de Flux de Caixa (Cashflow)</h3>
+                <p className="text-xs text-text-muted">
+                  Configura lliurement els mesos enrere (historial real) i mesos endavant (quotes previstes i compres).
+                </p>
+              </div>
+
+              {/* Selectors dinàmics */}
+              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <span className="text-slate-500 font-medium">Historial:</span>
+                  <select
+                    value={cfPastMonths}
+                    onChange={e => {
+                      const val = parseInt(e.target.value) || 0
+                      setCfPastMonths(val)
+                      loadDynamicCashflow(val, cfFutureMonths)
+                    }}
+                    className="p-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-800"
+                  >
+                    <option value={0}>0 mesos (només futur)</option>
+                    <option value={1}>-1 mes</option>
+                    <option value={3}>-3 mesos</option>
+                    <option value={6}>-6 mesos</option>
+                    <option value={12}>-12 mesos</option>
+                  </select>
+                </div>
+
+                <span className="text-slate-400">fins a</span>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-slate-500 font-medium">Previsió:</span>
+                  <select
+                    value={cfFutureMonths}
+                    onChange={e => {
+                      const val = parseInt(e.target.value) || 0
+                      setCfFutureMonths(val)
+                      loadDynamicCashflow(cfPastMonths, val)
+                    }}
+                    className="p-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-800"
+                  >
+                    <option value={0}>0 mesos (només passat)</option>
+                    <option value={3}>+3 mesos</option>
+                    <option value={6}>+6 mesos</option>
+                    <option value={9}>+9 mesos</option>
+                    <option value={12}>+12 mesos</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {cfPastMonths + cfFutureMonths > 12 && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>La finestra temporal total supera el límit permès de 12 mesos (1 any). Ajusta els selectors.</span>
+              </div>
+            )}
+
+            {/* Taula de Cashflow Dinàmica */}
+            {dynamicCfLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2 text-text-muted text-xs">
+                <RefreshCw className="w-6 h-6 animate-spin text-purple-600" />
+                <span>Calculant tresoreria dinàmica...</span>
+              </div>
+            ) : dynamicCfData && dynamicCfData.columns.length > 0 ? (
+              <div className="border border-border rounded-xl overflow-x-auto shadow-xs text-xs">
+                <table className="w-full text-left border-collapse min-w-[750px]">
+                  <thead className="bg-slate-50/80 border-b border-border text-slate-600 font-bold text-[11px] uppercase">
+                    <tr>
+                      <th className="p-2.5 bg-slate-100 text-slate-700 font-bold">Concepte / Flux</th>
+                      {dynamicCfData.columns.map(col => {
+                        const badgeColor = col.tipus === 'past'
+                          ? 'bg-slate-200 text-slate-700'
+                          : col.tipus === 'current'
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-blue-100 text-blue-800'
+                        return (
+                          <th key={col.month_key} className="p-2.5 text-right whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded ${badgeColor} font-bold text-[11px]`}>
+                              {col.label}
+                            </span>
+                          </th>
+                        )
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    <tr className="bg-slate-50/60 font-semibold text-slate-600">
+                      <td className="p-2.5 font-bold">Saldo Inicial Banc</td>
+                      {dynamicCfData.columns.map(c => (
+                        <td key={c.month_key} className="p-2.5 text-right font-mono font-medium">
+                          {c.saldo_inicial.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold text-emerald-800">+ Quotes recurrents atletes</td>
+                      {dynamicCfData.columns.map(c => (
+                        <td key={c.month_key} className="p-2.5 text-right font-mono font-medium text-emerald-700">
+                          {c.quotes_atletes > 0 ? `+${c.quotes_atletes.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : '—'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold text-blue-800">+ Fites de vendes (Campus / Acords)</td>
+                      {dynamicCfData.columns.map(c => (
+                        <td key={c.month_key} className="p-2.5 text-right font-mono font-medium text-blue-700">
+                          {c.vendes_fites > 0 ? `+${c.vendes_fites.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : '—'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold text-rose-800">- Factures de compra (Proveïdors)</td>
+                      {dynamicCfData.columns.map(c => (
+                        <td key={c.month_key} className="p-2.5 text-right font-mono font-medium text-rose-600">
+                          {c.compres > 0 ? `-${c.compres.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : '—'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold text-amber-800">- Despeses fixes dia 1 (Autònoms, lloguer)</td>
+                      {dynamicCfData.columns.map(c => (
+                        <td key={c.month_key} className="p-2.5 text-right font-mono font-medium text-amber-700">
+                          {c.despeses > 0 ? `-${c.despeses.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : '—'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="bg-slate-100/70 font-bold border-t border-b border-slate-300">
+                      <td className="p-2.5 text-slate-900">Flux Net del Mes</td>
+                      {dynamicCfData.columns.map(c => (
+                        <td key={c.month_key} className={`p-2.5 text-right font-mono font-black ${c.net >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {c.net >= 0 ? '+' : ''}{c.net.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="bg-slate-900 text-white font-black">
+                      <td className="p-2.5">Saldo Final Estimat</td>
+                      {dynamicCfData.columns.map(c => (
+                        <td key={c.month_key} className="p-2.5 text-right font-mono text-emerald-400 font-black">
+                          {c.saldo_final.toLocaleString('ca-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+
+          {/* DESGLOSSAMENT DETALLAT A CURT TERMINI (CASHFLOW ENGINE EXISTING) */}
+          {cashflowData && (
+            <>
           <div className="glass-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-500">Horitzó de projecció:</span>
+              <span className="text-xs font-bold text-slate-500">Horitzó de projecció diària:</span>
               <div className="flex items-center gap-1">
                 {[30, 60, 90, 180, 365].map(d => (
                   <button
@@ -1324,6 +1908,8 @@ export const FinanceAdminPage: React.FC = () => {
               </tbody>
             </table>
           </div>
+          </>
+          )}
         </div>
       )}
 
@@ -2100,9 +2686,15 @@ export const FinanceAdminPage: React.FC = () => {
                         <td className="p-3 font-mono font-bold text-slate-600">{art.codi || '—'}</td>
                         <td className="p-3 font-bold text-slate-900">{art.nom}</td>
                         <td className="p-3">
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 capitalize">
-                            {art.categoria.replace('_', ' ')}
-                          </span>
+                          {art.es_recurrent ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              🔄 Quota ({art.periodicitat_mesos === 1 ? 'Mensual' : art.periodicitat_mesos === 3 ? 'Trimestral' : art.periodicitat_mesos === 6 ? 'Semestral' : 'Anual'})
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 capitalize">
+                              {art.categoria.replace('_', ' ')}
+                            </span>
+                          )}
                         </td>
                         <td className="p-3 text-slate-600">{art.unitat_negoci_nom || '—'}</td>
                         <td className="p-3 text-right font-mono font-bold text-emerald-700">{art.preu_base.toFixed(2)} €</td>
@@ -3484,11 +4076,47 @@ export const FinanceAdminPage: React.FC = () => {
                     onChange={e => setNewArticle({ ...newArticle, categoria: e.target.value as any })}
                     className="w-full mt-1 p-2 border rounded-xl font-bold"
                   >
-                    <option value="entrenament_recurrent">Entrenament Recurrent (Subscripció)</option>
+                    <option value="entrenament_recurrent">Entrenament / Servei</option>
                     <option value="training_camp">Training Camp (Fites)</option>
                     <option value="puntual">Puntual / Assessorament</option>
                   </select>
                 </div>
+              </div>
+
+              {/* RECURRENT & PERIODICITAT */}
+              <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newArticle.es_recurrent}
+                      onChange={e => setNewArticle({ ...newArticle, es_recurrent: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded"
+                    />
+                    <span>És una Quota Recurrent (per a subscripció d'atleta)</span>
+                  </label>
+                  {newArticle.es_recurrent && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      Recurrent
+                    </span>
+                  )}
+                </div>
+
+                {newArticle.es_recurrent && (
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Periodicitat de la Quota</label>
+                    <select
+                      value={newArticle.periodicitat_mesos}
+                      onChange={e => setNewArticle({ ...newArticle, periodicitat_mesos: (parseInt(e.target.value) || 1) as any })}
+                      className="w-full p-2 border border-slate-300 rounded-xl font-bold bg-white text-slate-900"
+                    >
+                      <option value={1}>Mensual (Cobrament cada mes)</option>
+                      <option value={3}>Trimestral (Cobrament cada 3 mesos)</option>
+                      <option value={6}>Semestral (Cobrament cada 6 mesos)</option>
+                      <option value={12}>Anual (Cobrament un cop a l'any)</option>
+                    </select>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="font-bold text-slate-700">Nom de l'Article o Servei *</label>

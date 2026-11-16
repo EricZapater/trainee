@@ -608,7 +608,7 @@ func (s *PostgresStore) CrearAbonamentFacturaVenda(ctx context.Context, origenID
 func (s *PostgresStore) ListFinCompres(ctx context.Context, estatPag, unitatID, entrenadorID string) ([]models.FinCompra, error) {
 	query := `
 		SELECT c.id, c.proveidor_id, p.nom_fiscal, p.nif_cif, c.num_factura_proveidor,
-		       c.unitat_negoci_id, un.nom, c.entrenador_id, en.nom, c.concepte,
+		       c.unitat_negoci_id, COALESCE(un.nom, ''), c.entrenador_id, en.nom, c.concepte,
 		       c.base_imposable::float8, c.iva_percentatge::float8, c.iva_import::float8,
 		       c.irpf_percentatge::float8, c.irpf_import::float8, c.total_pagar::float8,
 		       TO_CHAR(c.data_emissio, 'YYYY-MM-DD'), TO_CHAR(c.data_venciment, 'YYYY-MM-DD'),
@@ -618,7 +618,7 @@ func (s *PostgresStore) ListFinCompres(ctx context.Context, estatPag, unitatID, 
 		       c.fitxer_adjunt_path, c.notes, c.created_at
 		FROM fin_compres c
 		JOIN fin_proveidors p ON p.id = c.proveidor_id
-		JOIN fin_unitats_negoci un ON un.id = c.unitat_negoci_id
+		LEFT JOIN fin_unitats_negoci un ON un.id = c.unitat_negoci_id
 		LEFT JOIN entrenadors en ON en.id = c.entrenador_id
 		WHERE 1=1
 	`
@@ -694,7 +694,7 @@ func (s *PostgresStore) CreateFinCompra(ctx context.Context, req models.UpsertFi
 		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::date,$13::date,$14::date,$15::date,$16,$17::date,$18,$19)
 		RETURNING id
 	`,
-		req.ProveidorID, req.NumFacturaProveidor, req.UnitatNegociID, nullableUUID(req.EntrenadorID), req.Concepte,
+		req.ProveidorID, req.NumFacturaProveidor, nullableUUID(req.UnitatNegociID), nullableUUID(req.EntrenadorID), req.Concepte,
 		base, ivaPct, ivaImp, irpfPct, irpfImp, total,
 		req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
 		estat, dataConc, req.FitxerAdjuntPath, req.Notes,
@@ -742,7 +742,7 @@ func (s *PostgresStore) UpdateFinCompra(ctx context.Context, id string, req mode
 		    notes = $19, updated_at = now()
 		WHERE id = $20
 	`,
-		req.ProveidorID, req.NumFacturaProveidor, req.UnitatNegociID, nullableUUID(req.EntrenadorID), req.Concepte,
+		req.ProveidorID, req.NumFacturaProveidor, nullableUUID(req.UnitatNegociID), nullableUUID(req.EntrenadorID), req.Concepte,
 		base, ivaPct, ivaImp, irpfPct, irpfImp, total,
 		req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
 		estat, dataConc, req.FitxerAdjuntPath, req.Notes, id,
@@ -777,15 +777,15 @@ func (s *PostgresStore) ConciliarFinCompra(ctx context.Context, id string, req m
 func (s *PostgresStore) ListFinDespeses(ctx context.Context, estatPag, unitatID, entrenadorID string) ([]models.FinDespesa, error) {
 	query := `
 		SELECT d.id, d.categoria, d.beneficiari_nom, d.concepte,
-		       d.unitat_negoci_id, un.nom, d.entrenador_id, en.nom,
-		       d.import_total::float8,
+		       d.unitat_negoci_id, COALESCE(un.nom, ''), d.entrenador_id, en.nom,
+		       d.import_total::float8, d.es_recurrent, d.dia_mes_generacio,
 		       TO_CHAR(d.data_devengo, 'YYYY-MM-DD'), TO_CHAR(d.data_venciment, 'YYYY-MM-DD'),
 		       TO_CHAR(d.periode_inici, 'YYYY-MM-DD'), TO_CHAR(d.periode_fi, 'YYYY-MM-DD'),
 		       d.estat_pagament,
 		       CASE WHEN d.data_conciliacio IS NOT NULL THEN TO_CHAR(d.data_conciliacio, 'YYYY-MM-DD') ELSE NULL END,
 		       d.fitxer_adjunt_path, d.notes, d.created_at
 		FROM fin_despeses d
-		JOIN fin_unitats_negoci un ON un.id = d.unitat_negoci_id
+		LEFT JOIN fin_unitats_negoci un ON un.id = d.unitat_negoci_id
 		LEFT JOIN entrenadors en ON en.id = d.entrenador_id
 		WHERE 1=1
 	`
@@ -822,7 +822,8 @@ func (s *PostgresStore) ListFinDespeses(ctx context.Context, estatPag, unitatID,
 		if err := rows.Scan(
 			&d.ID, &d.Categoria, &d.BeneficiariNom, &d.Concepte,
 			&d.UnitatNegociID, &d.UnitatNegociNom, &d.EntrenadorID, &d.EntrenadorNom,
-			&d.ImportTotal, &d.DataDevengo, &d.DataVenciment, &d.PeriodeInici, &d.PeriodeFi,
+			&d.ImportTotal, &d.EsRecurrent, &d.DiaMesGeneracio,
+			&d.DataDevengo, &d.DataVenciment, &d.PeriodeInici, &d.PeriodeFi,
 			&d.EstatPagament, &d.DataConciliacio, &d.FitxerAdjuntPath, &d.Notes, &d.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -841,23 +842,28 @@ func (s *PostgresStore) CreateFinDespesa(ctx context.Context, req models.UpsertF
 	if estat != "pagada" {
 		dataConc = nil
 	}
+	diaGen := req.DiaMesGeneracio
+	if diaGen <= 0 {
+		diaGen = 1
+	}
 
 	var id string
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO fin_despeses (
 			categoria, beneficiari_nom, concepte, unitat_negoci_id, entrenador_id,
-			import_total, data_devengo, data_venciment, periode_inici, periode_fi,
+			import_total, es_recurrent, dia_mes_generacio, data_devengo, data_venciment, periode_inici, periode_fi,
 			estat_pagament, data_conciliacio, fitxer_adjunt_path, notes
-		) VALUES ($1,$2,$3,$4,$5,$6,$7::date,$8::date,$9::date,$10::date,$11,$12::date,$13,$14)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::date,$10::date,$11::date,$12::date,$13,$14::date,$15,$16)
 		RETURNING id
 	`,
-		req.Categoria, req.BeneficiariNom, req.Concepte, req.UnitatNegociID, nullableUUID(req.EntrenadorID),
-		roundCurrency(req.ImportTotal), req.DataDevengo, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
+		req.Categoria, req.BeneficiariNom, req.Concepte, nullableUUID(req.UnitatNegociID), nullableUUID(req.EntrenadorID),
+		roundCurrency(req.ImportTotal), req.EsRecurrent, diaGen, req.DataDevengo, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
 		estat, dataConc, req.FitxerAdjuntPath, req.Notes,
 	).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
+
 	list, _ := s.ListFinDespeses(ctx, "", "", "")
 	for _, it := range list {
 		if it.ID == id {
@@ -876,18 +882,23 @@ func (s *PostgresStore) UpdateFinDespesa(ctx context.Context, id string, req mod
 	if estat != "pagada" {
 		dataConc = nil
 	}
+	diaGen := req.DiaMesGeneracio
+	if diaGen <= 0 {
+		diaGen = 1
+	}
 
 	_, err := s.pool.Exec(ctx, `
 		UPDATE fin_despeses
 		SET categoria = $1, beneficiari_nom = $2, concepte = $3, unitat_negoci_id = $4, entrenador_id = $5,
-		    import_total = $6, data_devengo = $7::date, data_venciment = $8::date, periode_inici = $9::date, periode_fi = $10::date,
-		    estat_pagament = $11, data_conciliacio = $12::date,
-		    fitxer_adjunt_path = CASE WHEN $13 <> '' THEN $13 ELSE fitxer_adjunt_path END,
-		    notes = $14, updated_at = now()
-		WHERE id = $15
+		    import_total = $6, es_recurrent = $7, dia_mes_generacio = $8,
+		    data_devengo = $9::date, data_venciment = $10::date, periode_inici = $11::date, periode_fi = $12::date,
+		    estat_pagament = $13, data_conciliacio = $14::date,
+		    fitxer_adjunt_path = CASE WHEN $15 <> '' THEN $15 ELSE fitxer_adjunt_path END,
+		    notes = $16, updated_at = now()
+		WHERE id = $17
 	`,
-		req.Categoria, req.BeneficiariNom, req.Concepte, req.UnitatNegociID, nullableUUID(req.EntrenadorID),
-		roundCurrency(req.ImportTotal), req.DataDevengo, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
+		req.Categoria, req.BeneficiariNom, req.Concepte, nullableUUID(req.UnitatNegociID), nullableUUID(req.EntrenadorID),
+		roundCurrency(req.ImportTotal), req.EsRecurrent, diaGen, req.DataDevengo, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
 		estat, dataConc, req.FitxerAdjuntPath, req.Notes, id,
 	)
 	if err != nil {
@@ -1053,7 +1064,11 @@ func (s *PostgresStore) GetFinInformeResultats(ctx context.Context, dataInici, d
 		if r, ok := byUnitat[uID]; ok {
 			return r
 		}
-		r := &models.FinAnalyticalRow{GroupID: uID, GroupNom: "Unitat"}
+		nom := "Unitat"
+		if uID == "__general__" {
+			nom = "General / Sense centre de cost"
+		}
+		r := &models.FinAnalyticalRow{GroupID: uID, GroupNom: nom}
 		byUnitat[uID] = r
 		return r
 	}
@@ -1129,11 +1144,15 @@ func (s *PostgresStore) GetFinInformeResultats(ctx context.Context, dataInici, d
 		}
 		amt := c.BaseImposable * factor
 		resp.TotalCompres += amt
-		uRow := ensureUnit(c.UnitatNegociID)
+		uID := "__general__"
+		if c.UnitatNegociID != nil && *c.UnitatNegociID != "" {
+			uID = *c.UnitatNegociID
+		}
+		uRow := ensureUnit(uID)
 		uRow.CompresBase += amt
 		cRow, cKey := ensureCoach(c.EntrenadorID)
 		cRow.CompresBase += amt
-		getCross(c.UnitatNegociID, cKey).CompresBase += amt
+		getCross(uID, cKey).CompresBase += amt
 	}
 
 	// 3. Despeses no facturables (Import Total)
@@ -1155,11 +1174,15 @@ func (s *PostgresStore) GetFinInformeResultats(ctx context.Context, dataInici, d
 		}
 		amt := d.ImportTotal * factor
 		resp.TotalDespeses += amt
-		uRow := ensureUnit(d.UnitatNegociID)
+		uID := "__general__"
+		if d.UnitatNegociID != nil && *d.UnitatNegociID != "" {
+			uID = *d.UnitatNegociID
+		}
+		uRow := ensureUnit(uID)
 		uRow.DespesesImport += amt
 		cRow, cKey := ensureCoach(d.EntrenadorID)
 		cRow.DespesesImport += amt
-		getCross(d.UnitatNegociID, cKey).DespesesImport += amt
+		getCross(uID, cKey).DespesesImport += amt
 	}
 
 	finalizeRow := func(r *models.FinAnalyticalRow) {

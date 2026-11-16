@@ -16,7 +16,8 @@ import {
   Loader2,
   RefreshCw,
   UserCheck,
-  UserX
+  UserX,
+  CreditCard
 } from 'lucide-react'
 import { 
   getAtletes, 
@@ -26,6 +27,13 @@ import {
   reassignAtleta, 
   updateAtletaDetails 
 } from '../api/entrenador'
+import {
+  getAtletaEconomica,
+  updateAtletaEconomica,
+  listFinArticles,
+  type AtletaEconomicaResponse,
+  type FinArticle
+} from '../api/finances'
 import type { UserStatusHistory } from '../types'
 
 interface AtletaItem {
@@ -62,6 +70,52 @@ export const AthletesManagerPage: React.FC = () => {
   const [entrenadorsList, setEntrenadorsList] = useState<{ id: string; nom: string }[]>([])
   const [selectedEntrenadorId, setSelectedEntrenadorId] = useState('')
   const [reassigning, setReassigning] = useState(false)
+
+  // Economica & Quota modal state
+  const [economicaAtleta, setEconomicaAtleta] = useState<AtletaItem | null>(null)
+  const [economicaData, setEconomicaData] = useState<AtletaEconomicaResponse | null>(null)
+  const [articlesList, setArticlesList] = useState<FinArticle[]>([])
+  const [economicaLoading, setEconomicaLoading] = useState(false)
+  const [economicaSaving, setEconomicaSaving] = useState(false)
+
+  const openEconomicaModal = async (atleta: AtletaItem) => {
+    setEconomicaAtleta(atleta)
+    setEconomicaLoading(true)
+    try {
+      const [eco, arts] = await Promise.all([
+        getAtletaEconomica(atleta.id),
+        listFinArticles()
+      ])
+      setEconomicaData(eco)
+      setArticlesList(arts.filter(a => a.actiu))
+    } catch (err: any) {
+      console.error(err)
+      showToast('Error carregant dades econòmiques', 'error')
+    } finally {
+      setEconomicaLoading(false)
+    }
+  }
+
+  const handleSaveEconomica = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!economicaAtleta || !economicaData) return
+    try {
+      setEconomicaSaving(true)
+      await updateAtletaEconomica(economicaAtleta.id, {
+        article_quota_id: economicaData.article_quota_id || null,
+        forma_pagament: economicaData.forma_pagament || 'sepa_domiciliacio',
+        iban: economicaData.iban || '',
+        pausat_facturacio: !!economicaData.pausat_facturacio
+      })
+      showToast('Configuració econòmica guardada!')
+      setEconomicaAtleta(null)
+    } catch (err: any) {
+      console.error(err)
+      showToast('Error guardant configuració econòmica', 'error')
+    } finally {
+      setEconomicaSaving(false)
+    }
+  }
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type })
@@ -388,6 +442,14 @@ export const AthletesManagerPage: React.FC = () => {
                     <span>Reassignar</span>
                   </button>
                   <button
+                    onClick={() => openEconomicaModal(atleta)}
+                    className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg flex items-center gap-1 font-bold transition-colors"
+                    title="Quota i Facturació Recurrent"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Quota</span>
+                  </button>
+                  <button
                     onClick={() => navigate(`/informe?atletaId=${atleta.id}`)}
                     className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg flex items-center gap-1 font-bold transition-colors ml-auto"
                     title="Veure informe de sessions"
@@ -481,6 +543,14 @@ export const AthletesManagerPage: React.FC = () => {
                             title="Reassignar a un altre entrenador"
                           >
                             <ArrowLeftRight className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openEconomicaModal(atleta)}
+                            className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1 font-bold text-xs"
+                            title="Quota i Facturació Recurrent"
+                          >
+                            <CreditCard className="w-4 h-4 text-emerald-600" />
+                            <span>Quota</span>
                           </button>
                           <button
                             onClick={() => navigate(`/informe?atletaId=${atleta.id}`)}
@@ -705,6 +775,138 @@ export const AthletesManagerPage: React.FC = () => {
                 Confirmar Reassignació
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL CONFIGURACIÓ ECONÒMICA & QUOTA */}
+      {economicaAtleta && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <div className="glass-card bg-bg-surface w-full max-w-lg p-6 rounded-2xl shadow-2xl border border-border space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <h3 className="text-base font-black text-text-primary flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-emerald-600" />
+                Quota & Facturació Recurrent
+              </h3>
+              <button
+                onClick={() => setEconomicaAtleta(null)}
+                className="text-text-muted hover:text-text-primary p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {economicaLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2 text-text-muted text-xs">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
+                <span>Carregant dades econòmiques...</span>
+              </div>
+            ) : economicaData && (
+              <form onSubmit={handleSaveEconomica} className="space-y-4 text-xs">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm">{economicaData.nom} {economicaData.cognoms}</div>
+                    <div className="text-[11px] text-slate-500">{economicaData.email} {economicaData.nif_cif ? `· NIF: ${economicaData.nif_cif}` : ''}</div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                    Atleta
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                    Article de Quota Recurrent
+                  </label>
+                  <select
+                    value={economicaData.article_quota_id || ''}
+                    onChange={e => setEconomicaData({ ...economicaData, article_quota_id: e.target.value || null })}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  >
+                    <option value="">Sense quota recurrent vinculada</option>
+                    {articlesList.filter(a => a.es_recurrent).map(art => (
+                      <option key={art.id} value={art.id}>
+                        {art.nom} - {art.preu_base} € (+IVA) ({art.periodicitat_mesos === 1 ? 'Mensual' : art.periodicitat_mesos === 3 ? 'Trimestral' : art.periodicitat_mesos === 6 ? 'Semestral' : 'Anual'})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Només es mostren els articles marcats com a 'Quota Recurrent' al catàleg.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Forma de Pagament
+                    </label>
+                    <select
+                      value={economicaData.forma_pagament || 'sepa_domiciliacio'}
+                      onChange={e => setEconomicaData({ ...economicaData, forma_pagament: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium"
+                    >
+                      <option value="sepa_domiciliacio">🏦 Domiciliació SEPA (Remesa)</option>
+                      <option value="transferencia">📱 Transferència / Bizum</option>
+                      <option value="targeta">💳 Targeta / Stripe</option>
+                      <option value="efectiu">💵 Efectiu</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Compte IBAN (per a remeses)
+                    </label>
+                    <input
+                      type="text"
+                      value={economicaData.iban || ''}
+                      onChange={e => setEconomicaData({ ...economicaData, iban: e.target.value })}
+                      placeholder="ES00 0000 0000 0000 0000 0000"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* TOGGLE PAUSAT PER A FACTURACIÓ */}
+                <div className="p-3.5 bg-amber-50/60 border border-amber-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-xs text-amber-950 flex items-center gap-1.5">
+                        <span>⏸️ Pausat per a facturació</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-bold">Només Entrenadors</span>
+                      </div>
+                      <div className="text-[11px] text-slate-600">
+                        Si l'atleta està lesionat o de baixa temporal, activa la pausa per excloure'l de la graella periòdica.
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-3">
+                      <input
+                        type="checkbox"
+                        checked={economicaData.pausat_facturacio}
+                        onChange={e => setEconomicaData({ ...economicaData, pausat_facturacio: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEconomicaAtleta(null)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                  >
+                    Cancel·lar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={economicaSaving}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {economicaSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    Guardar Configuració
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

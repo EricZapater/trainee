@@ -248,6 +248,21 @@ type Store interface {
 
 	GetFinInformeResultats(ctx context.Context, dataInici, dataFi, mode string) (*models.FinInformeResultatsResponse, error)
 	GetFinCashflowForecast(ctx context.Context, horitzoDies int, inclouEndarrerits bool) (*models.FinCashflowForecastResponse, error)
+
+	// Atleta Economica & Quota
+	GetAtletaEconomica(ctx context.Context, usuariID string) (*models.AtletaEconomicaResponse, error)
+	UpdateAtletaEconomica(ctx context.Context, usuariID string, req models.AtletaEconomicaRequest) (*models.AtletaEconomicaResponse, error)
+	UpdateAtletaPausaFacturacio(ctx context.Context, usuariID string, pausat bool, coachID string) error
+
+	// Graella Facturació Periòdica del Mes
+	GetGraellaMes(ctx context.Context, mes string) (*models.GraellaMesResponse, error)
+	EmetreGraella(ctx context.Context, req models.EmetreGraellaRequest) (*models.EmetreGraellaResponse, error)
+
+	// Despeses recurrents mensuals
+	GenerarDespesesRecurrentsMes(ctx context.Context, anyMes string) (int, error)
+
+	// Cashflow Dinàmic
+	GetDynamicCashflowForecast(ctx context.Context, pastMonths, futureMonths int) (*models.DynamicCashflowForecast, error)
 }
 
 
