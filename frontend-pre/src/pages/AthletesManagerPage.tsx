@@ -38,6 +38,7 @@ import type { UserStatusHistory } from '../types'
 
 interface AtletaItem {
   id: string
+  usuari_id?: string
   nom: string
   cognoms: string
   email: string
@@ -82,8 +83,9 @@ export const AthletesManagerPage: React.FC = () => {
     setEconomicaAtleta(atleta)
     setEconomicaLoading(true)
     try {
+      const targetId = atleta.usuari_id || atleta.id
       const [eco, arts] = await Promise.all([
-        getAtletaEconomica(atleta.id),
+        getAtletaEconomica(targetId),
         listFinArticles()
       ])
       setEconomicaData(eco)
@@ -101,7 +103,8 @@ export const AthletesManagerPage: React.FC = () => {
     if (!economicaAtleta || !economicaData) return
     try {
       setEconomicaSaving(true)
-      await updateAtletaEconomica(economicaAtleta.id, {
+      const targetId = economicaAtleta.usuari_id || economicaAtleta.id
+      await updateAtletaEconomica(targetId, {
         article_quota_id: economicaData.article_quota_id || null,
         forma_pagament: economicaData.forma_pagament || 'sepa_domiciliacio',
         iban: economicaData.iban || '',

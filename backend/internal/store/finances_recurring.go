@@ -14,7 +14,26 @@ import (
 // 1. GESTIÓ ECONÒMICA DE L'ATLETA & PAUSA
 // ============================================================
 
-func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, usuariID string) (*models.AtletaEconomicaResponse, error) {
+func (s *PostgresStore) resolveUsuariID(ctx context.Context, athleteOrUserID string) (string, error) {
+	var realUserID string
+	err := s.pool.QueryRow(ctx, `
+		SELECT id FROM usuaris WHERE id = $1
+		UNION
+		SELECT usuari_id FROM atletes WHERE id = $1
+		LIMIT 1
+	`, athleteOrUserID).Scan(&realUserID)
+	if err != nil {
+		return "", fmt.Errorf("usuari o atleta no trobat: %w", err)
+	}
+	return realUserID, nil
+}
+
+func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, athleteOrUserID string) (*models.AtletaEconomicaResponse, error) {
+	usuariID, err := s.resolveUsuariID(ctx, athleteOrUserID)
+	if err != nil {
+		return nil, err
+	}
+
 	// Assegurar primer que existeix a fin_clients
 	_, _ = s.pool.Exec(ctx, `
 		INSERT INTO fin_clients (usuari_id, nom_fiscal, email, actiu)
@@ -31,7 +50,7 @@ func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, usuariID string)
 	var coachID *string
 	var pausatData *time.Time
 
-	err := s.pool.QueryRow(ctx, `
+	err = s.pool.QueryRow(ctx, `
 		SELECT u.id, u.nom, COALESCE(u.cognoms, ''), u.email,
 		       COALESCE(fc.nom_fiscal, ''), COALESCE(fc.nif_cif, ''), COALESCE(fc.adreca, ''), COALESCE(fc.poblacio, ''), COALESCE(fc.cp, ''),
 		       u.article_quota_id, a.nom, a.preu_base::float8, a.iva_percentatge::float8,
@@ -70,7 +89,12 @@ func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, usuariID string)
 	return &res, nil
 }
 
-func (s *PostgresStore) UpdateAtletaEconomica(ctx context.Context, usuariID string, req models.AtletaEconomicaRequest) (*models.AtletaEconomicaResponse, error) {
+func (s *PostgresStore) UpdateAtletaEconomica(ctx context.Context, athleteOrUserID string, req models.AtletaEconomicaRequest) (*models.AtletaEconomicaResponse, error) {
+	usuariID, err := s.resolveUsuariID(ctx, athleteOrUserID)
+	if err != nil {
+		return nil, err
+	}
+
 	forma := req.FormaPagament
 	if forma == "" {
 		forma = "sepa_domiciliacio"
@@ -84,7 +108,7 @@ func (s *PostgresStore) UpdateAtletaEconomica(ctx context.Context, usuariID stri
 		}
 	}
 
-	_, err := s.pool.Exec(ctx, `
+	_, err = s.pool.Exec(ctx, `
 		UPDATE usuaris
 		SET article_quota_id = $1,
 		    forma_pagament = $2,
@@ -150,13 +174,18 @@ func (s *PostgresStore) UpdateAtletaEconomica(ctx context.Context, usuariID stri
 	return s.GetAtletaEconomica(ctx, usuariID)
 }
 
-func (s *PostgresStore) UpdateAtletaPausaFacturacio(ctx context.Context, usuariID string, pausat bool, coachID string) error {
+func (s *PostgresStore) UpdateAtletaPausaFacturacio(ctx context.Context, athleteOrUserID string, pausat bool, coachID string) error {
+	usuariID, err := s.resolveUsuariID(ctx, athleteOrUserID)
+	if err != nil {
+		return err
+	}
+
 	var coachUUID *string
 	if coachID != "" {
 		coachUUID = &coachID
 	}
 
-	_, err := s.pool.Exec(ctx, `
+	_, err = s.pool.Exec(ctx, `
 		UPDATE usuaris
 		SET pausat_facturacio = $1,
 		    pausat_facturacio_per = $2,

@@ -124,8 +124,8 @@ export async function updateCompeticioTipus(competicioId: string, tipus: string)
   await api.patch(`/entrenador/competicions/${competicioId}/tipus`, { tipus })
 }
 
-export async function getAtletes(): Promise<{ id: string; nom: string; cognoms: string; email: string; actiu: boolean }[]> {
-  const res = await api.get<{ id: string; nom: string; cognoms: string; email: string; actiu: boolean }[]>('/entrenador/atletes')
+export async function getAtletes(): Promise<{ id: string; usuari_id?: string; nom: string; cognoms: string; email: string; actiu: boolean }[]> {
+  const res = await api.get<{ id: string; usuari_id?: string; nom: string; cognoms: string; email: string; actiu: boolean }[]>('/entrenador/atletes')
   return res.data
 }
 
