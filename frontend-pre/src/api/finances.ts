@@ -457,7 +457,11 @@ export interface AtletaEconomicaResponse {
   nom: string
   cognoms: string
   email: string
+  nom_fiscal?: string
   nif_cif: string
+  adreca?: string
+  poblacio?: string
+  cp?: string
   article_quota_id?: string | null
   article_quota_nom?: string
   article_preu_base?: number
@@ -478,6 +482,11 @@ export interface AtletaEconomicaRequest {
   forma_pagament: string
   iban: string
   pausat_facturacio: boolean
+  nom_fiscal?: string
+  nif_cif?: string
+  adreca?: string
+  poblacio?: string
+  cp?: string
 }
 
 export interface GraellaMesItem {

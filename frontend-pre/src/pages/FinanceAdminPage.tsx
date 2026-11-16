@@ -148,6 +148,7 @@ export const FinanceAdminPage: React.FC = () => {
   const [clients, setClients] = useState<FinClient[]>([])
   const [proveidors, setProveidors] = useState<FinProveidor[]>([])
   const [activeConfigSubtab, setActiveConfigSubtab] = useState<'empresa' | 'unitats' | 'series' | 'impostos' | 'articles' | 'clients' | 'proveidors'>('empresa')
+  const [filterOnlySenseNif, setFilterOnlySenseNif] = useState(false)
 
   // Modals de mestres i edició
   const [showUnitatModal, setShowUnitatModal] = useState(false)
@@ -1836,7 +1837,7 @@ export const FinanceAdminPage: React.FC = () => {
               { id: 'series', label: 'Sèries & Comptadors', icon: Hash },
               { id: 'impostos', label: 'Tipus d\'IVA & Retencions', icon: Percent },
               { id: 'articles', label: 'Catàleg d\'Articles', icon: Package },
-              { id: 'clients', label: 'Clients Fiscals', icon: Users },
+              { id: 'clients', label: 'Xivato NIF (Atletes)', icon: Users, badge: clients.filter(c => !c.nif_cif || c.nif_cif.trim() === '').length },
               { id: 'proveidors', label: 'Proveïdors', icon: Tag },
             ].map(tab => {
               const Icon = tab.icon
@@ -1851,6 +1852,13 @@ export const FinanceAdminPage: React.FC = () => {
                 >
                   <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
+                  {tab.badge && tab.badge > 0 ? (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                      isSelected ? 'bg-amber-200 text-amber-900' : 'bg-amber-500 text-white'
+                    }`}>
+                      {tab.badge}
+                    </span>
+                  ) : null}
                 </button>
               )
             })}
@@ -2266,82 +2274,193 @@ export const FinanceAdminPage: React.FC = () => {
             </div>
           )}
 
-          {/* SUBTAB 6: CLIENTS */}
-          {activeConfigSubtab === 'clients' && (
-            <div className="glass-card p-6 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b gap-3">
-                <div>
-                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-emerald-600" /> Clients Fiscals & Destinataris
-                  </h3>
-                  <p className="text-xs text-slate-500">Base de clients per emetre factures legals de venda i cobraments.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={async () => {
-                      const res = await syncAtletesToClients()
-                      showNotify('success', `S'han importat ${res.imported_count} atletes com a clients!`)
-                      const cl = await listFinClients()
-                      setClients(cl)
-                    }}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300"
-                  >
-                    Sincronitzar Atletes
-                  </button>
-                  <button
-                    onClick={openCreateClient}
-                    className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" /> Nou Client
-                  </button>
-                </div>
-              </div>
+          {/* SUBTAB 6: XIVATO D'ATLETES & CONTROL DE NIF */}
+          {activeConfigSubtab === 'clients' && (() => {
+            const senseNifList = clients.filter(c => !c.nif_cif || c.nif_cif.trim() === '')
+            const ambNifList = clients.filter(c => c.nif_cif && c.nif_cif.trim() !== '')
+            const displayedClients = filterOnlySenseNif ? senseNifList : clients
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
-                    <tr>
-                      <th className="p-3">Nom Fiscal</th>
-                      <th className="p-3">NIF / CIF</th>
-                      <th className="p-3">Usuari Vinculat</th>
-                      <th className="p-3">Email & Telèfon</th>
-                      <th className="p-3">Població</th>
-                      <th className="p-3 text-center">Estat</th>
-                      <th className="p-3 text-right">Accions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {clients.map(c => (
-                      <tr key={c.id} className="hover:bg-slate-50/50">
-                        <td className="p-3 font-bold text-slate-900">{c.nom_fiscal}</td>
-                        <td className="p-3 font-mono text-slate-700">{c.nif_cif || '—'}</td>
-                        <td className="p-3 text-slate-600">{c.usuari_nom || '—'}</td>
-                        <td className="p-3 text-slate-500">{c.email || c.telefon || '—'}</td>
-                        <td className="p-3 text-slate-500">{c.poblacio || '—'}</td>
-                        <td className="p-3 text-center">
-                          {c.actiu ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Actiu</span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => openEditClient(c)}
-                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
-                            title="Editar client"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            <span>Editar</span>
-                          </button>
-                        </td>
+            return (
+              <div className="glass-card p-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b gap-3">
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                      <Users className="w-5 h-5 text-emerald-600" /> Estat Fiscal dels Atletes (Control de NIF)
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Cada atleta és responsable de mantenir les seves dades fiscals des del seu perfil o la seva fitxa. Aquí pots auditar quins atletes estan pendents d'introduir el NIF.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        const res = await syncAtletesToClients()
+                        showNotify('success', `S'han sincronitzat ${res.imported_count} atletes!`)
+                        const cl = await listFinClients()
+                        setClients(cl)
+                      }}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 flex items-center gap-1.5 transition-colors"
+                      title="Sincronitzar atletes amb el registre fiscal"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Sincronitzar Atletes
+                    </button>
+                    <button
+                      onClick={openCreateClient}
+                      className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs rounded-xl border border-emerald-200 flex items-center gap-1.5 transition-colors"
+                      title="Afegir client manual o patrocinador extern"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Client Extern
+                    </button>
+                  </div>
+                </div>
+
+                {/* KPI Cards & Filtre Ràpid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div 
+                    onClick={() => setFilterOnlySenseNif(false)}
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                      !filterOnlySenseNif 
+                        ? 'bg-slate-900 text-white shadow-md border-slate-900' 
+                        : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <div className="text-[11px] font-bold uppercase tracking-wider opacity-70">Total Atletes Registrats</div>
+                    <div className="text-xl font-black mt-0.5">{clients.length}</div>
+                    <div className="text-[10px] mt-0.5 opacity-80">Veure tots els atletes</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setFilterOnlySenseNif(true)}
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                      filterOnlySenseNif 
+                        ? 'bg-amber-600 text-white shadow-md border-amber-600' 
+                        : 'bg-amber-50 hover:bg-amber-100/80 border-amber-200 text-amber-950'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-[11px] font-bold uppercase tracking-wider">⚠️ Pendents de NIF (Xivato)</div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                        filterOnlySenseNif ? 'bg-white text-amber-900' : 'bg-amber-200 text-amber-900'
+                      }`}>
+                        {senseNifList.length}
+                      </span>
+                    </div>
+                    <div className="text-xl font-black mt-0.5">{senseNifList.length} atletes</div>
+                    <div className="text-[10px] mt-0.5 opacity-90">
+                      {filterOnlySenseNif ? '✓ Filtrant només pendents' : 'Fes clic per filtrar només aquests'}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">✓ Amb NIF Informat</div>
+                    <div className="text-xl font-black mt-0.5 text-emerald-900">{ambNifList.length} atletes</div>
+                    <div className="text-[10px] mt-0.5 text-emerald-700">A punt per emetre factura</div>
+                  </div>
+                </div>
+
+                {/* Avís si hi ha atletes pendents */}
+                {senseNifList.length > 0 && !filterOnlySenseNif && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">⚠️</span>
+                      <span>
+                        Hi ha <strong>{senseNifList.length} atletes</strong> sense NIF entrat. Quan s'emetin factures per aquests atletes, no tindran identificador fiscal legal.
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setFilterOnlySenseNif(true)}
+                      className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 font-bold text-[11px] rounded-lg transition-colors whitespace-nowrap"
+                    >
+                      Veure qui són ({senseNifList.length})
+                    </button>
+                  </div>
+                )}
+
+                {/* Taula d'Auditoria */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
+                      <tr>
+                        <th className="p-3">Atleta / Nom Fiscal</th>
+                        <th className="p-3">NIF / CIF</th>
+                        <th className="p-3">Email & Telèfon</th>
+                        <th className="p-3">Adreça & Població</th>
+                        <th className="p-3 text-center">Estat Fiscal</th>
+                        <th className="p-3 text-right">Accions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y">
+                      {displayedClients.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-text-muted">
+                            {filterOnlySenseNif ? '🎉 Cap atleta pendent de NIF! Tots tenen el NIF degudament informat.' : 'No s\'ha trobat cap atleta.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        displayedClients.map(c => {
+                          const hasNif = c.nif_cif && c.nif_cif.trim() !== ''
+
+                          return (
+                            <tr key={c.id} className={`hover:bg-slate-50/50 transition-colors ${!hasNif ? 'bg-amber-50/30' : ''}`}>
+                              <td className="p-3">
+                                <div className="font-bold text-slate-900">{c.nom_fiscal}</div>
+                                {c.usuari_nom && c.usuari_nom !== c.nom_fiscal && (
+                                  <div className="text-[10px] text-slate-400">Usuari: {c.usuari_nom}</div>
+                                )}
+                              </td>
+                              <td className="p-3">
+                                {hasNif ? (
+                                  <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                    {c.nif_cif}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                    ⚠️ Pendent de NIF
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-slate-600">
+                                <div>{c.email || '—'}</div>
+                                {c.telefon && <div className="text-[10px] text-slate-400">{c.telefon}</div>}
+                              </td>
+                              <td className="p-3 text-slate-600">
+                                {c.adreca ? (
+                                  <span>{c.adreca}{c.poblacio ? `, ${c.poblacio}` : ''}{c.cp ? ` (${c.cp})` : ''}</span>
+                                ) : (
+                                  <span className="text-slate-400 italic">Sense adreça fiscal</span>
+                                )}
+                              </td>
+                              <td className="p-3 text-center">
+                                {hasNif ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                    ✓ Complet
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                    Incomplet
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  onClick={() => openEditClient(c)}
+                                  className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
+                                  title="Editar dades fiscals de l'atleta"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  <span>Editar</span>
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* SUBTAB 7: PROVEÏDORS */}
           {activeConfigSubtab === 'proveidors' && (

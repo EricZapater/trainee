@@ -105,7 +105,12 @@ export const AthletesManagerPage: React.FC = () => {
         article_quota_id: economicaData.article_quota_id || null,
         forma_pagament: economicaData.forma_pagament || 'sepa_domiciliacio',
         iban: economicaData.iban || '',
-        pausat_facturacio: !!economicaData.pausat_facturacio
+        pausat_facturacio: !!economicaData.pausat_facturacio,
+        nom_fiscal: economicaData.nom_fiscal,
+        nif_cif: economicaData.nif_cif,
+        adreca: economicaData.adreca,
+        poblacio: economicaData.poblacio,
+        cp: economicaData.cp,
       })
       showToast('Configuració econòmica guardada!')
       setEconomicaAtleta(null)
@@ -861,6 +866,70 @@ export const AthletesManagerPage: React.FC = () => {
                       placeholder="ES00 0000 0000 0000 0000 0000"
                       className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono"
                     />
+                  </div>
+                </div>
+
+                {/* DADES FISCALS DE FACTURACIÓ */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                    <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                      📄 Dades Fiscals per a Factures
+                    </span>
+                    {!economicaData.nif_cif ? (
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                        ⚠️ NIF pendent
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        ✓ NIF informat
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-600 font-bold text-[11px] mb-1">NIF / NIE / CIF</label>
+                      <input
+                        type="text"
+                        value={economicaData.nif_cif || ''}
+                        onChange={e => setEconomicaData({ ...economicaData, nif_cif: e.target.value })}
+                        placeholder="12345678X"
+                        className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-mono uppercase"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 font-bold text-[11px] mb-1">Nom o Raó Social Fiscal</label>
+                      <input
+                        type="text"
+                        value={economicaData.nom_fiscal || ''}
+                        onChange={e => setEconomicaData({ ...economicaData, nom_fiscal: e.target.value })}
+                        placeholder={`${economicaData.nom} ${economicaData.cognoms}`}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
+                      <label className="block text-slate-600 font-bold text-[11px] mb-1">Adreça Fiscal</label>
+                      <input
+                        type="text"
+                        value={economicaData.adreca || ''}
+                        onChange={e => setEconomicaData({ ...economicaData, adreca: e.target.value })}
+                        placeholder="Carrer, número, pis"
+                        className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 font-bold text-[11px] mb-1">Codi Postal</label>
+                      <input
+                        type="text"
+                        value={economicaData.cp || ''}
+                        onChange={e => setEconomicaData({ ...economicaData, cp: e.target.value })}
+                        placeholder="08001"
+                        className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-mono"
+                      />
+                    </div>
                   </div>
                 </div>
 

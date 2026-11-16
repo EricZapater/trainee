@@ -609,6 +609,11 @@ type AtletaEconomicaRequest struct {
 	FormaPagament    string  `json:"forma_pagament"` // sepa_domiciliacio, transferencia, targeta, efectiu
 	Iban             string  `json:"iban"`
 	PausatFacturacio bool    `json:"pausat_facturacio"`
+	NomFiscal        *string `json:"nom_fiscal,omitempty"`
+	NifCif           *string `json:"nif_cif,omitempty"`
+	Adreca           *string `json:"adreca,omitempty"`
+	Poblacio         *string `json:"poblacio,omitempty"`
+	Cp               *string `json:"cp,omitempty"`
 }
 
 type AtletaEconomicaResponse struct {
@@ -616,7 +621,11 @@ type AtletaEconomicaResponse struct {
 	Nom                 string     `json:"nom"`
 	Cognoms             string     `json:"cognoms"`
 	Email               string     `json:"email"`
+	NomFiscal           string     `json:"nom_fiscal"`
 	NifCif              string     `json:"nif_cif"`
+	Adreca              string     `json:"adreca"`
+	Poblacio            string     `json:"poblacio"`
+	Cp                  string     `json:"cp"`
 	ArticleQuotaID      *string    `json:"article_quota_id"`
 	ArticleQuotaNom     *string    `json:"article_quota_nom,omitempty"`
 	ArticlePreuBase     *float64   `json:"article_preu_base,omitempty"`

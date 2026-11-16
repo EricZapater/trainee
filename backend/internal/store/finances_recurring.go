@@ -25,7 +25,7 @@ func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, usuariID string)
 	`, usuariID)
 
 	var res models.AtletaEconomicaResponse
-	var nif, unID, unNom, artNom *string
+	var unID, unNom, artNom *string
 	var preuBase, ivaPct, totalPvp *float64
 	var periodicitat *int
 	var coachID *string
@@ -33,7 +33,7 @@ func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, usuariID string)
 
 	err := s.pool.QueryRow(ctx, `
 		SELECT u.id, u.nom, COALESCE(u.cognoms, ''), u.email,
-		       COALESCE(fc.nif_cif, ''),
+		       COALESCE(fc.nom_fiscal, ''), COALESCE(fc.nif_cif, ''), COALESCE(fc.adreca, ''), COALESCE(fc.poblacio, ''), COALESCE(fc.cp, ''),
 		       u.article_quota_id, a.nom, a.preu_base::float8, a.iva_percentatge::float8,
 		       ROUND((a.preu_base * (1 + a.iva_percentatge / 100.0))::numeric, 2)::float8,
 		       a.periodicitat_mesos,
@@ -47,7 +47,7 @@ func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, usuariID string)
 		WHERE u.id = $1
 	`, usuariID).Scan(
 		&res.UsuariID, &res.Nom, &res.Cognoms, &res.Email,
-		&nif,
+		&res.NomFiscal, &res.NifCif, &res.Adreca, &res.Poblacio, &res.Cp,
 		&res.ArticleQuotaID, &artNom, &preuBase, &ivaPct, &totalPvp, &periodicitat,
 		&unID, &unNom,
 		&res.FormaPagament, &res.Iban,
@@ -57,9 +57,6 @@ func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, usuariID string)
 		return nil, err
 	}
 
-	if nif != nil {
-		res.NifCif = *nif
-	}
 	res.ArticleQuotaNom = artNom
 	res.ArticlePreuBase = preuBase
 	res.ArticleIvaPct = ivaPct
@@ -100,11 +97,54 @@ func (s *PostgresStore) UpdateAtletaEconomica(ctx context.Context, usuariID stri
 		return nil, err
 	}
 
-	// Sincronitzar també l'IBAN a fin_clients si s'ha especificat
+	// Assegurar primer que existeix a fin_clients
+	_, _ = s.pool.Exec(ctx, `
+		INSERT INTO fin_clients (usuari_id, nom_fiscal, email, actiu)
+		SELECT id, TRIM(nom || ' ' || COALESCE(cognoms, '')), email, TRUE
+		FROM usuaris
+		WHERE id = $1
+		  AND NOT EXISTS (SELECT 1 FROM fin_clients fc WHERE fc.usuari_id = $1)
+	`, usuariID)
+
+	// Sincronitzar camps fiscals i IBAN a fin_clients si s'han especificat
+	setClauses := []string{"updated_at = now()"}
+	args := []interface{}{usuariID}
+	argIdx := 2
+
 	if strings.TrimSpace(req.Iban) != "" {
-		_, _ = s.pool.Exec(ctx, `
-			UPDATE fin_clients SET iban = $1, updated_at = now() WHERE usuari_id = $2
-		`, strings.TrimSpace(req.Iban), usuariID)
+		setClauses = append(setClauses, fmt.Sprintf("iban = $%d", argIdx))
+		args = append(args, strings.TrimSpace(req.Iban))
+		argIdx++
+	}
+	if req.NomFiscal != nil && strings.TrimSpace(*req.NomFiscal) != "" {
+		setClauses = append(setClauses, fmt.Sprintf("nom_fiscal = $%d", argIdx))
+		args = append(args, strings.TrimSpace(*req.NomFiscal))
+		argIdx++
+	}
+	if req.NifCif != nil {
+		setClauses = append(setClauses, fmt.Sprintf("nif_cif = $%d", argIdx))
+		args = append(args, strings.TrimSpace(*req.NifCif))
+		argIdx++
+	}
+	if req.Adreca != nil {
+		setClauses = append(setClauses, fmt.Sprintf("adreca = $%d", argIdx))
+		args = append(args, strings.TrimSpace(*req.Adreca))
+		argIdx++
+	}
+	if req.Poblacio != nil {
+		setClauses = append(setClauses, fmt.Sprintf("poblacio = $%d", argIdx))
+		args = append(args, strings.TrimSpace(*req.Poblacio))
+		argIdx++
+	}
+	if req.Cp != nil {
+		setClauses = append(setClauses, fmt.Sprintf("cp = $%d", argIdx))
+		args = append(args, strings.TrimSpace(*req.Cp))
+		argIdx++
+	}
+
+	if len(setClauses) > 1 {
+		query := fmt.Sprintf("UPDATE fin_clients SET %s WHERE usuari_id = $1", strings.Join(setClauses, ", "))
+		_, _ = s.pool.Exec(ctx, query, args...)
 	}
 
 	return s.GetAtletaEconomica(ctx, usuariID)

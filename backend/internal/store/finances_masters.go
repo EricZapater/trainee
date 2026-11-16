@@ -285,6 +285,9 @@ func (s *PostgresStore) UpdateFinUnitatNegoci(ctx context.Context, id string, re
 // ============================================================
 
 func (s *PostgresStore) ListFinClients(ctx context.Context) ([]models.FinClient, error) {
+	// Sincronitzar automàticament atletes que encara no tinguin fitxa a fin_clients
+	_, _ = s.SyncAtletesToFinClients(ctx)
+
 	rows, err := s.pool.Query(ctx, `
 		SELECT c.id, c.usuari_id,
 		       CASE WHEN u.id IS NOT NULL THEN TRIM(u.nom || ' ' || COALESCE(u.cognoms, '')) ELSE NULL END AS usuari_nom,
