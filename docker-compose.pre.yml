@@ -1,0 +1,55 @@
+services:
+  trainee-backend-pre:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-ericzapater}/trainee-backend-pre:latest
+    container_name: trainee-backend-pre
+    restart: unless-stopped
+    env_file:
+      - .env.backend
+    environment:
+      - TZ=Europe/Madrid
+      - ENV=pre
+      - DISABLE_MAIL=true
+      - MAILING_ENABLED=false
+      - SMTP_HOST=
+      - SMTP_USER=
+      - BREVO_API_KEY=
+    volumes:
+      - backend_uploads_pre:/app/uploads
+    networks:
+      - db
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trainee-backend-pre.rule=Host(`pre.api.trainee.ericzapater.cat`)"
+      - "traefik.http.routers.trainee-backend-pre.entrypoints=websecure"
+      - "traefik.http.routers.trainee-backend-pre.tls.certresolver=le"
+      - "traefik.http.routers.trainee-backend-pre.service=trainee-backend-pre"
+      - "traefik.http.services.trainee-backend-pre.loadbalancer.server.port=8080"
+      - "traefik.docker.network=proxy"
+
+  trainee-frontend-pre:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-ericzapater}/trainee-frontend-pre:latest
+    container_name: trainee-frontend-pre
+    restart: unless-stopped
+    env_file:
+      - .env.frontend
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trainee-frontend-pre.rule=Host(`pre.trainee.ericzapater.cat`)"
+      - "traefik.http.routers.trainee-frontend-pre.entrypoints=websecure"
+      - "traefik.http.routers.trainee-frontend-pre.tls.certresolver=le"
+      - "traefik.http.routers.trainee-frontend-pre.service=trainee-frontend-pre"
+      - "traefik.http.services.trainee-frontend-pre.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+
+volumes:
+  backend_uploads_pre:
+    name: backend_uploads_pre
+
+networks:
+  proxy:
+    external: true
+  db:
+    external: true

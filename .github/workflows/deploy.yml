@@ -1,4 +1,4 @@
-name: Deploy Trainee to VPS
+name: Continuous Deployment (CD)
 
 on:
   push:
@@ -18,107 +18,265 @@ on:
           - pro
           - all
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
-  build-and-push-images:
+  # -----------------------------------------------------------------------
+  # Avaluació de condicions d'execució (PRE vs PRO)
+  # -----------------------------------------------------------------------
+  check-targets:
+    name: Check Deployment Target
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     outputs:
-      build_pre: ${{ steps.flags.outputs.build_pre }}
-      build_pro: ${{ steps.flags.outputs.build_pro }}
-
+      deploy_pre: ${{ steps.flags.outputs.deploy_pre }}
+      deploy_pro: ${{ steps.flags.outputs.deploy_pro }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Compute environment flags
+      - name: Compute deployment flags
         id: flags
         run: |
-          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-          echo "IMAGE_NAME=$REPO_LOWER" >> $GITHUB_ENV
-          
           TARGET="${{ github.event.inputs.target || 'auto' }}"
           REF="${{ github.ref }}"
           
-          BUILD_PRE=false
-          BUILD_PRO=false
+          DEPLOY_PRE=false
+          DEPLOY_PRO=false
           
           if [ "$TARGET" = "pre" ]; then
-            BUILD_PRE=true
+            DEPLOY_PRE=true
           elif [ "$TARGET" = "pro" ]; then
-            BUILD_PRO=true
+            DEPLOY_PRO=true
           elif [ "$TARGET" = "all" ]; then
-            BUILD_PRE=true
-            BUILD_PRO=true
+            DEPLOY_PRE=true
+            DEPLOY_PRO=true
           elif [ "$REF" = "refs/heads/pre" ]; then
-            BUILD_PRE=true
+            DEPLOY_PRE=true
           elif [ "$REF" = "refs/heads/main" ]; then
-            BUILD_PRO=true
+            DEPLOY_PRO=true
           fi
           
-          echo "build_pre=$BUILD_PRE" >> $GITHUB_OUTPUT
-          echo "build_pro=$BUILD_PRO" >> $GITHUB_OUTPUT
-          echo "Target=$TARGET, Ref=$REF => BUILD_PRE=$BUILD_PRE, BUILD_PRO=$BUILD_PRO"
+          echo "deploy_pre=$DEPLOY_PRE" >> $GITHUB_OUTPUT
+          echo "deploy_pro=$DEPLOY_PRO" >> $GITHUB_OUTPUT
+          echo "Target=$TARGET, Ref=$REF => DEPLOY_PRE=$DEPLOY_PRE, DEPLOY_PRO=$DEPLOY_PRO"
 
-      # ============================================================
-      # IMATGES PRO (Branques main / target pro / all)
-      # ============================================================
-      - name: Build and push Backend Docker image (PRO)
-        if: steps.flags.outputs.build_pro == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
-
-      - name: Build and push Frontend Docker image (PRO)
-        if: steps.flags.outputs.build_pro == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
-
-      # ============================================================
-      # IMATGES PRE (Branques pre / target pre / all)
-      # ============================================================
-      - name: Build and push Backend Docker image (PRE)
-        if: steps.flags.outputs.build_pre == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend-pre:latest
-
-      - name: Build and push Frontend Docker image (PRE - React)
-        if: steps.flags.outputs.build_pre == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend-pre
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend-pre:latest
-
-  deploy:
+  # =======================================================================
+  # PIPELINE PRE (Model Yule amb PRE_SSH_HOST, PRE_SSH_USER, PRE_SSH_KEY)
+  # =======================================================================
+  build-and-push-pre:
+    name: Build & Publish PRE Images (GHCR)
+    needs: check-targets
+    if: needs.check-targets.outputs.deploy_pre == 'true'
     runs-on: ubuntu-latest
-    needs: build-and-push-images
-    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy to VPS
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Backend PRE
+      - name: Extract metadata for Backend PRE
+        id: meta-backend-pre
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/trainee-backend-pre
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build and push Backend PRE image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend-pre.outputs.tags }}
+          labels: ${{ steps.meta-backend-pre.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Frontend PRE
+      - name: Extract metadata for Frontend PRE
+        id: meta-frontend-pre
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/trainee-frontend-pre
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build and push Frontend PRE image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend-pre
+          file: ./frontend-pre/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend-pre.outputs.tags }}
+          labels: ${{ steps.meta-frontend-pre.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-pre:
+    name: Deploy Containers to Remote PRE VPS
+    needs: [check-targets, build-and-push-pre]
+    if: needs.check-targets.outputs.deploy_pre == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.pre.yml to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRE_SSH_HOST }}
+          username: ${{ secrets.PRE_SSH_USER }}
+          key: ${{ secrets.PRE_SSH_KEY }}
+          port: ${{ secrets.PRE_SSH_PORT || 22 }}
+          source: "docker-compose.pre.yml"
+          target: "/opt/apps/trainee"
+
+      - name: Execute remote deployment commands via SSH (PRE)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRE_SSH_HOST }}
+          username: ${{ secrets.PRE_SSH_USER }}
+          key: ${{ secrets.PRE_SSH_KEY }}
+          port: ${{ secrets.PRE_SSH_PORT || 22 }}
+          script: |
+            set -e
+            mkdir -p /opt/apps/trainee
+            cd /opt/apps/trainee
+            if [ -f docker-compose.pre.yml ]; then
+              mv -f docker-compose.pre.yml docker-compose.yml
+            fi
+            touch -a .env.backend .env.frontend
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker compose pull
+            docker compose up -d --remove-orphans || (sleep 4 && docker compose up -d --remove-orphans)
+            docker image prune -f || true
+            docker compose ps
+
+      # -----------------------------------------------------------------------
+      # Registre a RawCraft Monitor (PRE)
+      # -----------------------------------------------------------------------
+      - name: 🚀 Registrar Desplegament a RawCraft Monitor (PRE)
+        if: always()
+        env:
+          RAWCRAFT_API_KEY: ${{ secrets.RAWCRAFT_API_KEY }}
+          HEAD_COMMIT_MSG: ${{ github.event.head_commit.message || github.ref_name }}
+        run: |
+          SERVICES=("trainee-pre-back" "trainee-pre-front")
+          if [ -z "$RAWCRAFT_API_KEY" ]; then
+            echo "⚠️ Advertència: El secret RAWCRAFT_API_KEY no està definit a GitHub Secrets. Ometent registre."
+            exit 0
+          fi
+
+          COMMIT_MSG_JSON=$(echo "$HEAD_COMMIT_MSG" | jq -sR .)
+          STATUS="${{ job.status == 'success' && 'SUCCESS' || 'FAILED' }}"
+
+          for PRODUCT in "${SERVICES[@]}"; do
+            echo "🚀 Registrant desplegament a RawCraft Monitor per a: $PRODUCT (Estat: $STATUS)..."
+            curl -fsSL -X POST https://api.monitor.ericzapater.cat/api/v1/deploys \
+              -H "Content-Type: application/json" \
+              -H "X-Agent-Key: $RAWCRAFT_API_KEY" \
+              -d '{
+                "product_name": "'"$PRODUCT"'",
+                "environment": "production",
+                "version": "${{ github.ref_name }}",
+                "commit_sha": "${{ github.sha }}",
+                "commit_message": '"$COMMIT_MSG_JSON"',
+                "branch": "${{ github.ref_name }}",
+                "deployed_by": "${{ github.actor }}",
+                "status": "'"$STATUS"'"
+              }'
+            echo ""
+          done
+
+  # =======================================================================
+  # PIPELINE PRO (Entorn de Producció existent)
+  # =======================================================================
+  build-and-push-pro:
+    name: Build & Publish PRO Images (GHCR)
+    needs: check-targets
+    if: needs.check-targets.outputs.deploy_pro == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Backend PRO
+      - name: Extract metadata for Backend PRO
+        id: meta-backend-pro
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/trainee-backend
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build and push Backend PRO image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend-pro.outputs.tags }}
+          labels: ${{ steps.meta-backend-pro.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Frontend PRO
+      - name: Extract metadata for Frontend PRO
+        id: meta-frontend-pro
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/trainee-frontend
+          tags: |
+            type=sha,format=short,prefix=sha-
+            type=raw,value=latest
+
+      - name: Build and push Frontend PRO image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend-pro.outputs.tags }}
+          labels: ${{ steps.meta-frontend-pro.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-pro:
+    name: Deploy Containers to Remote PRO VPS
+    needs: [check-targets, build-and-push-pro]
+    if: needs.check-targets.outputs.deploy_pro == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to PRO VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -126,47 +284,22 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /opt/trainee 2>/dev/null || cd ~/trainee
-            
-            # Fer login al Github Container Registry des del VPS
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            SERVICES=""
-            if [ "${{ needs.build-and-push-images.outputs.build_pro }}" = "true" ]; then
-              SERVICES="$SERVICES trainee-backend trainee-frontend"
-            fi
-            if [ "${{ needs.build-and-push-images.outputs.build_pre }}" = "true" ]; then
-              SERVICES="$SERVICES trainee-backend-pre trainee-frontend-pre"
-            fi
-            
-            if [ -n "$SERVICES" ]; then
-              echo "Pulling and starting services: $SERVICES"
-              docker compose pull $SERVICES
-              docker compose up -d --no-deps $SERVICES
-              docker image prune -af
-            fi
+            echo "Pulling and starting services: trainee-backend trainee-frontend"
+            docker compose pull trainee-backend trainee-frontend
+            docker compose up -d --no-deps trainee-backend trainee-frontend
+            docker image prune -af
 
-      # ============================================================
-      # REGISTRE A RAWCRAFT MONITOR
-      # ============================================================
-      - name: 🚀 Registrar Desplegament a RawCraft Monitor
+      # -----------------------------------------------------------------------
+      # Registre a RawCraft Monitor (PRO)
+      # -----------------------------------------------------------------------
+      - name: 🚀 Registrar Desplegament a RawCraft Monitor (PRO)
         if: always()
         env:
           RAWCRAFT_API_KEY: ${{ secrets.RAWCRAFT_API_KEY }}
           HEAD_COMMIT_MSG: ${{ github.event.head_commit.message || github.ref_name }}
         run: |
-          SERVICES=()
-          if [ "${{ needs.build-and-push-images.outputs.build_pre }}" = "true" ]; then
-            SERVICES+=("trainee-pre-back" "trainee-pre-front")
-          fi
-          if [ "${{ needs.build-and-push-images.outputs.build_pro }}" = "true" ]; then
-            SERVICES+=("trainee-pro-back" "trainee-pro-front")
-          fi
-
-          if [ ${#SERVICES[@]} -eq 0 ]; then
-            echo "Cap servei desplegat per registrar a RawCraft Monitor."
-            exit 0
-          fi
-
+          SERVICES=("trainee-pro-back" "trainee-pro-front")
           if [ -z "$RAWCRAFT_API_KEY" ]; then
             echo "⚠️ Advertència: El secret RAWCRAFT_API_KEY no està definit a GitHub Secrets. Ometent registre."
             exit 0
