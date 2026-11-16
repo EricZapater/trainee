@@ -113,8 +113,7 @@ func (s *PostgresStore) UpdateAtletaEconomica(ctx context.Context, athleteOrUser
 		SET article_quota_id = $1,
 		    forma_pagament = $2,
 		    iban = $3,
-		    pausat_facturacio = $4,
-		    updated_at = now()
+		    pausat_facturacio = $4
 		WHERE id = $5
 	`, artID, forma, strings.TrimSpace(req.Iban), req.PausatFacturacio, usuariID)
 	if err != nil {
@@ -189,8 +188,7 @@ func (s *PostgresStore) UpdateAtletaPausaFacturacio(ctx context.Context, athlete
 		UPDATE usuaris
 		SET pausat_facturacio = $1,
 		    pausat_facturacio_per = $2,
-		    pausat_facturacio_data = now(),
-		    updated_at = now()
+		    pausat_facturacio_data = now()
 		WHERE id = $3
 	`, pausat, nullableUUID(coachUUID), usuariID)
 	return err
