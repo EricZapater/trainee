@@ -18,7 +18,8 @@ import {
   Tag,
   Package,
   Pencil,
-  Zap
+  Zap,
+  ChevronRight
 } from 'lucide-react'
 import {
   getFinConfiguracio,
@@ -88,6 +89,16 @@ const TAB_TITLES: Record<TabKey, string> = {
   resum: 'Visor de Marge (P&L)',
   tresoreria: 'Previsió de Caixa (Cashflow)',
   config: 'Mestres & Configuració'
+}
+
+const TAB_DESCRIPTIONS: Record<TabKey, string> = {
+  graella: 'Llançament periòdic de quotes i venciments del mes',
+  vendes: 'Factures puntuals, cobraments i vendes a terminis',
+  compres: 'Factures de compra, proveïdors i centres de cost',
+  despeses: 'Nòmines, autònoms, IRPF i pagaments fixes dia 1',
+  resum: 'Compte de resultats (P&L), marge brut i benefici net',
+  tresoreria: 'Flux de caixa dinàmic mòbil i tresoreria projectada',
+  config: 'Articles, formes de pagament, sèries de facturació, IVA i empresa',
 }
 
 export const FinanceAdminPage: React.FC = () => {
@@ -845,48 +856,30 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Header */}
-      <div className="glass-card p-4 sm:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* Breadcrumb & Contextual Header */}
+      <div className="glass-card p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-              Mòdul d'Administració & Tresoreria
-            </span>
-            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-              Veri*factu Ready
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1.5 text-xs text-text-muted font-medium mb-1.5">
+            <span className="text-text-secondary font-semibold">Administració</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-bold border border-emerald-200/60">
+              {TAB_TITLES[activeTab]}
             </span>
             {loading && (
-              <span className="text-xs text-slate-400 flex items-center gap-1">
+              <span className="text-xs text-slate-400 flex items-center gap-1 ml-2">
                 <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" /> Carregant...
               </span>
             )}
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight mt-1 flex items-center gap-2.5">
-            <Building2 className="w-7 h-7 text-emerald-600" />
-            Finances & Resultats Analítics
+          </nav>
+
+          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight">
+            {TAB_TITLES[activeTab]}
           </h1>
-          <p className="text-xs sm:text-sm text-text-muted mt-0.5">
-            1 NIF/CIF fiscal, 3 Unitats de Negoci, Facturació d'Entrenaments i Camps, Compres, Despeses i Previsió de Caixa.
+          <p className="text-xs text-text-muted mt-0.5">
+            {TAB_DESCRIPTIONS[activeTab]}
           </p>
         </div>
-      </div>
-
-      {/* Interactive Tabs Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-border text-xs font-bold">
-        {(['graella', 'vendes', 'compres', 'despeses', 'resum', 'tresoreria', 'config'] as TabKey[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setSearchParams({ tab })}
-            className={`px-3 py-2 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-              activeTab === tab
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-            }`}
-          >
-            {tab === 'graella' && <Zap className="w-3.5 h-3.5 text-emerald-400" />}
-            {TAB_TITLES[tab]}
-          </button>
-        ))}
       </div>
 
       {/* TAB 0: ⚡ GRAELLA DE FACTURACIÓ PERIÒDICA DEL MES */}
