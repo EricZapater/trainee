@@ -1,0 +1,16 @@
+.github/workflows/deploy.yml
+  h_42175f19913982 1,21-27,30-34,37-38,40,46-47,50,52,54-55,57,59,62-99,102,104-107,109-112,114-123,125-239,242,244-247,249-252,254-263,265-268,270-273,279,288-291,293-296,302
+docker-compose.pre.yml
+  h_42175f19913982 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "eb053267bcd8e7a6ec81550cd81f00cdf282c7da",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
