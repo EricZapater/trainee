@@ -160,7 +160,8 @@ jobs:
             if [ -f docker-compose.pre.yml ]; then
               mv -f docker-compose.pre.yml docker-compose.yml
             fi
-            touch -a .env.backend .env.frontend
+            [ -f .env.backend ] || touch .env.backend 2>/dev/null || true
+            [ -f .env.frontend ] || touch .env.frontend 2>/dev/null || true
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker compose pull
             docker compose up -d --remove-orphans || (sleep 4 && docker compose up -d --remove-orphans)
