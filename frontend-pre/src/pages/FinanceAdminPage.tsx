@@ -21,6 +21,7 @@ import {
   Zap,
   ChevronRight
 } from 'lucide-react'
+import { getEntrenadorsList } from '../api/entrenador'
 import {
   getFinConfiguracio,
   updateFinConfiguracio,
@@ -53,8 +54,12 @@ import {
   deleteFinFacturaVenda,
   listFinCompres,
   createFinCompra,
+  updateFinCompra,
+  deleteFinCompra,
   listFinDespeses,
   createFinDespesa,
+  updateFinDespesa,
+  deleteFinDespesa,
   getFinInformeResultats,
   getFinCashflowForecast,
   uploadFinanceDocument,
@@ -199,11 +204,19 @@ export const FinanceAdminPage: React.FC = () => {
   const [showAbonamentModal, setShowAbonamentModal] = useState<string | null>(null)
   const [abonamentMotiu, setAbonamentMotiu] = useState('')
 
+  const [entrenadorsList, setEntrenadorsList] = useState<{ id: string; nom: string }[]>([])
+
+  const [graellaFilter, setGraellaFilter] = useState<'all' | 'pendent' | 'emesa' | 'pausat'>('all')
+  const [compresFilter, setCompresFilter] = useState<'all' | 'pendent' | 'pagada'>('all')
+  const [despesesFilter, setDespesesFilter] = useState<'all' | 'pendent' | 'pagada' | 'recurrent'>('all')
+
   const [showCompraModal, setShowCompraModal] = useState(false)
+  const [editingCompraId, setEditingCompraId] = useState<string | null>(null)
   const [newCompra, setNewCompra] = useState({
     proveidor_id: '',
     num_factura_proveidor: '',
     unitat_negoci_id: '',
+    entrenador_id: '',
     concepte: '',
     base_imposable: 0,
     iva_percentatge: 21,
@@ -212,20 +225,29 @@ export const FinanceAdminPage: React.FC = () => {
     data_venciment: new Date().toISOString().split('T')[0],
     periode_inici: new Date().toISOString().split('T')[0],
     periode_fi: new Date().toISOString().split('T')[0],
-    fitxer_adjunt_path: ''
+    estat_pagament: 'pendent' as 'pendent' | 'pagada',
+    fitxer_adjunt_path: '',
+    notes: ''
   })
 
   const [showDespesaModal, setShowDespesaModal] = useState(false)
+  const [editingDespesaId, setEditingDespesaId] = useState<string | null>(null)
   const [newDespesa, setNewDespesa] = useState({
-    categoria: 'banc' as const,
+    categoria: 'banc' as string,
     beneficiari_nom: '',
     concepte: '',
     unitat_negoci_id: '',
+    entrenador_id: '',
     import_total: 0,
+    es_recurrent: false,
+    dia_mes_generacio: 1,
     data_devengo: new Date().toISOString().split('T')[0],
     data_venciment: new Date().toISOString().split('T')[0],
     periode_inici: new Date().toISOString().split('T')[0],
-    periode_fi: new Date().toISOString().split('T')[0]
+    periode_fi: new Date().toISOString().split('T')[0],
+    estat_pagament: 'pendent' as 'pendent' | 'pagada',
+    fitxer_adjunt_path: '',
+    notes: ''
   })
 
   const [uploadingFile, setUploadingFile] = useState(false)
@@ -281,7 +303,7 @@ export const FinanceAdminPage: React.FC = () => {
       const initialAmounts: Record<string, number> = {}
       const initialConcepts: Record<string, string> = {}
       data.items.forEach(it => {
-        initialSelected[it.id] = !it.pausat
+        initialSelected[it.id] = !it.pausat && !it.ja_emesa
         initialAmounts[it.id] = it.base_imposable
         initialConcepts[it.id] = it.concepte
       })
@@ -319,7 +341,7 @@ export const FinanceAdminPage: React.FC = () => {
   const handleEmetreGraella = async () => {
     if (!graellaData) return
     const selectedItems = graellaData.items
-      .filter(it => graellaSelected[it.id])
+      .filter(it => graellaSelected[it.id] && !it.ja_emesa)
       .map(it => ({
         id: it.id,
         tipus_origen: it.tipus_origen,
@@ -327,7 +349,10 @@ export const FinanceAdminPage: React.FC = () => {
         concepte: graellaCustomConcepts[it.id] || it.concepte,
         base_imposable: graellaCustomAmounts[it.id] ?? it.base_imposable,
         iva_percentatge: it.iva_percentatge,
-        fita_id: it.fita_id || null
+        fita_id: it.fita_id || null,
+        centre_cost_id: it.centre_cost_id || null,
+        entrenador_id: it.entrenador_id || null,
+        article_id: it.article_id || null
       }))
 
     if (selectedItems.length === 0) {
@@ -381,14 +406,15 @@ export const FinanceAdminPage: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      const [cfg, impList, serList, un, cl, pr, artList] = await Promise.all([
+      const [cfg, impList, serList, un, cl, pr, artList, coaches] = await Promise.all([
         getFinConfiguracio(),
         listFinImpostos(),
         listFinSeries(),
         listFinUnitatsNegoci(),
         listFinClients(),
         listFinProveidors(),
-        listFinArticles()
+        listFinArticles(),
+        getEntrenadorsList().catch(() => [])
       ])
       setConfig(cfg)
       setImpostos(impList || [])
@@ -397,6 +423,7 @@ export const FinanceAdminPage: React.FC = () => {
       setClients(cl || [])
       setProveidors(pr || [])
       setArticles(artList || [])
+      setEntrenadorsList(coaches || [])
 
       if (un && un.length > 0) {
         setNewFactura(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
@@ -603,27 +630,224 @@ export const FinanceAdminPage: React.FC = () => {
     })
   }
 
-  const handleCreateCompra = async (e: React.FormEvent) => {
+  // Operacions Compres
+  const openCreateCompra = () => {
+    setEditingCompraId(null)
+    setNewCompra({
+      proveidor_id: proveidors[0]?.id || '',
+      num_factura_proveidor: '',
+      unitat_negoci_id: unitats[0]?.id || '',
+      entrenador_id: '',
+      concepte: '',
+      base_imposable: 0,
+      iva_percentatge: 21,
+      irpf_percentatge: 0,
+      data_emissio: new Date().toISOString().split('T')[0],
+      data_venciment: new Date().toISOString().split('T')[0],
+      periode_inici: new Date().toISOString().split('T')[0],
+      periode_fi: new Date().toISOString().split('T')[0],
+      estat_pagament: 'pendent',
+      fitxer_adjunt_path: '',
+      notes: ''
+    })
+    setShowCompraModal(true)
+  }
+
+  const openEditCompra = (c: FinCompra) => {
+    setEditingCompraId(c.id)
+    setNewCompra({
+      proveidor_id: c.proveidor_id,
+      num_factura_proveidor: c.num_factura_proveidor,
+      unitat_negoci_id: c.unitat_negoci_id || '',
+      entrenador_id: c.entrenador_id || '',
+      concepte: c.concepte,
+      base_imposable: c.base_imposable,
+      iva_percentatge: c.iva_percentatge,
+      irpf_percentatge: c.irpf_percentatge,
+      data_emissio: c.data_emissio,
+      data_venciment: c.data_venciment,
+      periode_inici: c.periode_inici,
+      periode_fi: c.periode_fi,
+      estat_pagament: c.estat_pagament === 'pagada' ? 'pagada' : 'pendent',
+      fitxer_adjunt_path: c.fitxer_adjunt_path || '',
+      notes: c.notes || ''
+    })
+    setShowCompraModal(true)
+  }
+
+  const handleSaveCompra = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createFinCompra(newCompra)
-      showNotify('success', 'Factura de compra registrada!')
+      const payload = {
+        ...newCompra,
+        unitat_negoci_id: newCompra.unitat_negoci_id || null,
+        entrenador_id: newCompra.entrenador_id || null
+      }
+      if (editingCompraId) {
+        await updateFinCompra(editingCompraId, payload)
+        showNotify('success', 'Factura de compra actualitzada correctament!')
+      } else {
+        await createFinCompra(payload)
+        showNotify('success', 'Factura de compra registrada correctament!')
+      }
       setShowCompraModal(false)
       loadCompres()
     } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error registrant la compra')
+      showNotify('error', err.response?.data?.error || 'Error desant la compra')
     }
   }
 
-  const handleCreateDespesa = async (e: React.FormEvent) => {
+  const handleTogglePagamentCompra = async (c: FinCompra) => {
+    try {
+      const nextEstat = c.estat_pagament === 'pagada' ? 'pendent' : 'pagada'
+      const today = new Date().toISOString().split('T')[0]
+      await updateFinCompra(c.id, {
+        ...c,
+        estat_pagament: nextEstat,
+        data_conciliacio: nextEstat === 'pagada' ? today : null
+      })
+      showNotify('success', nextEstat === 'pagada' ? 'Compra marcada com a pagada!' : 'Compra retornada a pendent!')
+      loadCompres()
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error canviant l\'estat de la compra')
+    }
+  }
+
+  const handleDeleteCompra = (id: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Eliminar Factura de Compra',
+      message: 'Segur que vols eliminar aquesta factura de compra? Aquesta acció no es pot desfer.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancel·lar',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteFinCompra(id)
+          showNotify('success', 'Factura de compra eliminada')
+          loadCompres()
+        } catch (err: any) {
+          showNotify('error', err.response?.data?.error || 'Error eliminant la compra')
+        } finally {
+          setConfirmDialog(null)
+        }
+      }
+    })
+  }
+
+  // Operacions Despeses
+  const openCreateDespesa = () => {
+    setEditingDespesaId(null)
+    setNewDespesa({
+      categoria: 'banc',
+      beneficiari_nom: '',
+      concepte: '',
+      unitat_negoci_id: unitats[0]?.id || '',
+      entrenador_id: '',
+      import_total: 0,
+      es_recurrent: false,
+      dia_mes_generacio: 1,
+      data_devengo: new Date().toISOString().split('T')[0],
+      data_venciment: new Date().toISOString().split('T')[0],
+      periode_inici: new Date().toISOString().split('T')[0],
+      periode_fi: new Date().toISOString().split('T')[0],
+      estat_pagament: 'pendent',
+      fitxer_adjunt_path: '',
+      notes: ''
+    })
+    setShowDespesaModal(true)
+  }
+
+  const openEditDespesa = (d: FinDespesa) => {
+    setEditingDespesaId(d.id)
+    setNewDespesa({
+      categoria: d.categoria,
+      beneficiari_nom: d.beneficiari_nom,
+      concepte: d.concepte,
+      unitat_negoci_id: d.unitat_negoci_id || '',
+      entrenador_id: d.entrenador_id || '',
+      import_total: d.import_total,
+      es_recurrent: !!d.es_recurrent,
+      dia_mes_generacio: d.dia_mes_generacio || 1,
+      data_devengo: d.data_devengo,
+      data_venciment: d.data_venciment,
+      periode_inici: d.periode_inici,
+      periode_fi: d.periode_fi,
+      estat_pagament: d.estat_pagament === 'pagada' ? 'pagada' : 'pendent',
+      fitxer_adjunt_path: d.fitxer_adjunt_path || '',
+      notes: d.notes || ''
+    })
+    setShowDespesaModal(true)
+  }
+
+  const handleSaveDespesa = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      await createFinDespesa(newDespesa)
-      showNotify('success', 'Despesa registrada correctament!')
+      const payload = {
+        ...newDespesa,
+        unitat_negoci_id: newDespesa.unitat_negoci_id || null,
+        entrenador_id: newDespesa.entrenador_id || null,
+        dia_mes_generacio: newDespesa.es_recurrent ? (newDespesa.dia_mes_generacio || 1) : 1
+      }
+      if (editingDespesaId) {
+        await updateFinDespesa(editingDespesaId, payload)
+        showNotify('success', 'Despesa actualitzada correctament!')
+      } else {
+        await createFinDespesa(payload)
+        showNotify('success', 'Despesa registrada correctament!')
+      }
       setShowDespesaModal(false)
       loadDespeses()
     } catch (err: any) {
-      showNotify('error', err.response?.data?.error || 'Error registrant la despesa')
+      showNotify('error', err.response?.data?.error || 'Error desant la despesa')
+    }
+  }
+
+  const handleTogglePagamentDespesa = async (d: FinDespesa) => {
+    try {
+      const nextEstat = d.estat_pagament === 'pagada' ? 'pendent' : 'pagada'
+      const today = new Date().toISOString().split('T')[0]
+      await updateFinDespesa(d.id, {
+        ...d,
+        estat_pagament: nextEstat,
+        data_conciliacio: nextEstat === 'pagada' ? today : null
+      })
+      showNotify('success', nextEstat === 'pagada' ? 'Despesa marcada com a pagada!' : 'Despesa retornada a pendent!')
+      loadDespeses()
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error canviant l\'estat de la despesa')
+    }
+  }
+
+  const handleDeleteDespesa = (id: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Eliminar Despesa',
+      message: 'Segur que vols eliminar aquesta despesa? Aquesta acció no es pot desfer.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancel·lar',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteFinDespesa(id)
+          showNotify('success', 'Despesa eliminada')
+          loadDespeses()
+        } catch (err: any) {
+          showNotify('error', err.response?.data?.error || 'Error eliminant la despesa')
+        } finally {
+          setConfirmDialog(null)
+        }
+      }
+    })
+  }
+
+  const handleGenerarRecurrentsMesDespeses = async () => {
+    try {
+      const res = await generarDespesesRecurrentsMes(graellaMes)
+      showNotify('success', `S'han generat ${res.despeses_creades} despeses recurrents del mes ${graellaMes}!`)
+      loadDespeses()
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error generant despeses recurrents')
     }
   }
 
@@ -828,7 +1052,7 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'compra') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'compra' | 'despesa') => {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingFile(true)
@@ -836,6 +1060,8 @@ export const FinanceAdminPage: React.FC = () => {
       const url = await uploadFinanceDocument(file)
       if (target === 'compra') {
         setNewCompra(prev => ({ ...prev, fitxer_adjunt_path: url }))
+      } else if (target === 'despesa') {
+        setNewDespesa(prev => ({ ...prev, fitxer_adjunt_path: url }))
       }
       showNotify('success', 'Fitxer adjuntat amb èxit!')
     } catch (err: any) {
@@ -959,18 +1185,18 @@ export const FinanceAdminPage: React.FC = () => {
 
           {/* Taula de Preselecció de la Graella */}
           <div className="glass-card overflow-hidden">
-            <div className="p-4 border-b border-border flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
+            <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => {
                     if (!graellaData) return
                     const next: Record<string, boolean> = {}
-                    graellaData.items.forEach(it => { next[it.id] = true })
+                    graellaData.items.filter(it => !it.ja_emesa && !it.pausat).forEach(it => { next[it.id] = true })
                     setGraellaSelected(next)
                   }}
                   className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition-colors"
                 >
-                  Seleccionar Tots
+                  Seleccionar Pendents
                 </button>
                 <button
                   onClick={() => setGraellaSelected({})}
@@ -978,10 +1204,26 @@ export const FinanceAdminPage: React.FC = () => {
                 >
                   Desmarcar Tots
                 </button>
-                <span className="text-slate-400">|</span>
-                <span className="text-text-muted">
-                  {graellaData ? `${graellaData.count} elements pendents` : 'Carregant...'}
-                </span>
+                <span className="text-slate-300">|</span>
+                {/* Filtres d'estat de graella */}
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+                  {[
+                    { id: 'all', label: `Tots (${graellaData?.count || 0})` },
+                    { id: 'pendent', label: `Pendents (${graellaData?.items.filter(i => !i.ja_emesa && !i.pausat).length || 0})` },
+                    { id: 'emesa', label: `Ja emesos (${graellaData?.items.filter(i => i.ja_emesa).length || 0})` },
+                    { id: 'pausat', label: `Pausats (${graellaData?.items.filter(i => i.pausat).length || 0})` }
+                  ].map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => setGraellaFilter(f.id as any)}
+                      className={`px-2 py-0.5 rounded-md transition-all ${
+                        graellaFilter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                 ✓ Sèrie activa per defecte assignada
@@ -995,11 +1237,17 @@ export const FinanceAdminPage: React.FC = () => {
                     <th className="p-3 w-10 text-center">
                       <input
                         type="checkbox"
-                        checked={graellaData ? graellaData.items.length > 0 && graellaData.items.every(it => graellaSelected[it.id]) : false}
+                        checked={
+                          graellaData && graellaData.items.filter(it => !it.ja_emesa && !it.pausat).length > 0
+                            ? graellaData.items.filter(it => !it.ja_emesa && !it.pausat).every(it => graellaSelected[it.id])
+                            : false
+                        }
                         onChange={e => {
                           if (!graellaData) return
-                          const next: Record<string, boolean> = {}
-                          graellaData.items.forEach(it => { next[it.id] = e.target.checked })
+                          const next: Record<string, boolean> = { ...graellaSelected }
+                          graellaData.items.filter(it => !it.ja_emesa && !it.pausat).forEach(it => {
+                            next[it.id] = e.target.checked
+                          })
                           setGraellaSelected(next)
                         }}
                         className="rounded text-emerald-600"
@@ -1028,76 +1276,129 @@ export const FinanceAdminPage: React.FC = () => {
                         No hi ha cap quota ni venciment pendent de facturar pel mes {graellaMes}.
                       </td>
                     </tr>
-                  ) : graellaData && graellaData.items.map(it => {
-                    const isSelected = !!graellaSelected[it.id]
-                    const customBase = graellaCustomAmounts[it.id] ?? it.base_imposable
-                    const customConcept = graellaCustomConcepts[it.id] ?? it.concepte
-                    const ivaImp = customBase * (it.iva_percentatge / 100)
-                    const totalPvp = customBase + ivaImp
+                  ) : graellaData && (() => {
+                    const filtered = graellaData.items.filter(it => {
+                      if (graellaFilter === 'pendent') return !it.ja_emesa && !it.pausat
+                      if (graellaFilter === 'emesa') return it.ja_emesa
+                      if (graellaFilter === 'pausat') return it.pausat
+                      return true
+                    })
 
-                    return (
-                      <tr key={it.id} className={`hover:bg-slate-50/60 transition-colors ${!isSelected ? 'opacity-40 bg-slate-50/40' : ''}`}>
-                        <td className="p-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={e => setGraellaSelected({ ...graellaSelected, [it.id]: e.target.checked })}
-                            className="rounded text-emerald-600"
-                          />
-                        </td>
-                        <td className="p-3">
-                          {it.tipus_origen === 'quota_recurrent' ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              🔄 Quota
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                              📅 Venciment Pactat
-                            </span>
-                          )}
-                          {it.pausat && (
-                            <span className="ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                              Pausat
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-bold text-slate-900">{it.client_nom}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{it.client_nif || 'Sense NIF'}</div>
-                        </td>
-                        <td className="p-3">
-                          <input
-                            type="text"
-                            value={customConcept}
-                            onChange={e => setGraellaCustomConcepts({ ...graellaCustomConcepts, [it.id]: e.target.value })}
-                            className="w-full p-1 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white rounded text-xs outline-none"
-                          />
-                        </td>
-                        <td className="p-3">
-                          <div className="font-medium text-slate-800">{it.forma_pagament}</div>
-                          {it.iban && <div className="text-[10px] text-slate-400 font-mono">{it.iban.slice(0, 10)}...</div>}
-                        </td>
-                        <td className="p-3">
-                          <span className="text-slate-600 font-medium">{it.centre_cost_nom || 'General'}</span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
+                    if (filtered.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={8} className="p-8 text-center text-slate-400">
+                            Cap element coincideix amb el filtre seleccionat.
+                          </td>
+                        </tr>
+                      )
+                    }
+
+                    return filtered.map(it => {
+                      const isSelected = !!graellaSelected[it.id]
+                      const customBase = graellaCustomAmounts[it.id] ?? it.base_imposable
+                      const customConcept = graellaCustomConcepts[it.id] ?? it.concepte
+                      const ivaImp = customBase * (it.iva_percentatge / 100)
+                      const totalPvp = customBase + ivaImp
+
+                      return (
+                        <tr
+                          key={it.id}
+                          className={`hover:bg-slate-50/60 transition-colors ${
+                            it.ja_emesa
+                              ? 'bg-emerald-50/20'
+                              : !isSelected
+                              ? 'opacity-40 bg-slate-50/40'
+                              : ''
+                          }`}
+                        >
+                          <td className="p-3 text-center">
+                            {it.ja_emesa ? (
+                              <span title="Aquesta quota ja ha estat emesa aquest mes" className="text-emerald-700 font-black text-xs">
+                                🔒
+                              </span>
+                            ) : (
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={e => setGraellaSelected({ ...graellaSelected, [it.id]: e.target.checked })}
+                                className="rounded text-emerald-600"
+                              />
+                            )}
+                          </td>
+                          <td className="p-3">
+                            {it.ja_emesa ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                ✓ Emesa ({it.factura_numero || 'Emesa'})
+                              </span>
+                            ) : it.tipus_origen === 'quota_recurrent' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                🔄 Quota
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                📅 Venciment Pactat
+                              </span>
+                            )}
+                            {it.pausat && (
+                              <span className="ml-1 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                Pausat
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <div className="font-bold text-slate-900">{it.client_nom}</div>
+                            <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
+                              <span>{it.client_nif || 'Sense NIF'}</span>
+                              {it.entrenador_nom && (
+                                <span className="text-indigo-600 font-semibold font-sans">· Coach: {it.entrenador_nom}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3">
                             <input
-                              type="number"
-                              step="0.01"
-                              value={customBase}
-                              onChange={e => setGraellaCustomAmounts({ ...graellaCustomAmounts, [it.id]: parseFloat(e.target.value) || 0 })}
-                              className="w-20 p-1 text-right border border-slate-200 rounded text-xs font-mono font-bold"
+                              type="text"
+                              value={customConcept}
+                              disabled={it.ja_emesa}
+                              onChange={e => setGraellaCustomConcepts({ ...graellaCustomConcepts, [it.id]: e.target.value })}
+                              className={`w-full p-1 rounded text-xs outline-none ${
+                                it.ja_emesa
+                                  ? 'bg-transparent text-slate-600 cursor-not-allowed'
+                                  : 'bg-transparent border-b border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white'
+                              }`}
                             />
-                            <span>€</span>
-                          </div>
-                        </td>
-                        <td className="p-3 text-right font-black text-slate-900">
-                          {totalPvp.toFixed(2)} €
-                        </td>
-                      </tr>
-                    )
-                  })}
+                          </td>
+                          <td className="p-3">
+                            <div className="font-medium text-slate-800">{it.forma_pagament}</div>
+                            {it.iban && <div className="text-[10px] text-slate-400 font-mono">{it.iban.slice(0, 10)}...</div>}
+                          </td>
+                          <td className="p-3">
+                            <span className="text-slate-600 font-medium">{it.centre_cost_nom || 'General'}</span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                disabled={it.ja_emesa}
+                                value={customBase}
+                                onChange={e => setGraellaCustomAmounts({ ...graellaCustomAmounts, [it.id]: parseFloat(e.target.value) || 0 })}
+                                className={`w-20 p-1 text-right rounded text-xs font-mono font-bold ${
+                                  it.ja_emesa
+                                    ? 'bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed'
+                                    : 'border border-slate-200'
+                                }`}
+                              />
+                              <span>€</span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-black text-slate-900">
+                            {totalPvp.toFixed(2)} €
+                          </td>
+                        </tr>
+                      )
+                    })
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -1723,105 +2024,325 @@ export const FinanceAdminPage: React.FC = () => {
       )}
 
       {/* TAB 3: COMPRES FISCALS */}
+      {/* TAB 4: COMPRES & PROVEÏDORS */}
       {activeTab === 'compres' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-800">Llibre de Factures de Compra i Proveïdors</h2>
-            <button
-              onClick={() => setShowCompraModal(true)}
-              className="btn-primary text-xs py-2 px-3.5 bg-rose-600 hover:bg-rose-700 flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Registrar Compra
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Llibre de Factures de Compra i Proveïdors</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Control de factures rebudes, despeses deduïbles i assignació a unitats de negoci</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Filtre per estat */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
+                {[
+                  { id: 'all', label: `Totes (${compres.length})` },
+                  { id: 'pendent', label: `Pendents (${compres.filter(c => c.estat_pagament !== 'pagada').length})` },
+                  { id: 'pagada', label: `Pagades (${compres.filter(c => c.estat_pagament === 'pagada').length})` }
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setCompresFilter(f.id as any)}
+                    className={`px-2.5 py-1 rounded-md transition-all ${
+                      compresFilter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={openCreateCompra}
+                className="btn-primary text-xs py-2 px-3.5 bg-rose-600 hover:bg-rose-700 flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> Registrar Compra
+              </button>
+            </div>
           </div>
 
           <div className="glass-card overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold">
-                  <th className="py-2.5 px-4">Proveïdor</th>
-                  <th className="py-2.5 px-4">Núm. Factura</th>
-                  <th className="py-2.5 px-4">Concepte</th>
-                  <th className="py-2.5 px-4 text-right">Base</th>
-                  <th className="py-2.5 px-4 text-right">IVA</th>
-                  <th className="py-2.5 px-4 text-right">IRPF Retingut</th>
-                  <th className="py-2.5 px-4 text-right">Total a Pagar</th>
-                  <th className="py-2.5 px-4">Estat</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light font-medium">
-                {compres.map(c => (
-                  <tr key={c.id} className="hover:bg-slate-50/60">
-                    <td className="py-3 px-4 font-bold text-slate-900">{c.proveidor_nom}</td>
-                    <td className="py-3 px-4 text-slate-600">{c.num_factura_proveidor}</td>
-                    <td className="py-3 px-4 text-slate-700">{c.concepte}</td>
-                    <td className="py-3 px-4 text-right font-medium">{c.base_imposable.toFixed(2)} €</td>
-                    <td className="py-3 px-4 text-right text-emerald-700">+{c.iva_import.toFixed(2)} €</td>
-                    <td className="py-3 px-4 text-right text-rose-700">-{c.irpf_import.toFixed(2)} €</td>
-                    <td className="py-3 px-4 text-right font-black text-slate-900">{c.total_pagar.toFixed(2)} €</td>
-                    <td className="py-3 px-4">
-                      {c.estat_pagament === 'pagada' ? (
-                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Pagada</span>
-                      ) : (
-                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendent</span>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[850px]">
+                <thead>
+                  <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold bg-slate-50/50">
+                    <th className="py-2.5 px-4">Proveïdor</th>
+                    <th className="py-2.5 px-4">Núm. Factura</th>
+                    <th className="py-2.5 px-4">Concepte</th>
+                    <th className="py-2.5 px-4">Unitat de Negoci</th>
+                    <th className="py-2.5 px-4 text-right">Base</th>
+                    <th className="py-2.5 px-4 text-right">IVA</th>
+                    <th className="py-2.5 px-4 text-right">IRPF Retingut</th>
+                    <th className="py-2.5 px-4 text-right">Total a Pagar</th>
+                    <th className="py-2.5 px-4">Estat</th>
+                    <th className="py-2.5 px-4 text-right">Accions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border-light font-medium">
+                  {(() => {
+                    const filteredCompres = compres.filter(c => {
+                      if (compresFilter === 'pendent') return c.estat_pagament !== 'pagada'
+                      if (compresFilter === 'pagada') return c.estat_pagament === 'pagada'
+                      return true
+                    })
+
+                    if (filteredCompres.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={10} className="py-10 text-center text-slate-400">
+                            No hi ha cap factura de compra per al filtre seleccionat.
+                          </td>
+                        </tr>
+                      )
+                    }
+
+                    return filteredCompres.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3 px-4 font-bold text-slate-900">
+                          <div>{c.proveidor_nom}</div>
+                          <div className="text-[10px] text-slate-400 font-mono font-normal">{c.proveidor_nif}</div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 font-mono">{c.num_factura_proveidor}</td>
+                        <td className="py-3 px-4 text-slate-700">
+                          <div>{c.concepte}</div>
+                          <div className="text-[10px] text-slate-400">Emissió: {c.data_emissio} · Venc: {c.data_venciment}</div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
+                            {c.unitat_negoci_nom || 'General'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right font-medium">{c.base_imposable.toFixed(2)} €</td>
+                        <td className="py-3 px-4 text-right text-emerald-700">+{c.iva_import.toFixed(2)} €</td>
+                        <td className="py-3 px-4 text-right text-rose-700">-{c.irpf_import.toFixed(2)} €</td>
+                        <td className="py-3 px-4 text-right font-black text-slate-900">{c.total_pagar.toFixed(2)} €</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            {c.estat_pagament === 'pagada' ? (
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                Pagada
+                              </span>
+                            ) : (
+                              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                Pendent
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleTogglePagamentCompra(c)}
+                              title={c.estat_pagament === 'pagada' ? "Passar a Pendent" : "Marcar com a Pagada"}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md border transition-colors ${
+                                c.estat_pagament === 'pagada'
+                                  ? 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {c.estat_pagament === 'pagada' ? '↩️ Pendent' : '✓ Pagada'}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => openEditCompra(c)}
+                              title="Editar factura de compra"
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            {c.fitxer_adjunt_path && (
+                              <a
+                                href={c.fitxer_adjunt_path}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Veure document adjunt"
+                                className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                            <button
+                              onClick={() => handleDeleteCompra(c.id)}
+                              title="Eliminar factura de compra"
+                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  })()}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
-      {/* TAB 7: DESPESES NO FACTURABLES */}
+      {/* TAB 5: DESPESES OPERATIVES */}
       {activeTab === 'despeses' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-800">Despeses No Facturables (Nòmines, SS, Banc, Impostos)</h2>
-            <button
-              onClick={() => setShowDespesaModal(true)}
-              className="btn-primary text-xs py-2 px-3.5 bg-amber-600 hover:bg-amber-700 flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Registrar Despesa
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Despeses Operatives (Nòmines, SS, Banc, Impostos, Lloguer)</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Gestió de despeses fixes mensuals, plantilles recurrents i pagaments puntuals</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Filtre per tipus/estat */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
+                {[
+                  { id: 'all', label: `Totes (${despeses.length})` },
+                  { id: 'recurrent', label: `🔄 Recurrents (${despeses.filter(d => d.es_recurrent).length})` },
+                  { id: 'pendent', label: `Pendents (${despeses.filter(d => d.estat_pagament !== 'pagada').length})` },
+                  { id: 'pagada', label: `Pagades (${despeses.filter(d => d.estat_pagament === 'pagada').length})` }
+                ].map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => setDespesesFilter(f.id as any)}
+                    className={`px-2.5 py-1 rounded-md transition-all ${
+                      despesesFilter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={handleGenerarRecurrentsMesDespeses}
+                title={`Generar totes les despeses fixes recurrents pel mes ${graellaMes}`}
+                className="btn-secondary text-xs py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1.5 font-bold"
+              >
+                <Zap className="w-3.5 h-3.5 text-indigo-600" /> Generar Recurrents
+              </button>
+              <button
+                onClick={openCreateDespesa}
+                className="btn-primary text-xs py-2 px-3.5 bg-amber-600 hover:bg-amber-700 flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> Registrar Despesa
+              </button>
+            </div>
           </div>
 
           <div className="glass-card overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold">
-                  <th className="py-2.5 px-4">Categoria</th>
-                  <th className="py-2.5 px-4">Beneficiari</th>
-                  <th className="py-2.5 px-4">Concepte</th>
-                  <th className="py-2.5 px-4 text-right">Import Total</th>
-                  <th className="py-2.5 px-4">Data Devengo</th>
-                  <th className="py-2.5 px-4">Estat</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light font-medium">
-                {despeses.map(d => (
-                  <tr key={d.id} className="hover:bg-slate-50/60">
-                    <td className="py-3 px-4">
-                      <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
-                        {d.categoria.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-slate-900">{d.beneficiari_nom}</td>
-                    <td className="py-3 px-4 text-slate-700">{d.concepte}</td>
-                    <td className="py-3 px-4 text-right font-black text-rose-700">{d.import_total.toFixed(2)} €</td>
-                    <td className="py-3 px-4 text-slate-500">{d.data_devengo}</td>
-                    <td className="py-3 px-4">
-                      {d.estat_pagament === 'pagada' ? (
-                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Pagada</span>
-                      ) : (
-                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendent</span>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[850px]">
+                <thead>
+                  <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold bg-slate-50/50">
+                    <th className="py-2.5 px-4">Categoria</th>
+                    <th className="py-2.5 px-4">Beneficiari</th>
+                    <th className="py-2.5 px-4">Concepte</th>
+                    <th className="py-2.5 px-4">Unitat de Negoci</th>
+                    <th className="py-2.5 px-4">Tipus Despesa</th>
+                    <th className="py-2.5 px-4 text-right">Import Total</th>
+                    <th className="py-2.5 px-4">Data Devengo</th>
+                    <th className="py-2.5 px-4">Estat</th>
+                    <th className="py-2.5 px-4 text-right">Accions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border-light font-medium">
+                  {(() => {
+                    const filteredDespeses = despeses.filter(d => {
+                      if (despesesFilter === 'pendent') return d.estat_pagament !== 'pagada'
+                      if (despesesFilter === 'pagada') return d.estat_pagament === 'pagada'
+                      if (despesesFilter === 'recurrent') return !!d.es_recurrent
+                      return true
+                    })
+
+                    if (filteredDespeses.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={9} className="py-10 text-center text-slate-400">
+                            No hi ha cap despesa per al filtre seleccionat.
+                          </td>
+                        </tr>
+                      )
+                    }
+
+                    return filteredDespeses.map(d => (
+                      <tr key={d.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3 px-4">
+                          <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
+                            {d.categoria.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 font-bold text-slate-900">{d.beneficiari_nom}</td>
+                        <td className="py-3 px-4 text-slate-700">{d.concepte}</td>
+                        <td className="py-3 px-4">
+                          <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
+                            {d.unitat_negoci_nom || 'General'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {d.es_recurrent ? (
+                            <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                              🔄 Recurrent (dia {d.dia_mes_generacio || 1})
+                            </span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              Puntual
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right font-black text-rose-700">{d.import_total.toFixed(2)} €</td>
+                        <td className="py-3 px-4 text-slate-500">{d.data_devengo}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-1.5">
+                            {d.estat_pagament === 'pagada' ? (
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                Pagada
+                              </span>
+                            ) : (
+                              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                Pendent
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleTogglePagamentDespesa(d)}
+                              title={d.estat_pagament === 'pagada' ? "Passar a Pendent" : "Marcar com a Pagada"}
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-md border transition-colors ${
+                                d.estat_pagament === 'pagada'
+                                  ? 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              }`}
+                            >
+                              {d.estat_pagament === 'pagada' ? '↩️ Pendent' : '✓ Pagada'}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => openEditDespesa(d)}
+                              title="Editar despesa"
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            {d.fitxer_adjunt_path && (
+                              <a
+                                href={d.fitxer_adjunt_path}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Veure document adjunt"
+                                className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                            <button
+                              onClick={() => handleDeleteDespesa(d.id)}
+                              title="Eliminar despesa"
+                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  })()}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -2695,18 +3216,20 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL CREAR COMPRA */}
+      {/* MODAL CREAR / EDITAR COMPRA */}
       {showCompraModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-lg text-slate-900">Registrar Factura de Compra</h3>
+              <h3 className="font-bold text-lg text-slate-900">
+                {editingCompraId ? 'Editar Factura de Compra' : 'Registrar Factura de Compra'}
+              </h3>
               <button onClick={() => setShowCompraModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
 
-            <form onSubmit={handleCreateCompra} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveCompra} className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-700">Proveïdor</label>
+                <label className="font-bold text-slate-700">Proveïdor *</label>
                 <select
                   value={newCompra.proveidor_id}
                   onChange={e => setNewCompra({ ...newCompra, proveidor_id: e.target.value })}
@@ -2717,20 +3240,33 @@ export const FinanceAdminPage: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700">Núm. Factura del Proveïdor</label>
-                <input
-                  type="text"
-                  value={newCompra.num_factura_proveidor}
-                  onChange={e => setNewCompra({ ...newCompra, num_factura_proveidor: e.target.value })}
-                  placeholder="Ex: FRA-2026-089"
-                  className="w-full mt-1 p-2 border rounded-xl"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Núm. Factura Proveïdor *</label>
+                  <input
+                    type="text"
+                    value={newCompra.num_factura_proveidor}
+                    onChange={e => setNewCompra({ ...newCompra, num_factura_proveidor: e.target.value })}
+                    placeholder="Ex: FRA-2026-089"
+                    className="w-full mt-1 p-2 border rounded-xl"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Estat de Pagament</label>
+                  <select
+                    value={newCompra.estat_pagament}
+                    onChange={e => setNewCompra({ ...newCompra, estat_pagament: e.target.value as any })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                  >
+                    <option value="pendent">Pendent</option>
+                    <option value="pagada">Pagada</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Concepte</label>
+                <label className="font-bold text-slate-700">Concepte *</label>
                 <input
                   type="text"
                   value={newCompra.concepte}
@@ -2741,9 +3277,38 @@ export const FinanceAdminPage: React.FC = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Unitat de Negoci (Centre de Cost)</label>
+                  <select
+                    value={newCompra.unitat_negoci_id}
+                    onChange={e => setNewCompra({ ...newCompra, unitat_negoci_id: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  >
+                    <option value="">Sense assignar / General</option>
+                    {unitats.map(u => (
+                      <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Entrenador Vinculat (Opcional)</label>
+                  <select
+                    value={newCompra.entrenador_id}
+                    onChange={e => setNewCompra({ ...newCompra, entrenador_id: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  >
+                    <option value="">Sense entrenador vinculat</option>
+                    {entrenadorsList.map(en => (
+                      <option key={en.id} value={en.id}>{en.nom}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="font-bold text-slate-700">Base Imposable (€)</label>
+                  <label className="font-bold text-slate-700">Base Imposable (€) *</label>
                   <input
                     type="number"
                     step="0.01"
@@ -2773,6 +3338,29 @@ export const FinanceAdminPage: React.FC = () => {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Data d'Emissió</label>
+                  <input
+                    type="date"
+                    value={newCompra.data_emissio}
+                    onChange={e => setNewCompra({ ...newCompra, data_emissio: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Data de Venciment</label>
+                  <input
+                    type="date"
+                    value={newCompra.data_venciment}
+                    onChange={e => setNewCompra({ ...newCompra, data_venciment: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                    required
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="font-bold text-slate-700">Adjuntar PDF o Imatge de la Factura</label>
                 <input
@@ -2782,7 +3370,9 @@ export const FinanceAdminPage: React.FC = () => {
                 />
                 {uploadingFile && <div className="text-[11px] text-amber-600 font-semibold mt-1">Pujant fitxer...</div>}
                 {newCompra.fitxer_adjunt_path && (
-                  <div className="text-[11px] text-emerald-700 font-semibold mt-1">✓ Fitxer adjuntat correctament</div>
+                  <div className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
+                    ✓ Fitxer adjuntat correctament
+                  </div>
                 )}
               </div>
 
@@ -2795,7 +3385,7 @@ export const FinanceAdminPage: React.FC = () => {
                   Cancel·lar
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-rose-600 hover:bg-rose-700">
-                  Guardar Compra
+                  {editingCompraId ? 'Actualitzar Compra' : 'Guardar Compra'}
                 </button>
               </div>
             </form>
@@ -2803,34 +3393,105 @@ export const FinanceAdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL CREAR DESPESA */}
+      {/* MODAL CREAR / EDITAR DESPESA */}
       {showDespesaModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b">
-              <h3 className="font-bold text-lg text-slate-900">Registrar Despesa No Facturable</h3>
+              <h3 className="font-bold text-lg text-slate-900">
+                {editingDespesaId ? 'Editar Despesa Operativa' : 'Registrar Despesa Operativa'}
+              </h3>
               <button onClick={() => setShowDespesaModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
 
-            <form onSubmit={handleCreateDespesa} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700">Categoria</label>
-                <select
-                  value={newDespesa.categoria}
-                  onChange={e => setNewDespesa({ ...newDespesa, categoria: e.target.value as any })}
-                  className="w-full mt-1 p-2 border rounded-xl"
-                >
-                  <option value="nomina">Nòmina</option>
-                  <option value="seguretat_social">Seguretat Social / Autònom</option>
-                  <option value="banc">Comissió Bancària</option>
-                  <option value="impostos">Impostos / Taxes</option>
-                  <option value="dietes">Dietes / Desplaçaments</option>
-                  <option value="altres">Altres</option>
-                </select>
+            <form onSubmit={handleSaveDespesa} className="space-y-4 text-xs">
+              {/* Selector Tipus de Despesa: Puntual vs Recurrent */}
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                <label className="font-bold text-slate-700 block">Periodicitat de la Despesa</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewDespesa({ ...newDespesa, es_recurrent: false })}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      !newDespesa.es_recurrent
+                        ? 'bg-white border-amber-500 shadow-sm text-slate-900 font-bold'
+                        : 'bg-transparent border-slate-200 text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-bold">
+                      <span className="w-2 h-2 rounded-full bg-slate-400" />
+                      Despesa Puntual
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-normal mt-0.5">Pagament únic (dietes, material, taxa...)</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewDespesa({ ...newDespesa, es_recurrent: true })}
+                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                      newDespesa.es_recurrent
+                        ? 'bg-indigo-50 border-indigo-500 shadow-sm text-indigo-950 font-bold'
+                        : 'bg-transparent border-slate-200 text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600">
+                      <RefreshCw className="w-3 h-3" />
+                      Recurrent Mensual
+                    </div>
+                    <p className="text-[10px] text-indigo-400 font-normal mt-0.5">Nòmina, autònom, lloguer, software fix...</p>
+                  </button>
+                </div>
+
+                {newDespesa.es_recurrent && (
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs animate-fade-in">
+                    <span className="text-slate-600 font-medium">Dia del mes per generar la despesa:</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-slate-700">Dia</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={newDespesa.dia_mes_generacio}
+                        onChange={e => setNewDespesa({ ...newDespesa, dia_mes_generacio: parseInt(e.target.value) || 1 })}
+                        className="w-16 p-1 border rounded-lg text-center font-bold text-indigo-700"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Categoria *</label>
+                  <select
+                    value={newDespesa.categoria}
+                    onChange={e => setNewDespesa({ ...newDespesa, categoria: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl capitalize"
+                  >
+                    <option value="nomina">Nòmina</option>
+                    <option value="seguretat_social">Seguretat Social / Autònom</option>
+                    <option value="banc">Comissió Bancària</option>
+                    <option value="impostos">Impostos / Taxes</option>
+                    <option value="dietes">Dietes / Desplaçaments</option>
+                    <option value="altres">Altres despeses</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Estat de Pagament</label>
+                  <select
+                    value={newDespesa.estat_pagament}
+                    onChange={e => setNewDespesa({ ...newDespesa, estat_pagament: e.target.value as any })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                  >
+                    <option value="pendent">Pendent</option>
+                    <option value="pagada">Pagada</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Beneficiari / Concepte</label>
+                <label className="font-bold text-slate-700">Beneficiari / Proveïdor *</label>
                 <input
                   type="text"
                   value={newDespesa.beneficiari_nom}
@@ -2842,7 +3503,7 @@ export const FinanceAdminPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Descripció</label>
+                <label className="font-bold text-slate-700">Descripció / Concepte *</label>
                 <input
                   type="text"
                   value={newDespesa.concepte}
@@ -2853,8 +3514,37 @@ export const FinanceAdminPage: React.FC = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Unitat de Negoci (Centre de Cost)</label>
+                  <select
+                    value={newDespesa.unitat_negoci_id}
+                    onChange={e => setNewDespesa({ ...newDespesa, unitat_negoci_id: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  >
+                    <option value="">Sense assignar / General</option>
+                    {unitats.map(u => (
+                      <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Entrenador Vinculat (Opcional)</label>
+                  <select
+                    value={newDespesa.entrenador_id}
+                    onChange={e => setNewDespesa({ ...newDespesa, entrenador_id: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  >
+                    <option value="">Sense entrenador vinculat</option>
+                    {entrenadorsList.map(en => (
+                      <option key={en.id} value={en.id}>{en.nom}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="font-bold text-slate-700">Import Total (€)</label>
+                <label className="font-bold text-slate-700">Import Total (€) *</label>
                 <input
                   type="number"
                   step="0.01"
@@ -2863,6 +3553,44 @@ export const FinanceAdminPage: React.FC = () => {
                   className="w-full mt-1 p-2 border rounded-xl font-bold"
                   required
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Data de Devengo</label>
+                  <input
+                    type="date"
+                    value={newDespesa.data_devengo}
+                    onChange={e => setNewDespesa({ ...newDespesa, data_devengo: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Data de Venciment</label>
+                  <input
+                    type="date"
+                    value={newDespesa.data_venciment}
+                    onChange={e => setNewDespesa({ ...newDespesa, data_venciment: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700">Adjuntar PDF o Comprovant</label>
+                <input
+                  type="file"
+                  onChange={e => handleFileUpload(e, 'despesa')}
+                  className="w-full mt-1 text-xs"
+                />
+                {uploadingFile && <div className="text-[11px] text-amber-600 font-semibold mt-1">Pujant fitxer...</div>}
+                {newDespesa.fitxer_adjunt_path && (
+                  <div className="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
+                    ✓ Fitxer adjuntat correctament
+                  </div>
+                )}
               </div>
 
               <div className="pt-3 border-t flex justify-end gap-2">
@@ -2874,7 +3602,7 @@ export const FinanceAdminPage: React.FC = () => {
                   Cancel·lar
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-amber-600 hover:bg-amber-700">
-                  Guardar Despesa
+                  {editingDespesaId ? 'Actualitzar Despesa' : 'Guardar Despesa'}
                 </button>
               </div>
             </form>

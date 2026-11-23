@@ -215,26 +215,43 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 		       a.id, a.nom, a.unitat_negoci_id, un.nom,
 		       a.preu_base::float8, a.iva_percentatge::float8,
 		       u.forma_pagament, COALESCE(u.iban, ''),
-		       u.pausat_facturacio
+		       u.pausat_facturacio,
+		       atl.entrenador_id, ent.nom,
+		       ja_emesa.id, ja_emesa.numero_complet
 		FROM usuaris u
 		JOIN fin_clients fc ON fc.usuari_id = u.id
 		JOIN fin_articles a ON a.id = u.article_quota_id
 		LEFT JOIN fin_unitats_negoci un ON un.id = a.unitat_negoci_id
+		LEFT JOIN atletes atl ON atl.usuari_id = u.id
+		LEFT JOIN entrenadors ent ON ent.id = atl.entrenador_id
+		LEFT JOIN LATERAL (
+			SELECT fv.id, fv.numero_complet
+			FROM fin_factures_venda fv
+			WHERE fv.client_id = fc.id
+			  AND fv.estat_document = 'emesa'
+			  AND (
+				  TO_CHAR(fv.periode_inici, 'YYYY-MM') = $1
+				  OR TO_CHAR(fv.data_emissio, 'YYYY-MM') = $1
+			  )
+			ORDER BY fv.created_at DESC
+			LIMIT 1
+		) ja_emesa ON TRUE
 		WHERE u.rol = 'atleta' AND u.actiu = TRUE
 		ORDER BY u.nom ASC, u.cognoms ASC
-	`)
+	`, mes)
 	if errA == nil {
 		defer rowsA.Close()
 		for rowsA.Next() {
 			var uID, cID, cNom, cNif, aID, aNom, forma, iban string
-			var unID, unNom *string
+			var unID, unNom, coachID, coachNom, jaID, jaNum *string
 			var base, ivaPct float64
 			var pausat bool
 
-			if err := rowsA.Scan(&uID, &cID, &cNom, &cNif, &aID, &aNom, &unID, &unNom, &base, &ivaPct, &forma, &iban, &pausat); err == nil {
+			if err := rowsA.Scan(&uID, &cID, &cNom, &cNif, &aID, &aNom, &unID, &unNom, &base, &ivaPct, &forma, &iban, &pausat, &coachID, &coachNom, &jaID, &jaNum); err == nil {
 				ivaImp := roundCurrency(base * ivaPct / 100.0)
 				pvp := roundCurrency(base + ivaImp)
 				concepte := fmt.Sprintf("%s - %s", aNom, formatMonthCatalan(mes))
+				jaEmesa := jaID != nil && *jaID != ""
 
 				item := models.GraellaMesItem{
 					ID:             uID,
@@ -248,6 +265,8 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 					Iban:           iban,
 					CentreCostID:   unID,
 					CentreCostNom:  unNom,
+					EntrenadorID:   coachID,
+					EntrenadorNom:  coachNom,
 					ArticleID:      &aID,
 					BaseImposable:  base,
 					IvaPercentatge: ivaPct,
@@ -255,10 +274,13 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 					TotalPvp:       pvp,
 					Pausat:         pausat,
 					DataVenciment:  fmt.Sprintf("%s-05", mes),
+					JaEmesa:        jaEmesa,
+					FacturaID:      jaID,
+					FacturaNumero:  jaNum,
 				}
 				items = append(items, item)
 
-				if !pausat {
+				if !pausat && !jaEmesa {
 					totalPvp += pvp
 					totalBase += base
 					totalIva += ivaImp
@@ -272,11 +294,14 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 		SELECT f.id, pc.client_id, c.nom_fiscal, COALESCE(c.nif_cif, ''),
 		       f.concepte_fita, pc.unitat_negoci_id, un.nom, pc.article_id,
 		       f.base_imposable::float8, f.iva_percentatge::float8,
-		       TO_CHAR(f.data_prevista, 'YYYY-MM-DD')
+		       TO_CHAR(f.data_prevista, 'YYYY-MM-DD'),
+		       atl.entrenador_id, ent.nom
 		FROM fin_plans_camp_fites f
 		JOIN fin_plans_camp pc ON pc.id = f.pla_camp_id
 		JOIN fin_clients c ON c.id = pc.client_id
 		LEFT JOIN fin_unitats_negoci un ON un.id = pc.unitat_negoci_id
+		LEFT JOIN atletes atl ON atl.usuari_id = c.usuari_id
+		LEFT JOIN entrenadors ent ON ent.id = atl.entrenador_id
 		WHERE f.factura_id IS NULL
 		  AND TO_CHAR(f.data_prevista, 'YYYY-MM') = $1
 		ORDER BY f.data_prevista ASC
@@ -285,10 +310,10 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 		defer rowsF.Close()
 		for rowsF.Next() {
 			var fID, cID, cNom, cNif, fConcepte, dataPrev string
-			var unID, unNom, aID *string
+			var unID, unNom, aID, coachID, coachNom *string
 			var base, ivaPct float64
 
-			if err := rowsF.Scan(&fID, &cID, &cNom, &cNif, &fConcepte, &unID, &unNom, &aID, &base, &ivaPct, &dataPrev); err == nil {
+			if err := rowsF.Scan(&fID, &cID, &cNom, &cNif, &fConcepte, &unID, &unNom, &aID, &base, &ivaPct, &dataPrev, &coachID, &coachNom); err == nil {
 				ivaImp := roundCurrency(base * ivaPct / 100.0)
 				pvp := roundCurrency(base + ivaImp)
 
@@ -303,6 +328,8 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 					FormaPagament:  "sepa_domiciliacio",
 					CentreCostID:   unID,
 					CentreCostNom:  unNom,
+					EntrenadorID:   coachID,
+					EntrenadorNom:  coachNom,
 					ArticleID:      aID,
 					BaseImposable:  base,
 					IvaPercentatge: ivaPct,
@@ -310,12 +337,22 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 					TotalPvp:       pvp,
 					Pausat:         false,
 					DataVenciment:  dataPrev,
+					JaEmesa:        false,
 				}
 				items = append(items, item)
 				totalPvp += pvp
 				totalBase += base
 				totalIva += ivaImp
 			}
+		}
+	}
+
+	var pendents, emeses int
+	for _, it := range items {
+		if it.JaEmesa {
+			emeses++
+		} else if !it.Pausat {
+			pendents++
 		}
 	}
 
@@ -326,6 +363,8 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 		TotalBase: roundCurrency(totalBase),
 		TotalIva:  roundCurrency(totalIva),
 		Count:     len(items),
+		Pendents:  pendents,
+		Emeses:    emeses,
 	}, nil
 }
 
@@ -363,14 +402,34 @@ func (s *PostgresStore) EmetreGraella(ctx context.Context, req models.EmetreGrae
 		}
 
 		// Quota recurrent
-		// Obtenir unitat de negoci per defecte o de l'article
+		// Comprovar si ja s'havia emès la factura per a aquest client aquest mes
+		var alreadyEmitted bool
+		_ = s.pool.QueryRow(ctx, `
+			SELECT EXISTS(
+				SELECT 1 FROM fin_factures_venda
+				WHERE client_id = $1
+				  AND estat_document = 'emesa'
+				  AND (TO_CHAR(periode_inici, 'YYYY-MM') = $2 OR TO_CHAR(data_emissio, 'YYYY-MM') = $2)
+			)
+		`, it.ClientID, req.Mes).Scan(&alreadyEmitted)
+		if alreadyEmitted {
+			continue
+		}
+
+		// Obtenir unitat de negoci del centre de cost o per defecte
 		var unitatID string
-		_ = s.pool.QueryRow(ctx, `SELECT id FROM fin_unitats_negoci ORDER BY created_at ASC LIMIT 1`).Scan(&unitatID)
+		if it.CentreCostID != nil && *it.CentreCostID != "" {
+			unitatID = *it.CentreCostID
+		} else {
+			_ = s.pool.QueryRow(ctx, `SELECT id FROM fin_unitats_negoci ORDER BY created_at ASC LIMIT 1`).Scan(&unitatID)
+		}
 
 		upsertReq := models.UpsertFinFacturaVendaRequest{
 			SerieID:         req.SerieID,
 			ClientID:        it.ClientID,
 			UnitatNegociID:  unitatID,
+			EntrenadorID:    it.EntrenadorID,
+			ArticleID:       it.ArticleID,
 			Concepte:        it.Concepte,
 			BaseImposable:   it.BaseImposable,
 			IvaPercentatge:  it.IvaPercentatge,

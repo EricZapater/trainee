@@ -501,6 +501,8 @@ export interface GraellaMesItem {
   iban: string
   centre_cost_id?: string | null
   centre_cost_nom?: string
+  entrenador_id?: string | null
+  entrenador_nom?: string
   article_id?: string | null
   base_imposable: number
   iva_percentatge: number
@@ -509,6 +511,9 @@ export interface GraellaMesItem {
   pausat: boolean
   data_venciment: string
   fita_id?: string | null
+  ja_emesa?: boolean
+  factura_id?: string | null
+  factura_numero?: string | null
 }
 
 export interface GraellaMesResponse {
@@ -518,6 +523,8 @@ export interface GraellaMesResponse {
   total_base: number
   total_iva: number
   count: number
+  pendents?: number
+  emeses?: number
 }
 
 export interface EmetreGraellaRequest {
@@ -531,6 +538,9 @@ export interface EmetreGraellaRequest {
     base_imposable: number
     iva_percentatge: number
     fita_id?: string | null
+    centre_cost_id?: string | null
+    entrenador_id?: string | null
+    article_id?: string | null
   }[]
 }
 

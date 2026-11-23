@@ -233,6 +233,21 @@ func (s *PostgresStore) CreateFinFacturaVenda(ctx context.Context, req models.Up
 		serieID = defSerie
 	}
 
+	coachID := nullableUUID(req.EntrenadorID)
+	if coachID == nil {
+		var deducedCoach string
+		errCoach := s.pool.QueryRow(ctx, `
+			SELECT a.entrenador_id::text
+			FROM atletes a
+			JOIN fin_clients fc ON fc.usuari_id = a.usuari_id
+			WHERE fc.id = $1 AND a.entrenador_id IS NOT NULL
+			LIMIT 1
+		`, req.ClientID).Scan(&deducedCoach)
+		if errCoach == nil && deducedCoach != "" {
+			coachID = &deducedCoach
+		}
+	}
+
 	var id string
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO fin_factures_venda (
@@ -245,7 +260,7 @@ func (s *PostgresStore) CreateFinFacturaVenda(ctx context.Context, req models.Up
 		) VALUES ($1,'F1','esborrany',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::date,$16::date,$17::date,$18::date,'pendent',$19)
 		RETURNING id
 	`,
-		serieID, req.ClientID, req.UnitatNegociID, nullableUUID(req.EntrenadorID), nullableUUID(req.ArticleID),
+		serieID, req.ClientID, req.UnitatNegociID, coachID, nullableUUID(req.ArticleID),
 		req.Concepte, req.DescripcioDetall, base, ivaPct, req.CausaExempcio, ivaImp,
 		irpfPct, irpfImp, total, req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi, req.NotesTresoreria,
 	).Scan(&id)

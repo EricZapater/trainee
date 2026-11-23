@@ -1,0 +1,2 @@
+-- 000046_associate_factures_entrenador.down.sql
+-- Revertir canvis (no cal fer res)

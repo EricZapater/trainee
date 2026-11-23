@@ -654,6 +654,8 @@ type GraellaMesItem struct {
 	Iban           string  `json:"iban"`
 	CentreCostID   *string `json:"centre_cost_id,omitempty"`
 	CentreCostNom  *string `json:"centre_cost_nom,omitempty"`
+	EntrenadorID   *string `json:"entrenador_id,omitempty"`
+	EntrenadorNom  *string `json:"entrenador_nom,omitempty"`
 	ArticleID      *string `json:"article_id,omitempty"`
 	BaseImposable  float64 `json:"base_imposable"`
 	IvaPercentatge float64 `json:"iva_percentatge"`
@@ -662,6 +664,9 @@ type GraellaMesItem struct {
 	Pausat         bool    `json:"pausat"`
 	DataVenciment  string  `json:"data_venciment"`
 	FitaID         *string `json:"fita_id,omitempty"`
+	JaEmesa        bool    `json:"ja_emesa"`
+	FacturaID      *string `json:"factura_id,omitempty"`
+	FacturaNumero  *string `json:"factura_numero,omitempty"`
 }
 
 type GraellaMesResponse struct {
@@ -671,6 +676,8 @@ type GraellaMesResponse struct {
 	TotalBase float64          `json:"total_base"`
 	TotalIva  float64          `json:"total_iva"`
 	Count     int              `json:"count"`
+	Pendents  int              `json:"pendents"`
+	Emeses    int              `json:"emeses"`
 }
 
 type EmetreGraellaItemRequest struct {
@@ -681,6 +688,9 @@ type EmetreGraellaItemRequest struct {
 	BaseImposable  float64 `json:"base_imposable"`
 	IvaPercentatge float64 `json:"iva_percentatge"`
 	FitaID         *string `json:"fita_id,omitempty"`
+	CentreCostID   *string `json:"centre_cost_id,omitempty"`
+	EntrenadorID   *string `json:"entrenador_id,omitempty"`
+	ArticleID      *string `json:"article_id,omitempty"`
 }
 
 type EmetreGraellaRequest struct {
