@@ -19,7 +19,13 @@ import {
   Package,
   Pencil,
   Zap,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  Search,
+  Filter,
+  CreditCard,
+  Bell,
+  Send
 } from 'lucide-react'
 import { getEntrenadorsList } from '../api/entrenador'
 import {
@@ -67,6 +73,11 @@ import {
   emetreGraella,
   generarDespesesRecurrentsMes,
   getDynamicCashflow,
+  listFacturaCobraments,
+  createFacturaCobrament,
+  deleteFacturaCobrament,
+  getFinLiquidacioEntrenadors,
+  executarAvisosCobrament,
   type FinConfiguracioEmpresa,
   type FinUnitatNegoci,
   type FinSerie,
@@ -75,41 +86,54 @@ import {
   type FinClient,
   type FinProveidor,
   type FinFacturaVenda,
+  type FinFacturaCobrament,
   type FinCompra,
   type FinDespesa,
   type FinInformeResultats,
   type FinCashflowForecast,
   type GraellaMesResponse,
   type EmetreGraellaResponse,
-  type DynamicCashflowForecast
+  type DynamicCashflowForecast,
+  type FinLiquidacioEntrenadorsResponse
 } from '../api/finances'
 
-type TabKey = 'graella' | 'vendes' | 'compres' | 'despeses' | 'resum' | 'tresoreria' | 'config'
+type TabKey = 'graella' | 'vendes' | 'compres' | 'despeses' | 'liquidacio' | 'resum' | 'tresoreria' | 'config'
 
 const TAB_TITLES: Record<TabKey, string> = {
   graella: '⚡ Facturació del Mes',
   vendes: 'Vendes & Factures',
   compres: 'Compres & Proveïdors',
   despeses: 'Despeses Operatives',
+  liquidacio: '🤝 Liquidació per Entrenador',
   resum: 'Visor de Marge (P&L)',
   tresoreria: 'Previsió de Caixa (Cashflow)',
   config: 'Mestres & Configuració'
 }
 
 const TAB_DESCRIPTIONS: Record<TabKey, string> = {
-  graella: 'Llançament periòdic de quotes i venciments del mes',
-  vendes: 'Factures puntuals, cobraments i vendes a terminis',
-  compres: 'Factures de compra, proveïdors i centres de cost',
+  graella: 'Llançament periòdic de quotes i venciments del mes (preus IVA inclòs)',
+  vendes: 'Factures amb article vinculat, cobraments parcials (Training Camps) i saldos pendents',
+  compres: 'Factures de compra, proveïdors, articles i centres de cost',
   despeses: 'Nòmines, autònoms, IRPF i pagaments fixes dia 1',
+  liquidacio: 'Liquidació mensual per entrenador: venut, cobrat i impagat menys comprat (IVA inclòs)',
   resum: 'Compte de resultats (P&L), marge brut i benefici net',
   tresoreria: 'Flux de caixa dinàmic mòbil i tresoreria projectada',
-  config: 'Articles, formes de pagament, sèries de facturació, IVA i empresa',
+  config: 'Articles (preu final IVA inclòs), dia límit de pago, sèries, IVA i empresa',
+}
+
+const calcReverseVat = (pvpInput: number, ivaPct: number, irpfPct = 0) => {
+  const pvp = Math.round((Number(pvpInput) || 0) * 100) / 100
+  const base = Math.round((pvp / (1 + (Number(ivaPct) || 0) / 100)) * 100) / 100
+  const iva = Math.round((pvp - base) * 100) / 100
+  const irpf = Math.round((base * ((Number(irpfPct) || 0) / 100)) * 100) / 100
+  const total = Math.round((pvp - irpf) * 100) / 100
+  return { pvp, base, iva, irpf, total }
 }
 
 export const FinanceAdminPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const rawTab = searchParams.get('tab')
-  const allowedTabs: TabKey[] = ['graella', 'vendes', 'compres', 'despeses', 'resum', 'tresoreria', 'config']
+  const allowedTabs: TabKey[] = ['graella', 'vendes', 'compres', 'despeses', 'liquidacio', 'resum', 'tresoreria', 'config']
   const activeTab: TabKey = allowedTabs.includes(rawTab as TabKey) ? (rawTab as TabKey) : 'graella'
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -170,7 +194,7 @@ export const FinanceAdminPage: React.FC = () => {
 
   const [showArticleModal, setShowArticleModal] = useState(false)
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null)
-  const [newArticle, setNewArticle] = useState({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+  const [newArticle, setNewArticle] = useState({ codi: '', nom: '', descripcio: '', tipus: 'venda' as 'venda' | 'compra' | 'ambdos', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: '', preu_base: 0, preu_final: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
 
   const [showClientModal, setShowClientModal] = useState(false)
   const [editingClientId, setEditingClientId] = useState<string | null>(null)
@@ -190,8 +214,12 @@ export const FinanceAdminPage: React.FC = () => {
   const [newFactura, setNewFactura] = useState({
     client_id: '',
     unitat_negoci_id: '',
+    entrenador_id: '',
+    article_id: '',
     concepte: '',
+    descripcio_detall: '',
     base_imposable: 0,
+    total_pvp: 0,
     iva_percentatge: 21,
     irpf_percentatge: 0,
     data_emissio: new Date().toISOString().split('T')[0],
@@ -206,9 +234,49 @@ export const FinanceAdminPage: React.FC = () => {
 
   const [entrenadorsList, setEntrenadorsList] = useState<{ id: string; nom: string }[]>([])
 
+  // Filtres avançats Vendes, Compres i Despeses
   const [graellaFilter, setGraellaFilter] = useState<'all' | 'pendent' | 'emesa' | 'pausat'>('all')
+
+  const [vendesStatusFilter, setVendesStatusFilter] = useState<'all' | 'pendent' | 'parcial' | 'pagada' | 'impagada' | 'esborrany'>('all')
+  const [vendesDateFrom, setVendesDateFrom] = useState('')
+  const [vendesDateTo, setVendesDateTo] = useState('')
+  const [vendesClientId, setVendesClientId] = useState('')
+  const [vendesArticleId, setVendesArticleId] = useState('')
+  const [vendesSearch, setVendesSearch] = useState('')
+
   const [compresFilter, setCompresFilter] = useState<'all' | 'pendent' | 'pagada'>('all')
+  const [compresDateFrom, setCompresDateFrom] = useState('')
+  const [compresDateTo, setCompresDateTo] = useState('')
+  const [compresProveidorId, setCompresProveidorId] = useState('')
+  const [compresArticleId, setCompresArticleId] = useState('')
+  const [compresSearch, setCompresSearch] = useState('')
+
   const [despesesFilter, setDespesesFilter] = useState<'all' | 'pendent' | 'pagada' | 'recurrent'>('all')
+  const [despesesDateFrom, setDespesesDateFrom] = useState('')
+  const [despesesDateTo, setDespesesDateTo] = useState('')
+  const [despesesBeneficiari, setDespesesBeneficiari] = useState('')
+  const [despesesCategoria, setDespesesCategoria] = useState('')
+  const [despesesSearch, setDespesesSearch] = useState('')
+
+  // Cobraments parcials modal state
+  const [cobramentsModal, setCobramentsModal] = useState<FinFacturaVenda | null>(null)
+  const [cobramentsList, setCobramentsList] = useState<FinFacturaCobrament[]>([])
+  const [cobramentsLoading, setCobramentsLoading] = useState(false)
+  const [newCobrament, setNewCobrament] = useState({
+    data_cobrament: new Date().toISOString().split('T')[0],
+    import: 0,
+    metode_pagament: 'transferencia',
+    notes: ''
+  })
+
+  // Liquidació per entrenador state
+  const [liquidacioMes, setLiquidacioMes] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [liquidacioData, setLiquidacioData] = useState<FinLiquidacioEntrenadorsResponse | null>(null)
+  const [liquidacioLoading, setLiquidacioLoading] = useState(false)
+  const [expandedLiquidacioCoach, setExpandedLiquidacioCoach] = useState<Record<string, boolean>>({})
 
   const [showCompraModal, setShowCompraModal] = useState(false)
   const [editingCompraId, setEditingCompraId] = useState<string | null>(null)
@@ -217,8 +285,10 @@ export const FinanceAdminPage: React.FC = () => {
     num_factura_proveidor: '',
     unitat_negoci_id: '',
     entrenador_id: '',
+    article_id: '',
     concepte: '',
     base_imposable: 0,
+    preu_amb_iva: 0,
     iva_percentatge: 21,
     irpf_percentatge: 0,
     data_emissio: new Date().toISOString().split('T')[0],
@@ -291,7 +361,52 @@ export const FinanceAdminPage: React.FC = () => {
     if (activeTab === 'vendes') loadFactures()
     if (activeTab === 'compres') loadCompres()
     if (activeTab === 'despeses') loadDespeses()
+    if (activeTab === 'liquidacio') loadLiquidacio()
   }, [activeTab, reportMode, reportStart, reportEnd, horizonDies, inclouEndarrerits, cfPastMonths, cfFutureMonths])
+
+  const loadLiquidacio = async (mes?: string) => {
+    const targetMes = mes || liquidacioMes
+    try {
+      setLiquidacioLoading(true)
+      const data = await getFinLiquidacioEntrenadors(targetMes)
+      setLiquidacioData(data)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error carregant la liquidació per entrenador')
+    } finally {
+      setLiquidacioLoading(false)
+    }
+  }
+
+  const applyQuickDatePreset = (
+    preset: 'all' | 'this_month' | 'last_month' | 'this_year',
+    setFrom: (v: string) => void,
+    setTo: (v: string) => void
+  ) => {
+    if (preset === 'all') {
+      setFrom('')
+      setTo('')
+      return
+    }
+    const now = new Date()
+    if (preset === 'this_month') {
+      const y = now.getFullYear()
+      const m = String(now.getMonth() + 1).padStart(2, '0')
+      const lastD = new Date(y, now.getMonth() + 1, 0).getDate()
+      setFrom(`${y}-${m}-01`)
+      setTo(`${y}-${m}-${String(lastD).padStart(2, '0')}`)
+    } else if (preset === 'last_month') {
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const y = prev.getFullYear()
+      const m = String(prev.getMonth() + 1).padStart(2, '0')
+      const lastD = new Date(y, prev.getMonth() + 1, 0).getDate()
+      setFrom(`${y}-${m}-01`)
+      setTo(`${y}-${m}-${String(lastD).padStart(2, '0')}`)
+    } else if (preset === 'this_year') {
+      const y = now.getFullYear()
+      setFrom(`${y}-01-01`)
+      setTo(`${y}-12-31`)
+    }
+  }
 
   const loadGraella = async (mes?: string) => {
     const targetMes = mes || graellaMes
@@ -304,7 +419,7 @@ export const FinanceAdminPage: React.FC = () => {
       const initialConcepts: Record<string, string> = {}
       data.items.forEach(it => {
         initialSelected[it.id] = !it.pausat && !it.ja_emesa
-        initialAmounts[it.id] = it.base_imposable
+        initialAmounts[it.id] = it.total_pvp
         initialConcepts[it.id] = it.concepte
       })
       setGraellaSelected(initialSelected)
@@ -342,18 +457,23 @@ export const FinanceAdminPage: React.FC = () => {
     if (!graellaData) return
     const selectedItems = graellaData.items
       .filter(it => graellaSelected[it.id] && !it.ja_emesa)
-      .map(it => ({
-        id: it.id,
-        tipus_origen: it.tipus_origen,
-        client_id: it.client_id,
-        concepte: graellaCustomConcepts[it.id] || it.concepte,
-        base_imposable: graellaCustomAmounts[it.id] ?? it.base_imposable,
-        iva_percentatge: it.iva_percentatge,
-        fita_id: it.fita_id || null,
-        centre_cost_id: it.centre_cost_id || null,
-        entrenador_id: it.entrenador_id || null,
-        article_id: it.article_id || null
-      }))
+      .map(it => {
+        const customPvp = graellaCustomAmounts[it.id] ?? it.total_pvp
+        const { base } = calcReverseVat(customPvp, it.iva_percentatge)
+        return {
+          id: it.id,
+          tipus_origen: it.tipus_origen,
+          client_id: it.client_id,
+          concepte: graellaCustomConcepts[it.id] || it.concepte,
+          base_imposable: base,
+          total_pvp: customPvp,
+          iva_percentatge: it.iva_percentatge,
+          fita_id: it.fita_id || null,
+          centre_cost_id: it.centre_cost_id || null,
+          entrenador_id: it.entrenador_id || null,
+          article_id: it.article_id || null
+        }
+      })
 
     if (selectedItems.length === 0) {
       showNotify('error', 'No hi ha cap element seleccionat per a emetre!')
@@ -437,6 +557,21 @@ export const FinanceAdminPage: React.FC = () => {
       if (pr && pr.length > 0) {
         setNewCompra(prev => ({ ...prev, proveidor_id: pr[0].id }))
       }
+      const firstVendaArt = (artList || []).find(a => a.actiu && a.tipus !== 'compra')
+      if (firstVendaArt) {
+        const pvp = firstVendaArt.preu_final || Number((firstVendaArt.preu_base * (1 + firstVendaArt.iva_percentatge / 100)).toFixed(2))
+        const { base } = calcReverseVat(pvp, firstVendaArt.iva_percentatge)
+        setNewFactura(prev => ({
+          ...prev,
+          article_id: firstVendaArt.id,
+          unitat_negoci_id: firstVendaArt.unitat_negoci_id || prev.unitat_negoci_id,
+          concepte: firstVendaArt.nom,
+          total_pvp: pvp,
+          base_imposable: base,
+          iva_percentatge: firstVendaArt.iva_percentatge,
+          irpf_percentatge: firstVendaArt.irpf_percentatge || 0
+        }))
+      }
     } catch (err: any) {
       console.error('Error carregant dades mestres:', err)
       showNotify('error', 'Error carregant dades inicials')
@@ -510,15 +645,136 @@ export const FinanceAdminPage: React.FC = () => {
     }
   }
 
+  const openCreateFacturaModal = () => {
+    const vendaArts = articles.filter(a => a.actiu && a.tipus !== 'compra')
+    const defaultArt = vendaArts[0]
+    const pvp = defaultArt ? (defaultArt.preu_final || Number((defaultArt.preu_base * (1 + defaultArt.iva_percentatge / 100)).toFixed(2))) : 0
+    const ivaPct = defaultArt ? defaultArt.iva_percentatge : 21
+    const irpfPct = defaultArt ? (defaultArt.irpf_percentatge || 0) : 0
+    const { base } = calcReverseVat(pvp, ivaPct, irpfPct)
+    const today = new Date().toISOString().split('T')[0]
+    const diaLimit = config?.dia_limit_pagament || 5
+    const ym = today.slice(0, 7)
+    const vencDefault = `${ym}-${String(diaLimit).padStart(2, '0')}`
+
+    setNewFactura({
+      client_id: clients[0]?.id || '',
+      unitat_negoci_id: defaultArt?.unitat_negoci_id || unitats[0]?.id || '',
+      entrenador_id: '',
+      article_id: defaultArt?.id || '',
+      concepte: defaultArt?.nom || '',
+      descripcio_detall: defaultArt?.descripcio || '',
+      base_imposable: base,
+      total_pvp: pvp,
+      iva_percentatge: ivaPct,
+      irpf_percentatge: irpfPct,
+      data_emissio: today,
+      data_venciment: vencDefault >= today ? vencDefault : today,
+      periode_inici: today,
+      periode_fi: today,
+      emetre_directe: true
+    })
+    setShowFacturaModal(true)
+  }
+
+  const handleSelectFacturaArticle = (articleId: string) => {
+    const art = articles.find(a => a.id === articleId)
+    if (!art) {
+      setNewFactura(prev => ({ ...prev, article_id: articleId }))
+      return
+    }
+    const pvp = art.preu_final || Number((art.preu_base * (1 + art.iva_percentatge / 100)).toFixed(2))
+    const { base } = calcReverseVat(pvp, art.iva_percentatge, art.irpf_percentatge || 0)
+    setNewFactura(prev => ({
+      ...prev,
+      article_id: art.id,
+      unitat_negoci_id: art.unitat_negoci_id || prev.unitat_negoci_id,
+      concepte: art.nom,
+      descripcio_detall: art.descripcio || prev.descripcio_detall,
+      total_pvp: pvp,
+      base_imposable: base,
+      iva_percentatge: art.iva_percentatge,
+      irpf_percentatge: art.irpf_percentatge || 0
+    }))
+  }
+
   const handleCreateFactura = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!newFactura.article_id) {
+      showNotify('error', 'Cal seleccionar un article del catàleg vinculat a la factura.')
+      return
+    }
     try {
-      await createFinFacturaVenda(newFactura)
+      const { base } = calcReverseVat(newFactura.total_pvp, newFactura.iva_percentatge, newFactura.irpf_percentatge)
+      await createFinFacturaVenda({
+        ...newFactura,
+        base_imposable: base,
+        total_pvp: newFactura.total_pvp,
+        entrenador_id: newFactura.entrenador_id || null,
+        article_id: newFactura.article_id
+      })
       showNotify('success', newFactura.emetre_directe ? 'Factura emesa correctament!' : 'Esborrany de factura creat!')
       setShowFacturaModal(false)
       loadFactures()
     } catch (err: any) {
       showNotify('error', err.response?.data?.error || 'Error creant la factura')
+    }
+  }
+
+  const openCobramentsModal = async (f: FinFacturaVenda) => {
+    setCobramentsModal(f)
+    setNewCobrament({
+      data_cobrament: new Date().toISOString().split('T')[0],
+      import: Number((f.import_pendent || 0).toFixed(2)),
+      metode_pagament: 'transferencia',
+      notes: ''
+    })
+    try {
+      setCobramentsLoading(true)
+      const list = await listFacturaCobraments(f.id)
+      setCobramentsList(list || [])
+    } catch (err: any) {
+      showNotify('error', 'Error carregant historial de cobraments')
+    } finally {
+      setCobramentsLoading(false)
+    }
+  }
+
+  const handleAddCobrament = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!cobramentsModal) return
+    try {
+      const updated = await createFacturaCobrament(cobramentsModal.id, newCobrament)
+      setCobramentsModal(updated)
+      const list = await listFacturaCobraments(cobramentsModal.id)
+      setCobramentsList(list || [])
+      setNewCobrament({
+        data_cobrament: new Date().toISOString().split('T')[0],
+        import: Number((updated.import_pendent || 0).toFixed(2)),
+        metode_pagament: 'transferencia',
+        notes: ''
+      })
+      showNotify('success', updated.estat_cobrament === 'pagada' ? 'Factura liquidada al 100%!' : 'Pagament parcial registrat correctament!')
+      loadFactures()
+      if (activeTab === 'liquidacio') loadLiquidacio()
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error registrant el pagament')
+    }
+  }
+
+  const handleDeleteCobrament = async (cobramentId: string) => {
+    if (!cobramentsModal) return
+    try {
+      const updated = await deleteFacturaCobrament(cobramentsModal.id, cobramentId)
+      setCobramentsModal(updated)
+      const list = await listFacturaCobraments(cobramentsModal.id)
+      setCobramentsList(list || [])
+      setNewCobrament(prev => ({ ...prev, import: Number((updated.import_pendent || 0).toFixed(2)) }))
+      showNotify('success', 'Registre de cobrament eliminat')
+      loadFactures()
+      if (activeTab === 'liquidacio') loadLiquidacio()
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error eliminant el cobrament')
     }
   }
 
@@ -638,8 +894,10 @@ export const FinanceAdminPage: React.FC = () => {
       num_factura_proveidor: '',
       unitat_negoci_id: unitats[0]?.id || '',
       entrenador_id: '',
+      article_id: '',
       concepte: '',
       base_imposable: 0,
+      preu_amb_iva: 0,
       iva_percentatge: 21,
       irpf_percentatge: 0,
       data_emissio: new Date().toISOString().split('T')[0],
@@ -655,13 +913,16 @@ export const FinanceAdminPage: React.FC = () => {
 
   const openEditCompra = (c: FinCompra) => {
     setEditingCompraId(c.id)
+    const pvpAmbIva = Math.round((c.base_imposable + c.iva_import) * 100) / 100
     setNewCompra({
       proveidor_id: c.proveidor_id,
       num_factura_proveidor: c.num_factura_proveidor,
       unitat_negoci_id: c.unitat_negoci_id || '',
       entrenador_id: c.entrenador_id || '',
+      article_id: c.article_id || '',
       concepte: c.concepte,
       base_imposable: c.base_imposable,
+      preu_amb_iva: pvpAmbIva,
       iva_percentatge: c.iva_percentatge,
       irpf_percentatge: c.irpf_percentatge,
       data_emissio: c.data_emissio,
@@ -675,13 +936,37 @@ export const FinanceAdminPage: React.FC = () => {
     setShowCompraModal(true)
   }
 
+  const handleSelectCompraArticle = (articleId: string) => {
+    const art = articles.find(a => a.id === articleId)
+    if (!art) {
+      setNewCompra(prev => ({ ...prev, article_id: '' }))
+      return
+    }
+    const pvp = art.preu_final || Number((art.preu_base * (1 + art.iva_percentatge / 100)).toFixed(2))
+    const { base } = calcReverseVat(pvp, art.iva_percentatge, art.irpf_percentatge || 0)
+    setNewCompra(prev => ({
+      ...prev,
+      article_id: art.id,
+      unitat_negoci_id: art.unitat_negoci_id || prev.unitat_negoci_id,
+      concepte: prev.concepte || art.nom,
+      preu_amb_iva: pvp,
+      base_imposable: base,
+      iva_percentatge: art.iva_percentatge,
+      irpf_percentatge: art.irpf_percentatge || prev.irpf_percentatge
+    }))
+  }
+
   const handleSaveCompra = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const { base } = calcReverseVat(newCompra.preu_amb_iva, newCompra.iva_percentatge, newCompra.irpf_percentatge)
       const payload = {
         ...newCompra,
+        base_imposable: newCompra.preu_amb_iva > 0 ? base : newCompra.base_imposable,
+        preu_amb_iva: newCompra.preu_amb_iva > 0 ? newCompra.preu_amb_iva : undefined,
         unitat_negoci_id: newCompra.unitat_negoci_id || null,
-        entrenador_id: newCompra.entrenador_id || null
+        entrenador_id: newCompra.entrenador_id || null,
+        article_id: newCompra.article_id || null
       }
       if (editingCompraId) {
         await updateFinCompra(editingCompraId, payload)
@@ -968,22 +1253,26 @@ export const FinanceAdminPage: React.FC = () => {
   // 4. Articles
   const openCreateArticle = () => {
     setEditingArticleId(null)
-    setNewArticle({ codi: '', nom: '', descripcio: '', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: unitats[0]?.id || '', preu_base: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+    setNewArticle({ codi: '', nom: '', descripcio: '', tipus: 'venda', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: unitats[0]?.id || '', preu_base: 0, preu_final: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
     setShowArticleModal(true)
   }
   const openEditArticle = (a: FinArticle) => {
     setEditingArticleId(a.id)
-    setNewArticle({ codi: a.codi || '', nom: a.nom, descripcio: a.descripcio || '', categoria: a.categoria, es_recurrent: !!a.es_recurrent, periodicitat_mesos: (a.periodicitat_mesos || 1) as 1 | 3 | 6 | 12, unitat_negoci_id: a.unitat_negoci_id, preu_base: a.preu_base, iva_percentatge: a.iva_percentatge, irpf_percentatge: a.irpf_percentatge || 0, causa_exempcio: a.causa_exempcio || '', actiu: a.actiu })
+    const pvp = a.preu_final || Number((a.preu_base * (1 + a.iva_percentatge / 100)).toFixed(2))
+    const { base } = calcReverseVat(pvp, a.iva_percentatge)
+    setNewArticle({ codi: a.codi || '', nom: a.nom, descripcio: a.descripcio || '', tipus: (a.tipus || 'venda') as 'venda' | 'compra' | 'ambdos', categoria: a.categoria, es_recurrent: !!a.es_recurrent, periodicitat_mesos: (a.periodicitat_mesos || 1) as 1 | 3 | 6 | 12, unitat_negoci_id: a.unitat_negoci_id, preu_base: base, preu_final: pvp, iva_percentatge: a.iva_percentatge, irpf_percentatge: a.irpf_percentatge || 0, causa_exempcio: a.causa_exempcio || '', actiu: a.actiu })
     setShowArticleModal(true)
   }
   const handleSaveArticle = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      const { base, pvp } = calcReverseVat(newArticle.preu_final, newArticle.iva_percentatge)
+      const payload = { ...newArticle, preu_final: pvp, preu_base: base }
       if (editingArticleId) {
-        await updateFinArticle(editingArticleId, newArticle)
+        await updateFinArticle(editingArticleId, payload)
         showNotify('success', 'Article / Servei actualitzat correctament!')
       } else {
-        await createFinArticle(newArticle)
+        await createFinArticle(payload)
         showNotify('success', 'Article / Servei creat al catàleg!')
       }
       setShowArticleModal(false)
@@ -1258,8 +1547,8 @@ export const FinanceAdminPage: React.FC = () => {
                     <th className="p-3">Concepte Factura</th>
                     <th className="p-3">Forma de Pagament</th>
                     <th className="p-3">Centre de Cost</th>
-                    <th className="p-3 text-right">Base Imposable</th>
-                    <th className="p-3 text-right">Total (PVP)</th>
+                    <th className="p-3 text-right">Base + IVA</th>
+                    <th className="p-3 text-right">Preu Final (IVA incl.)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border text-slate-700">
@@ -1296,10 +1585,9 @@ export const FinanceAdminPage: React.FC = () => {
 
                     return filtered.map(it => {
                       const isSelected = !!graellaSelected[it.id]
-                      const customBase = graellaCustomAmounts[it.id] ?? it.base_imposable
+                      const customPvp = graellaCustomAmounts[it.id] ?? it.total_pvp
                       const customConcept = graellaCustomConcepts[it.id] ?? it.concepte
-                      const ivaImp = customBase * (it.iva_percentatge / 100)
-                      const totalPvp = customBase + ivaImp
+                      const { base: calcBase, iva: calcIva } = calcReverseVat(customPvp, it.iva_percentatge)
 
                       return (
                         <tr
@@ -1375,25 +1663,26 @@ export const FinanceAdminPage: React.FC = () => {
                           <td className="p-3">
                             <span className="text-slate-600 font-medium">{it.centre_cost_nom || 'General'}</span>
                           </td>
+                          <td className="p-3 text-right text-[11px] text-slate-500 font-mono">
+                            <div>Base: {calcBase.toFixed(2)} €</div>
+                            <div className="text-[10px] text-slate-400">IVA ({it.iva_percentatge}%): {calcIva.toFixed(2)} €</div>
+                          </td>
                           <td className="p-3 text-right">
                             <div className="flex items-center justify-end gap-1">
                               <input
                                 type="number"
                                 step="0.01"
                                 disabled={it.ja_emesa}
-                                value={customBase}
+                                value={customPvp}
                                 onChange={e => setGraellaCustomAmounts({ ...graellaCustomAmounts, [it.id]: parseFloat(e.target.value) || 0 })}
-                                className={`w-20 p-1 text-right rounded text-xs font-mono font-bold ${
+                                className={`w-24 p-1 text-right rounded text-xs font-mono font-black ${
                                   it.ja_emesa
                                     ? 'bg-slate-100 border border-slate-200 text-slate-500 cursor-not-allowed'
-                                    : 'border border-slate-200'
+                                    : 'border border-emerald-300 bg-emerald-50/40 text-slate-900'
                                 }`}
                               />
-                              <span>€</span>
+                              <span className="font-bold">€</span>
                             </div>
-                          </td>
-                          <td className="p-3 text-right font-black text-slate-900">
-                            {totalPvp.toFixed(2)} €
                           </td>
                         </tr>
                       )
@@ -1408,13 +1697,14 @@ export const FinanceAdminPage: React.FC = () => {
               const selectedCount = graellaData.items.filter(it => graellaSelected[it.id]).length
               let sumBase = 0
               let sumPvp = 0
+              let sumIva = 0
               graellaData.items.filter(it => graellaSelected[it.id]).forEach(it => {
-                const b = graellaCustomAmounts[it.id] ?? it.base_imposable
-                const p = b * (1 + it.iva_percentatge / 100)
-                sumBase += b
+                const p = graellaCustomAmounts[it.id] ?? it.total_pvp
+                const { base, iva } = calcReverseVat(p, it.iva_percentatge)
+                sumBase += base
+                sumIva += iva
                 sumPvp += p
               })
-              const sumIva = sumPvp - sumBase
 
               return (
                 <div className="bg-slate-900 text-white p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -1882,174 +2172,360 @@ export const FinanceAdminPage: React.FC = () => {
       )}
 
       {/* TAB 3: VENDES & FACTURES */}
-      {activeTab === 'vendes' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-800">Llibre de Factures de Venda</h2>
-            <button
-              onClick={() => setShowFacturaModal(true)}
-              className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700"
-            >
-              <Plus className="w-4 h-4" /> Nova Factura
-            </button>
-          </div>
+      {activeTab === 'vendes' && (() => {
+        const filteredFactures = factures.filter(f => {
+          if (vendesStatusFilter === 'esborrany' && f.estat_document !== 'esborrany') return false
+          if (vendesStatusFilter === 'pendent' && (f.estat_document !== 'emesa' || f.estat_cobrament !== 'pendent')) return false
+          if (vendesStatusFilter === 'parcial' && f.estat_cobrament !== 'parcial') return false
+          if (vendesStatusFilter === 'pagada' && f.estat_cobrament !== 'pagada') return false
+          if (vendesStatusFilter === 'impagada' && f.estat_cobrament !== 'impagada') return false
+          if (vendesDateFrom && f.data_emissio < vendesDateFrom) return false
+          if (vendesDateTo && f.data_emissio > vendesDateTo) return false
+          if (vendesClientId && f.client_id !== vendesClientId) return false
+          if (vendesArticleId && f.article_id !== vendesArticleId) return false
+          if (vendesSearch.trim()) {
+            const q = vendesSearch.toLowerCase().trim()
+            const hay = `${f.numero_complet || ''} ${f.client_nom || ''} ${f.article_nom || ''} ${f.concepte || ''} ${f.descripcio_detall || ''}`.toLowerCase()
+            if (!hay.includes(q)) return false
+          }
+          return true
+        })
 
-          <div className="glass-card overflow-hidden">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold">
-                  <th className="py-2.5 px-4">Núm. Factura</th>
-                  <th className="py-2.5 px-4">Client</th>
-                  <th className="py-2.5 px-4">Concepte</th>
-                  <th className="py-2.5 px-4 text-right">Base Imposable</th>
-                  <th className="py-2.5 px-4 text-right">Total</th>
-                  <th className="py-2.5 px-4">Dates</th>
-                  <th className="py-2.5 px-4">Estat</th>
-                  <th className="py-2.5 px-4 text-right">Accions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-light font-medium">
-                {factures.map(f => {
-                  const isEmesa = f.estat_document === 'emesa'
-                  const isPagada = f.estat_cobrament === 'pagada'
-                  const isImpagada = f.estat_cobrament === 'impagada'
-                  const numDisplay = f.numero_complet || 'ESBORRANY'
+        const sumTotalFacturat = filteredFactures.filter(f => f.estat_document === 'emesa').reduce((acc, f) => acc + (f.total_factura || 0), 0)
+        const sumTotalCobrat = filteredFactures.filter(f => f.estat_document === 'emesa').reduce((acc, f) => acc + (f.import_cobrat ?? (f.estat_cobrament === 'pagada' ? f.total_factura : 0)), 0)
+        const sumTotalPendent = filteredFactures.filter(f => f.estat_document === 'emesa').reduce((acc, f) => acc + (f.import_pendent ?? (f.estat_cobrament === 'pagada' || f.estat_cobrament === 'compensada' ? 0 : f.total_factura)), 0)
 
-                  return (
-                    <tr key={f.id} className="hover:bg-slate-50/60">
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900 flex items-center gap-1">
-                          {f.tipus_factura === 'R1' && <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-black">R</span>}
-                          {numDisplay}
-                        </div>
-                        <div className="text-[10px] text-slate-400">{f.unitat_negoci_nom}</div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-800">{f.client_nom}</div>
-                        <div className="text-[10px] text-slate-400">{f.client_nif}</div>
-                      </td>
-                      <td className="py-3 px-4 text-slate-700 max-w-xs truncate">{f.concepte}</td>
-                      <td className="py-3 px-4 text-right font-medium">{f.base_imposable.toFixed(2)} €</td>
-                      <td className="py-3 px-4 text-right font-black text-slate-900">{f.total_factura.toFixed(2)} €</td>
-                      <td className="py-3 px-4 text-[11px] text-slate-500">
-                        <div>Emissió: {f.data_emissio}</div>
-                        <div>Venc: {f.data_venciment}</div>
-                      </td>
-                      <td className="py-3 px-4">
-                        {!isEmesa ? (
-                          <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Esborrany</span>
-                        ) : isPagada ? (
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
-                            <CheckCircle2 className="w-3 h-3" /> Pagada
-                          </span>
-                        ) : isImpagada ? (
-                          <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
-                            <AlertCircle className="w-3 h-3" /> Impagada
-                          </span>
-                        ) : (
-                          <span className="bg-blue-50 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendent</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <a
-                            href={`/api/finances/factures/${f.id}/pdf`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
-                            title="Veure Factura / Imprimir"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </a>
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Llibre de Factures de Venda</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Factures amb article vinculat, control d'import total vs pendent i pagaments parcials (Training Camps)</p>
+              </div>
+              <button
+                onClick={openCreateFacturaModal}
+                className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Plus className="w-4 h-4" /> Nova Factura
+              </button>
+            </div>
 
-                          {!isEmesa && (
-                            <>
-                              <button
-                                onClick={() => handleEmetreFactura(f.id, f.numero_complet || f.concepte)}
-                                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold"
+            {/* Barra de Filtres Vendes */}
+            <div className="glass-card p-4 space-y-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                  <Filter className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Filtres de Vendes</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button type="button" onClick={() => applyQuickDatePreset('this_month', setVendesDateFrom, setVendesDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Mes actual</button>
+                  <button type="button" onClick={() => applyQuickDatePreset('last_month', setVendesDateFrom, setVendesDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Mes passat</button>
+                  <button type="button" onClick={() => applyQuickDatePreset('this_year', setVendesDateFrom, setVendesDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Any actual</button>
+                  {(vendesDateFrom || vendesDateTo || vendesClientId || vendesArticleId || vendesSearch || vendesStatusFilter !== 'all') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVendesDateFrom('')
+                        setVendesDateTo('')
+                        setVendesClientId('')
+                        setVendesArticleId('')
+                        setVendesSearch('')
+                        setVendesStatusFilter('all')
+                      }}
+                      className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px]"
+                    >
+                      ✕ Netejar filtres
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Emissió des de</label>
+                  <input type="date" value={vendesDateFrom} onChange={e => setVendesDateFrom(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Emissió fins a</label>
+                  <input type="date" value={vendesDateTo} onChange={e => setVendesDateTo(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Client / Atleta</label>
+                  <select value={vendesClientId} onChange={e => setVendesClientId(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white">
+                    <option value="">Tots els clients</option>
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Article vinculat</label>
+                  <select value={vendesArticleId} onChange={e => setVendesArticleId(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white">
+                    <option value="">Tots els articles</option>
+                    {articles.filter(a => a.tipus !== 'compra').map(a => <option key={a.id} value={a.id}>{a.nom}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Concepte / Descripció</label>
+                  <div className="relative mt-0.5">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    <input
+                      type="text"
+                      value={vendesSearch}
+                      onChange={e => setVendesSearch(e.target.value)}
+                      placeholder="Cerca concepte, núm..."
+                      className="w-full pl-8 pr-2 py-1.5 border border-slate-200 rounded-lg bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div className="flex flex-wrap items-center bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+                  {[
+                    { id: 'all', label: `Totes (${factures.length})` },
+                    { id: 'pendent', label: `Pendents (${factures.filter(f => f.estat_document === 'emesa' && f.estat_cobrament === 'pendent').length})` },
+                    { id: 'parcial', label: `Parcials (${factures.filter(f => f.estat_cobrament === 'parcial').length})` },
+                    { id: 'pagada', label: `Pagades (${factures.filter(f => f.estat_cobrament === 'pagada').length})` },
+                    { id: 'impagada', label: `Impagades (${factures.filter(f => f.estat_cobrament === 'impagada').length})` },
+                    { id: 'esborrany', label: `Esborranys (${factures.filter(f => f.estat_document === 'esborrany').length})` }
+                  ].map(st => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => setVendesStatusFilter(st.id as any)}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        vendesStatusFilter === st.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 font-semibold">Total Facturat: </span>
+                    <span className="font-black text-slate-900">{sumTotalFacturat.toFixed(2)} €</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold">Cobrat: </span>
+                    <span className="font-black text-emerald-700">{sumTotalCobrat.toFixed(2)} €</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold">Pendent: </span>
+                    <span className="font-black text-amber-700">{sumTotalPendent.toFixed(2)} €</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[920px]">
+                  <thead>
+                    <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold bg-slate-50/50">
+                      <th className="py-2.5 px-4">Núm. Factura</th>
+                      <th className="py-2.5 px-4">Client</th>
+                      <th className="py-2.5 px-4">Article & Concepte</th>
+                      <th className="py-2.5 px-4 text-right">Base + IVA</th>
+                      <th className="py-2.5 px-4 text-right">Import Total</th>
+                      <th className="py-2.5 px-4 text-right">Pendent</th>
+                      <th className="py-2.5 px-4">Dates</th>
+                      <th className="py-2.5 px-4">Estat</th>
+                      <th className="py-2.5 px-4 text-right">Accions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light font-medium">
+                    {filteredFactures.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-10 text-center text-slate-400">
+                          Cap factura coincideix amb els filtres seleccionats.
+                        </td>
+                      </tr>
+                    ) : filteredFactures.map(f => {
+                      const isEmesa = f.estat_document === 'emesa'
+                      const isPagada = f.estat_cobrament === 'pagada'
+                      const isParcial = f.estat_cobrament === 'parcial'
+                      const isImpagada = f.estat_cobrament === 'impagada'
+                      const isCompensada = f.estat_cobrament === 'compensada'
+                      const numDisplay = f.numero_complet || 'ESBORRANY'
+                      const cobrat = f.import_cobrat ?? (isPagada ? f.total_factura : 0)
+                      const pendent = f.import_pendent ?? (isPagada || isCompensada ? 0 : f.total_factura)
+
+                      return (
+                        <tr key={f.id} className="hover:bg-slate-50/60">
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900 flex items-center gap-1">
+                              {f.tipus_factura === 'R1' && <span className="text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded font-black">R</span>}
+                              {numDisplay}
+                            </div>
+                            <div className="text-[10px] text-slate-400">{f.unitat_negoci_nom}{f.entrenador_nom ? ` · ${f.entrenador_nom}` : ''}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-800">{f.client_nom}</div>
+                            <div className="text-[10px] text-slate-400">{f.client_nif || 'Sense NIF'}</div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-700 max-w-xs">
+                            {f.article_nom && (
+                              <span className="inline-block mb-0.5 px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                                {f.article_nom}
+                              </span>
+                            )}
+                            <div className="font-semibold text-slate-800 truncate">{f.concepte}</div>
+                            {f.descripcio_detall && <div className="text-[10px] text-slate-400 truncate">{f.descripcio_detall}</div>}
+                          </td>
+                          <td className="py-3 px-4 text-right text-[11px] text-slate-500 font-mono">
+                            <div>{f.base_imposable.toFixed(2)} €</div>
+                            <div className="text-[10px] text-slate-400">+{f.iva_import.toFixed(2)} € IVA</div>
+                          </td>
+                          <td className="py-3 px-4 text-right font-black text-slate-900 font-mono">{f.total_factura.toFixed(2)} €</td>
+                          <td className="py-3 px-4 text-right font-mono">
+                            <div className={`font-black ${pendent > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                              {pendent.toFixed(2)} €
+                            </div>
+                            {cobrat > 0 && pendent > 0 && (
+                              <div className="text-[10px] text-indigo-700 font-bold">Cobrat: {cobrat.toFixed(2)} €</div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-[11px] text-slate-500 whitespace-nowrap">
+                            <div>Emissió: {f.data_emissio}</div>
+                            <div>Venc: {f.data_venciment}</div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {!isEmesa ? (
+                              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Esborrany</span>
+                            ) : isPagada ? (
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                                <CheckCircle2 className="w-3 h-3" /> Pagada
+                              </span>
+                            ) : isParcial ? (
+                              <span className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2 py-0.5 rounded-full w-fit inline-block">
+                                Parcial
+                              </span>
+                            ) : isCompensada ? (
+                              <span className="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full w-fit inline-block">
+                                Compensada
+                              </span>
+                            ) : isImpagada ? (
+                              <span className="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                                <AlertCircle className="w-3 h-3" /> Impagada
+                              </span>
+                            ) : (
+                              <span className="bg-blue-50 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">Pendent</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <a
+                                href={`/api/finances/factures/${f.id}/pdf`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
+                                title="Veure Factura / Imprimir"
                               >
-                                Emetre
-                              </button>
-                              <button
-                                onClick={() => handleDeleteFactura(f.id, f.numero_complet || f.concepte)}
-                                className="p-1 text-slate-400 hover:text-rose-600"
-                                title="Eliminar esborrany"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
+                                <Eye className="w-3.5 h-3.5" />
+                              </a>
 
-                          {isEmesa && !isPagada && (
-                            <>
-                              <button
-                                onClick={() => handleConciliarFactura(f.id, f.numero_complet || f.concepte)}
-                                className="px-2 py-1 bg-slate-100 hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold"
-                                title="Conciliar pagament validat"
-                              >
-                                Conciliar
-                              </button>
-                              {!isImpagada && (
+                              {!isEmesa && (
+                                <>
+                                  <button
+                                    onClick={() => handleEmetreFactura(f.id, f.numero_complet || f.concepte)}
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold"
+                                  >
+                                    Emetre
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteFactura(f.id, f.numero_complet || f.concepte)}
+                                    className="p-1 text-slate-400 hover:text-rose-600"
+                                    title="Eliminar esborrany"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+
+                              {isEmesa && f.tipus_factura !== 'R1' && !isCompensada && (
                                 <button
-                                  onClick={() => handleMarcarImpagada(f.id, f.numero_complet || f.concepte)}
-                                  className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold"
+                                  onClick={() => openCobramentsModal(f)}
+                                  className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-[11px] font-bold flex items-center gap-1"
+                                  title="Registrar pagaments parcials o veure historial de cobraments"
                                 >
-                                  Impagat
+                                  <CreditCard className="w-3 h-3" />
+                                  <span>Pagaments</span>
                                 </button>
                               )}
-                            </>
-                          )}
 
-                          {isEmesa && f.tipus_factura !== 'R1' && (
-                            <button
-                              onClick={() => {
-                                setShowAbonamentModal(f.id)
-                                setAbonamentMotiu(`Anul·lació o devolució de la factura ${f.numero_complet || f.id.slice(0, 8)}`)
-                              }}
-                              className="px-2 py-1 bg-slate-100 hover:bg-red-50 text-red-700 border border-red-200 rounded-lg text-[11px] font-bold"
-                              title="Crear Factura Rectificativa"
-                            >
-                              Abonament
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                              {isEmesa && !isPagada && !isCompensada && (
+                                <>
+                                  <button
+                                    onClick={() => handleConciliarFactura(f.id, f.numero_complet || f.concepte)}
+                                    className="px-2 py-1 bg-slate-100 hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold"
+                                    title="Conciliar el 100% del saldo pendent"
+                                  >
+                                    Conciliar
+                                  </button>
+                                  {!isImpagada && (
+                                    <button
+                                      onClick={() => handleMarcarImpagada(f.id, f.numero_complet || f.concepte)}
+                                      className="px-2 py-1 bg-slate-100 hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold"
+                                    >
+                                      Impagat
+                                    </button>
+                                  )}
+                                </>
+                              )}
+
+                              {isEmesa && f.tipus_factura !== 'R1' && (
+                                <button
+                                  onClick={() => {
+                                    setShowAbonamentModal(f.id)
+                                    setAbonamentMotiu(`Anul·lació o devolució de la factura ${f.numero_complet || f.id.slice(0, 8)}`)
+                                  }}
+                                  className="px-2 py-1 bg-slate-100 hover:bg-red-50 text-red-700 border border-red-200 rounded-lg text-[11px] font-bold"
+                                  title="Crear Factura Rectificativa"
+                                >
+                                  Abonament
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* TAB 3: COMPRES FISCALS */}
       {/* TAB 4: COMPRES & PROVEÏDORS */}
-      {activeTab === 'compres' && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">Llibre de Factures de Compra i Proveïdors</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Control de factures rebudes, despeses deduïbles i assignació a unitats de negoci</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Filtre per estat */}
-              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
-                {[
-                  { id: 'all', label: `Totes (${compres.length})` },
-                  { id: 'pendent', label: `Pendents (${compres.filter(c => c.estat_pagament !== 'pagada').length})` },
-                  { id: 'pagada', label: `Pagades (${compres.filter(c => c.estat_pagament === 'pagada').length})` }
-                ].map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => setCompresFilter(f.id as any)}
-                    className={`px-2.5 py-1 rounded-md transition-all ${
-                      compresFilter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+      {activeTab === 'compres' && (() => {
+        const filteredCompres = compres.filter(c => {
+          if (compresFilter === 'pendent' && c.estat_pagament === 'pagada') return false
+          if (compresFilter === 'pagada' && c.estat_pagament !== 'pagada') return false
+          if (compresDateFrom && c.data_emissio < compresDateFrom) return false
+          if (compresDateTo && c.data_emissio > compresDateTo) return false
+          if (compresProveidorId && c.proveidor_id !== compresProveidorId) return false
+          if (compresArticleId && c.article_id !== compresArticleId) return false
+          if (compresSearch.trim()) {
+            const q = compresSearch.toLowerCase().trim()
+            const hay = `${c.num_factura_proveidor || ''} ${c.proveidor_nom || ''} ${c.article_nom || ''} ${c.concepte || ''} ${c.notes || ''}`.toLowerCase()
+            if (!hay.includes(q)) return false
+          }
+          return true
+        })
+
+        const sumCompresTotal = filteredCompres.reduce((acc, c) => acc + (c.total_pagar || 0), 0)
+        const sumCompresPendent = filteredCompres.filter(c => c.estat_pagament !== 'pagada').reduce((acc, c) => acc + (c.total_pagar || 0), 0)
+
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Llibre de Factures de Compra i Proveïdors</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Control de factures rebudes, despeses deduïbles i assignació a unitats de negoci</p>
               </div>
               <button
                 onClick={openCreateCompra}
@@ -2058,44 +2534,133 @@ export const FinanceAdminPage: React.FC = () => {
                 <Plus className="w-4 h-4" /> Registrar Compra
               </button>
             </div>
-          </div>
 
-          <div className="glass-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[850px]">
-                <thead>
-                  <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold bg-slate-50/50">
-                    <th className="py-2.5 px-4">Proveïdor</th>
-                    <th className="py-2.5 px-4">Núm. Factura</th>
-                    <th className="py-2.5 px-4">Concepte</th>
-                    <th className="py-2.5 px-4">Unitat de Negoci</th>
-                    <th className="py-2.5 px-4 text-right">Base</th>
-                    <th className="py-2.5 px-4 text-right">IVA</th>
-                    <th className="py-2.5 px-4 text-right">IRPF Retingut</th>
-                    <th className="py-2.5 px-4 text-right">Total a Pagar</th>
-                    <th className="py-2.5 px-4">Estat</th>
-                    <th className="py-2.5 px-4 text-right">Accions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light font-medium">
-                  {(() => {
-                    const filteredCompres = compres.filter(c => {
-                      if (compresFilter === 'pendent') return c.estat_pagament !== 'pagada'
-                      if (compresFilter === 'pagada') return c.estat_pagament === 'pagada'
-                      return true
-                    })
+            {/* Barra de Filtres Compres */}
+            <div className="glass-card p-4 space-y-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                  <Filter className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Filtres de Compres</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button type="button" onClick={() => applyQuickDatePreset('this_month', setCompresDateFrom, setCompresDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Mes actual</button>
+                  <button type="button" onClick={() => applyQuickDatePreset('last_month', setCompresDateFrom, setCompresDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Mes passat</button>
+                  <button type="button" onClick={() => applyQuickDatePreset('this_year', setCompresDateFrom, setCompresDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Any actual</button>
+                  {(compresDateFrom || compresDateTo || compresProveidorId || compresArticleId || compresSearch || compresFilter !== 'all') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCompresDateFrom('')
+                        setCompresDateTo('')
+                        setCompresProveidorId('')
+                        setCompresArticleId('')
+                        setCompresSearch('')
+                        setCompresFilter('all')
+                      }}
+                      className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px]"
+                    >
+                      ✕ Netejar filtres
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                    if (filteredCompres.length === 0) {
-                      return (
-                        <tr>
-                          <td colSpan={10} className="py-10 text-center text-slate-400">
-                            No hi ha cap factura de compra per al filtre seleccionat.
-                          </td>
-                        </tr>
-                      )
-                    }
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Emissió des de</label>
+                  <input type="date" value={compresDateFrom} onChange={e => setCompresDateFrom(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Emissió fins a</label>
+                  <input type="date" value={compresDateTo} onChange={e => setCompresDateTo(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Proveïdor</label>
+                  <select value={compresProveidorId} onChange={e => setCompresProveidorId(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white">
+                    <option value="">Tots els proveïdors</option>
+                    {proveidors.map(p => <option key={p.id} value={p.id}>{p.nom_fiscal}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Article</label>
+                  <select value={compresArticleId} onChange={e => setCompresArticleId(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white">
+                    <option value="">Tots els articles</option>
+                    {articles.filter(a => a.tipus === 'compra' || a.tipus === 'ambdos').map(a => <option key={a.id} value={a.id}>{a.nom}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Concepte / Descripció</label>
+                  <div className="relative mt-0.5">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    <input
+                      type="text"
+                      value={compresSearch}
+                      onChange={e => setCompresSearch(e.target.value)}
+                      placeholder="Cerca concepte, núm..."
+                      className="w-full pl-8 pr-2 py-1.5 border border-slate-200 rounded-lg bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                    return filteredCompres.map(c => (
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+                  {[
+                    { id: 'all', label: `Totes (${compres.length})` },
+                    { id: 'pendent', label: `Pendents (${compres.filter(c => c.estat_pagament !== 'pagada').length})` },
+                    { id: 'pagada', label: `Pagades (${compres.filter(c => c.estat_pagament === 'pagada').length})` }
+                  ].map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setCompresFilter(f.id as any)}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        compresFilter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 font-semibold">Total filtrat: </span>
+                    <span className="font-black text-slate-900">{sumCompresTotal.toFixed(2)} €</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold">Pendent pagar: </span>
+                    <span className="font-black text-amber-700">{sumCompresPendent.toFixed(2)} €</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[850px]">
+                  <thead>
+                    <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold bg-slate-50/50">
+                      <th className="py-2.5 px-4">Proveïdor</th>
+                      <th className="py-2.5 px-4">Núm. Factura</th>
+                      <th className="py-2.5 px-4">Article & Concepte</th>
+                      <th className="py-2.5 px-4">Unitat de Negoci</th>
+                      <th className="py-2.5 px-4 text-right">Base</th>
+                      <th className="py-2.5 px-4 text-right">IVA</th>
+                      <th className="py-2.5 px-4 text-right">IRPF Retingut</th>
+                      <th className="py-2.5 px-4 text-right">Total a Pagar</th>
+                      <th className="py-2.5 px-4">Estat</th>
+                      <th className="py-2.5 px-4 text-right">Accions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light font-medium">
+                    {filteredCompres.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="py-10 text-center text-slate-400">
+                          No hi ha cap factura de compra per al filtre seleccionat.
+                        </td>
+                      </tr>
+                    ) : filteredCompres.map(c => (
                       <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3 px-4 font-bold text-slate-900">
                           <div>{c.proveidor_nom}</div>
@@ -2103,8 +2668,13 @@ export const FinanceAdminPage: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-slate-600 font-mono">{c.num_factura_proveidor}</td>
                         <td className="py-3 px-4 text-slate-700">
+                          {c.article_nom && (
+                            <span className="inline-block mb-0.5 px-1.5 py-0.2 rounded bg-rose-50 text-rose-800 border border-rose-200 text-[10px] font-bold">
+                              {c.article_nom}
+                            </span>
+                          )}
                           <div>{c.concepte}</div>
-                          <div className="text-[10px] text-slate-400">Emissió: {c.data_emissio} · Venc: {c.data_venciment}</div>
+                          <div className="text-[10px] text-slate-400">Emissió: {c.data_emissio} · Venc: {c.data_venciment}{c.entrenador_nom ? ` · Coach: ${c.entrenador_nom}` : ''}</div>
                         </td>
                         <td className="py-3 px-4">
                           <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
@@ -2169,95 +2739,192 @@ export const FinanceAdminPage: React.FC = () => {
                           </div>
                         </td>
                       </tr>
-                    ))
-                  })()}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* TAB 5: DESPESES OPERATIVES */}
-      {activeTab === 'despeses' && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-800">Despeses Operatives (Nòmines, SS, Banc, Impostos, Lloguer)</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Gestió de despeses fixes mensuals, plantilles recurrents i pagaments puntuals</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Filtre per tipus/estat */}
-              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-xs font-bold">
-                {[
-                  { id: 'all', label: `Totes (${despeses.length})` },
-                  { id: 'recurrent', label: `🔄 Recurrents (${despeses.filter(d => d.es_recurrent).length})` },
-                  { id: 'pendent', label: `Pendents (${despeses.filter(d => d.estat_pagament !== 'pagada').length})` },
-                  { id: 'pagada', label: `Pagades (${despeses.filter(d => d.estat_pagament === 'pagada').length})` }
-                ].map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => setDespesesFilter(f.id as any)}
-                    className={`px-2.5 py-1 rounded-md transition-all ${
-                      despesesFilter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+      {activeTab === 'despeses' && (() => {
+        const distinctBeneficiaris = Array.from(new Set(despeses.map(d => d.beneficiari_nom).filter(Boolean))).sort()
+        const filteredDespeses = despeses.filter(d => {
+          if (despesesFilter === 'pendent' && d.estat_pagament === 'pagada') return false
+          if (despesesFilter === 'pagada' && d.estat_pagament !== 'pagada') return false
+          if (despesesFilter === 'recurrent' && !d.es_recurrent) return false
+          if (despesesDateFrom && d.data_devengo < despesesDateFrom) return false
+          if (despesesDateTo && d.data_devengo > despesesDateTo) return false
+          if (despesesBeneficiari && d.beneficiari_nom !== despesesBeneficiari) return false
+          if (despesesCategoria && d.categoria !== despesesCategoria) return false
+          if (despesesSearch.trim()) {
+            const q = despesesSearch.toLowerCase().trim()
+            const hay = `${d.beneficiari_nom || ''} ${d.categoria || ''} ${d.concepte || ''} ${d.notes || ''}`.toLowerCase()
+            if (!hay.includes(q)) return false
+          }
+          return true
+        })
+
+        const sumDespesesTotal = filteredDespeses.reduce((acc, d) => acc + (d.import_total || 0), 0)
+        const sumDespesesPendent = filteredDespeses.filter(d => d.estat_pagament !== 'pagada').reduce((acc, d) => acc + (d.import_total || 0), 0)
+
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Despeses Operatives (Nòmines, SS, Banc, Impostos, Lloguer)</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Gestió de despeses fixes mensuals, plantilles recurrents i pagaments puntuals</p>
               </div>
-              <button
-                onClick={handleGenerarRecurrentsMesDespeses}
-                title={`Generar totes les despeses fixes recurrents pel mes ${graellaMes}`}
-                className="btn-secondary text-xs py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1.5 font-bold"
-              >
-                <Zap className="w-3.5 h-3.5 text-indigo-600" /> Generar Recurrents
-              </button>
-              <button
-                onClick={openCreateDespesa}
-                className="btn-primary text-xs py-2 px-3.5 bg-amber-600 hover:bg-amber-700 flex items-center gap-1.5 shadow-sm"
-              >
-                <Plus className="w-4 h-4" /> Registrar Despesa
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleGenerarRecurrentsMesDespeses}
+                  title={`Generar totes les despeses fixes recurrents pel mes ${graellaMes}`}
+                  className="btn-secondary text-xs py-2 px-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 flex items-center gap-1.5 font-bold"
+                >
+                  <Zap className="w-3.5 h-3.5 text-indigo-600" /> Generar Recurrents
+                </button>
+                <button
+                  onClick={openCreateDespesa}
+                  className="btn-primary text-xs py-2 px-3.5 bg-amber-600 hover:bg-amber-700 flex items-center gap-1.5 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" /> Registrar Despesa
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="glass-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[850px]">
-                <thead>
-                  <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold bg-slate-50/50">
-                    <th className="py-2.5 px-4">Categoria</th>
-                    <th className="py-2.5 px-4">Beneficiari</th>
-                    <th className="py-2.5 px-4">Concepte</th>
-                    <th className="py-2.5 px-4">Unitat de Negoci</th>
-                    <th className="py-2.5 px-4">Tipus Despesa</th>
-                    <th className="py-2.5 px-4 text-right">Import Total</th>
-                    <th className="py-2.5 px-4">Data Devengo</th>
-                    <th className="py-2.5 px-4">Estat</th>
-                    <th className="py-2.5 px-4 text-right">Accions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light font-medium">
-                  {(() => {
-                    const filteredDespeses = despeses.filter(d => {
-                      if (despesesFilter === 'pendent') return d.estat_pagament !== 'pagada'
-                      if (despesesFilter === 'pagada') return d.estat_pagament === 'pagada'
-                      if (despesesFilter === 'recurrent') return !!d.es_recurrent
-                      return true
-                    })
+            {/* Barra de Filtres Despeses */}
+            <div className="glass-card p-4 space-y-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-1.5 text-slate-700 font-bold">
+                  <Filter className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Filtres de Despeses</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button type="button" onClick={() => applyQuickDatePreset('this_month', setDespesesDateFrom, setDespesesDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Mes actual</button>
+                  <button type="button" onClick={() => applyQuickDatePreset('last_month', setDespesesDateFrom, setDespesesDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Mes passat</button>
+                  <button type="button" onClick={() => applyQuickDatePreset('this_year', setDespesesDateFrom, setDespesesDateTo)} className="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px]">Any actual</button>
+                  {(despesesDateFrom || despesesDateTo || despesesBeneficiari || despesesCategoria || despesesSearch || despesesFilter !== 'all') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDespesesDateFrom('')
+                        setDespesesDateTo('')
+                        setDespesesBeneficiari('')
+                        setDespesesCategoria('')
+                        setDespesesSearch('')
+                        setDespesesFilter('all')
+                      }}
+                      className="px-2 py-0.5 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px]"
+                    >
+                      ✕ Netejar filtres
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                    if (filteredDespeses.length === 0) {
-                      return (
-                        <tr>
-                          <td colSpan={9} className="py-10 text-center text-slate-400">
-                            No hi ha cap despesa per al filtre seleccionat.
-                          </td>
-                        </tr>
-                      )
-                    }
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Devengo des de</label>
+                  <input type="date" value={despesesDateFrom} onChange={e => setDespesesDateFrom(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Devengo fins a</label>
+                  <input type="date" value={despesesDateTo} onChange={e => setDespesesDateTo(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white" />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Beneficiari / Proveïdor</label>
+                  <select value={despesesBeneficiari} onChange={e => setDespesesBeneficiari(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white">
+                    <option value="">Tots els beneficiaris</option>
+                    {distinctBeneficiaris.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Categoria</label>
+                  <select value={despesesCategoria} onChange={e => setDespesesCategoria(e.target.value)} className="w-full mt-0.5 p-1.5 border border-slate-200 rounded-lg bg-white">
+                    <option value="">Totes les categories</option>
+                    <option value="nomina">Nòmina</option>
+                    <option value="seguretat_social">Seguretat Social / Autònom</option>
+                    <option value="banc">Comissió Bancària</option>
+                    <option value="impostos">Impostos / Taxes</option>
+                    <option value="dietes">Dietes / Desplaçaments</option>
+                    <option value="altres">Altres despeses</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase font-bold text-slate-400">Concepte / Descripció</label>
+                  <div className="relative mt-0.5">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                    <input
+                      type="text"
+                      value={despesesSearch}
+                      onChange={e => setDespesesSearch(e.target.value)}
+                      placeholder="Cerca concepte, notes..."
+                      className="w-full pl-8 pr-2 py-1.5 border border-slate-200 rounded-lg bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
 
-                    return filteredDespeses.map(d => (
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+                  {[
+                    { id: 'all', label: `Totes (${despeses.length})` },
+                    { id: 'recurrent', label: `🔄 Recurrents (${despeses.filter(d => d.es_recurrent).length})` },
+                    { id: 'pendent', label: `Pendents (${despeses.filter(d => d.estat_pagament !== 'pagada').length})` },
+                    { id: 'pagada', label: `Pagades (${despeses.filter(d => d.estat_pagament === 'pagada').length})` }
+                  ].map(f => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setDespesesFilter(f.id as any)}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        despesesFilter === f.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 font-semibold">Total filtrat: </span>
+                    <span className="font-black text-slate-900">{sumDespesesTotal.toFixed(2)} €</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold">Pendent pagar: </span>
+                    <span className="font-black text-amber-700">{sumDespesesPendent.toFixed(2)} €</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[850px]">
+                  <thead>
+                    <tr className="border-b border-border-light text-slate-400 uppercase text-[10px] font-bold bg-slate-50/50">
+                      <th className="py-2.5 px-4">Categoria</th>
+                      <th className="py-2.5 px-4">Beneficiari</th>
+                      <th className="py-2.5 px-4">Concepte</th>
+                      <th className="py-2.5 px-4">Unitat de Negoci</th>
+                      <th className="py-2.5 px-4">Tipus Despesa</th>
+                      <th className="py-2.5 px-4 text-right">Import Total</th>
+                      <th className="py-2.5 px-4">Data Devengo</th>
+                      <th className="py-2.5 px-4">Estat</th>
+                      <th className="py-2.5 px-4 text-right">Accions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-light font-medium">
+                    {filteredDespeses.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-10 text-center text-slate-400">
+                          No hi ha cap despesa per al filtre seleccionat.
+                        </td>
+                      </tr>
+                    ) : filteredDespeses.map(d => (
                       <tr key={d.id} className="hover:bg-slate-50/60 transition-colors">
                         <td className="py-3 px-4">
                           <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full capitalize">
@@ -2265,7 +2932,10 @@ export const FinanceAdminPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="py-3 px-4 font-bold text-slate-900">{d.beneficiari_nom}</td>
-                        <td className="py-3 px-4 text-slate-700">{d.concepte}</td>
+                        <td className="py-3 px-4 text-slate-700">
+                          <div>{d.concepte}</div>
+                          {d.entrenador_nom && <div className="text-[10px] text-indigo-600 font-semibold">Coach: {d.entrenador_nom}</div>}
+                        </td>
                         <td className="py-3 px-4">
                           <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
                             {d.unitat_negoci_nom || 'General'}
@@ -2338,8 +3008,230 @@ export const FinanceAdminPage: React.FC = () => {
                           </div>
                         </td>
                       </tr>
-                    ))
-                  })()}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* TAB 6: LIQUIDACIÓ PER ENTRENADOR */}
+      {activeTab === 'liquidacio' && (
+        <div className="space-y-5 animate-fade-in">
+          <div className="glass-card p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
+                  Imports sobre Total Factura (IVA inclòs)
+                </span>
+              </div>
+              <h2 className="text-xl font-black text-slate-900 mt-1">Liquidació Mensual per Entrenador</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Desglossament complet de vendes emeses (venut, cobrat i pendent/impagat) menys compres i despeses associades a cada entrenador.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+                <span className="font-bold text-slate-500">Mes-Any:</span>
+                <input
+                  type="month"
+                  value={liquidacioMes}
+                  onChange={e => {
+                    setLiquidacioMes(e.target.value)
+                    loadLiquidacio(e.target.value)
+                  }}
+                  className="bg-transparent font-bold text-slate-900 outline-none"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => loadLiquidacio(liquidacioMes)}
+                disabled={liquidacioLoading}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
+                title="Refrescar liquidació"
+              >
+                <RefreshCw className={`w-4 h-4 ${liquidacioLoading ? 'animate-spin text-indigo-600' : ''}`} />
+              </button>
+
+              <a
+                href={`/api/finances/liquidacio-entrenadors/csv?mes=${liquidacioMes}`}
+                download
+                className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-indigo-700 shadow-sm text-xs font-bold flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" /> Exportar CSV
+              </a>
+            </div>
+          </div>
+
+          {liquidacioData && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="glass-card p-5 border-l-4 border-l-slate-700">
+                <div className="text-xs font-bold uppercase text-slate-400">Total Venut ({liquidacioMes})</div>
+                <div className="text-2xl font-black text-slate-900 mt-1">{liquidacioData.total_venut.toFixed(2)} €</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Factures emeses (IVA inclòs)</div>
+              </div>
+
+              <div className="glass-card p-5 border-l-4 border-l-emerald-500">
+                <div className="text-xs font-bold uppercase text-slate-400">Total Cobrat</div>
+                <div className="text-2xl font-black text-emerald-700 mt-1">{liquidacioData.total_cobrat.toFixed(2)} €</div>
+                <div className="text-[11px] text-amber-700 font-semibold mt-0.5">
+                  No cobrat: {liquidacioData.total_no_cobrat.toFixed(2)} € ({liquidacioData.total_impagat.toFixed(2)} € impagat)
+                </div>
+              </div>
+
+              <div className="glass-card p-5 border-l-4 border-l-rose-500">
+                <div className="text-xs font-bold uppercase text-slate-400">Total Comprat + Despeses</div>
+                <div className="text-2xl font-black text-rose-700 mt-1">{liquidacioData.total_comprat.toFixed(2)} €</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">Imputades al mes (IVA inclòs)</div>
+              </div>
+
+              <div className={`glass-card p-5 border-l-4 ${liquidacioData.liquidacio_sobre_cobrat >= 0 ? 'border-l-indigo-600' : 'border-l-rose-600'}`}>
+                <div className="text-xs font-bold uppercase text-slate-400">Liquidació Real (Cobrat - Comprat)</div>
+                <div className={`text-2xl font-black mt-1 ${liquidacioData.liquidacio_sobre_cobrat >= 0 ? 'text-indigo-900' : 'text-rose-600'}`}>
+                  {liquidacioData.liquidacio_sobre_cobrat.toFixed(2)} €
+                </div>
+                <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+                  Sobre venut: {liquidacioData.liquidacio_sobre_venut.toFixed(2)} €
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="glass-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[920px]">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-border text-slate-500 uppercase text-[10px] font-bold">
+                    <th className="py-3 px-4">Entrenador</th>
+                    <th className="py-3 px-4 text-right">Venut (Facturat)</th>
+                    <th className="py-3 px-4 text-right">Cobrat</th>
+                    <th className="py-3 px-4 text-right">Pendent</th>
+                    <th className="py-3 px-4 text-right">Impagat</th>
+                    <th className="py-3 px-4 text-right">Comprat + Despeses</th>
+                    <th className="py-3 px-4 text-right">Net s/ Venut</th>
+                    <th className="py-3 px-4 text-right bg-indigo-50/60 text-indigo-900">Liquidació s/ Cobrat</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border font-medium">
+                  {liquidacioLoading ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-indigo-600 mb-2" />
+                        Calculant liquidació del mes {liquidacioMes}...
+                      </td>
+                    </tr>
+                  ) : !liquidacioData || liquidacioData.files.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        No hi ha dades per al mes seleccionat.
+                      </td>
+                    </tr>
+                  ) : liquidacioData.files.map(row => {
+                    const isExpanded = !!expandedLiquidacioCoach[row.entrenador_id]
+                    return (
+                      <React.Fragment key={row.entrenador_id}>
+                        <tr
+                          onClick={() => setExpandedLiquidacioCoach(prev => ({ ...prev, [row.entrenador_id]: !prev[row.entrenador_id] }))}
+                          className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${row.entrenador_id === '__none__' ? 'bg-slate-50/40' : ''}`}
+                        >
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              {isExpanded ? <ChevronDown className="w-4 h-4 text-indigo-600 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+                              <div>
+                                <div className="font-bold text-slate-900">{row.entrenador_nom}</div>
+                                <div className="text-[10px] text-slate-400">
+                                  {row.num_factures_venda} vendes · {row.num_compres_despeses} compres/despeses
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">{row.venut.toFixed(2)} €</td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-700">{row.cobrat.toFixed(2)} €</td>
+                          <td className="py-3.5 px-4 text-right font-mono text-amber-700 font-semibold">{row.pendent.toFixed(2)} €</td>
+                          <td className="py-3.5 px-4 text-right font-mono text-rose-700 font-semibold">{row.impagat.toFixed(2)} €</td>
+                          <td className="py-3.5 px-4 text-right font-mono text-rose-700 font-bold">-{row.comprat.toFixed(2)} €</td>
+                          <td className={`py-3.5 px-4 text-right font-mono font-bold ${row.net_sobre_venut >= 0 ? 'text-slate-800' : 'text-rose-600'}`}>
+                            {row.net_sobre_venut.toFixed(2)} €
+                          </td>
+                          <td className="py-3.5 px-4 text-right bg-indigo-50/40">
+                            <span className={`font-mono font-black text-sm px-2.5 py-1 rounded-lg ${
+                              row.net_sobre_cobrat >= 0 ? 'bg-indigo-100 text-indigo-950' : 'bg-rose-100 text-rose-900'
+                            }`}>
+                              {row.net_sobre_cobrat.toFixed(2)} €
+                            </span>
+                          </td>
+                        </tr>
+
+                        {isExpanded && (
+                          <tr className="bg-slate-50/70">
+                            <td colSpan={8} className="p-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {/* Detall Vendes */}
+                                <div className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-2">
+                                  <h4 className="font-bold text-xs text-emerald-800 uppercase tracking-wider">
+                                    Detall de Factures de Venda ({row.detall_vendes.length})
+                                  </h4>
+                                  {row.detall_vendes.length === 0 ? (
+                                    <p className="text-xs text-slate-400 italic py-2">Cap factura de venda aquest mes.</p>
+                                  ) : (
+                                    <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
+                                      {row.detall_vendes.map(v => (
+                                        <div key={v.id} className="py-2 flex items-center justify-between gap-2 text-[11px]">
+                                          <div className="min-w-0">
+                                            <div className="font-bold text-slate-800 truncate">{v.client_nom} · <span className="font-mono text-slate-500">{v.numero}</span></div>
+                                            <div className="text-slate-500 truncate">{v.concepte}</div>
+                                          </div>
+                                          <div className="text-right shrink-0 font-mono">
+                                            <div className="font-bold text-slate-900">{v.total_factura.toFixed(2)} €</div>
+                                            <div className={`text-[10px] font-bold ${
+                                              v.estat_cobrament === 'pagada' ? 'text-emerald-700' : v.estat_cobrament === 'impagada' ? 'text-rose-700' : 'text-amber-700'
+                                            }`}>
+                                              {v.estat_cobrament === 'pagada' ? 'Cobrada' : `Pendent: ${v.import_pendent.toFixed(2)} €`}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Detall Compres i Despeses */}
+                                <div className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-2">
+                                  <h4 className="font-bold text-xs text-rose-800 uppercase tracking-wider">
+                                    Detall de Compres i Despeses Imputades ({row.detall_compres.length})
+                                  </h4>
+                                  {row.detall_compres.length === 0 ? (
+                                    <p className="text-xs text-slate-400 italic py-2">Cap compra ni despesa imputada aquest mes.</p>
+                                  ) : (
+                                    <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
+                                      {row.detall_compres.map(c => (
+                                        <div key={c.id} className="py-2 flex items-center justify-between gap-2 text-[11px]">
+                                          <div className="min-w-0">
+                                            <div className="font-bold text-slate-800 truncate">
+                                              <span className="uppercase text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 mr-1.5">{c.tipus}</span>
+                                              {c.proveidor_nom}
+                                            </div>
+                                            <div className="text-slate-500 truncate">{c.concepte} ({c.data})</div>
+                                          </div>
+                                          <div className="text-right shrink-0 font-mono font-bold text-rose-700">
+                                            -{c.import_total.toFixed(2)} €
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -2497,6 +3389,122 @@ export const FinanceAdminPage: React.FC = () => {
                     className="w-full mt-1 p-2 border border-slate-200 rounded-xl bg-white text-xs"
                     placeholder="Inscrita al Registre Mercantil..."
                   />
+                </div>
+              </div>
+
+              {/* Cicle de Cobrament i Automatització d'Avisos (Dia Límit & Dia Límit + 1) */}
+              <div className="mt-4 pt-5 border-t border-slate-200 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-amber-600" /> Dia Límit de Pagament i Automatització d'Emails
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      El sistema revisa cada dia a les <strong>09:00h</strong> les factures emeses amb venciment complert que Administració encara no hagi conciliat.
+                    </p>
+                  </div>
+
+                  <label className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl cursor-pointer text-xs font-bold text-slate-800">
+                    <input
+                      type="checkbox"
+                      checked={!!config.avisos_impagament_actius}
+                      onChange={e => setConfig({ ...config, avisos_impagament_actius: e.target.checked })}
+                      className="w-4 h-4 text-emerald-600 rounded"
+                    />
+                    <span>Enviament automàtic actiu</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <label className="font-bold text-slate-800 block">Dia Límit de Pagament Mensual (1 - 27)</label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-slate-500 font-semibold">Dia</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={27}
+                        value={config.dia_limit_pagament || 5}
+                        onChange={e => {
+                          const v = Math.max(1, Math.min(27, parseInt(e.target.value) || 5))
+                          setConfig({ ...config, dia_limit_pagament: v })
+                        }}
+                        className="w-20 p-2 border border-slate-300 rounded-xl bg-white text-center font-black text-base text-emerald-700"
+                      />
+                      <span className="text-slate-500">de cada mes</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-2">
+                      També s'utilitza com a venciment per defecte en emetre les quotes de la graella mensual.
+                    </p>
+                  </div>
+
+                  <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-200 flex flex-col justify-between">
+                    <div>
+                      <div className="font-bold text-amber-900">1️⃣ Dia {config.dia_limit_pagament || 5} del mes (09:00h) → Entrenadors</div>
+                      <p className="text-[11px] text-amber-800 mt-1">
+                        Envia un resum informatiu a cada entrenador amb els seus atletes que Administració encara no ha marcat com a conciliats.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmDialog({
+                          isOpen: true,
+                          title: 'Enviar Resum Informatiu als Entrenadors',
+                          message: 'Vols executar ara mateix l\'enviament del resum d\'atletes pendents de conciliar a cada entrenador?',
+                          confirmText: 'Enviar a Entrenadors',
+                          variant: 'info',
+                          onConfirm: async () => {
+                            try {
+                              const res = await executarAvisosCobrament('entrenadors')
+                              showNotify('success', `S'han enviat ${res.enviats} correus de resum als entrenadors!`)
+                            } catch (err: any) {
+                              showNotify('error', err.response?.data?.error || 'Error enviant avisos als entrenadors')
+                            } finally {
+                              setConfirmDialog(null)
+                            }
+                          }
+                        })
+                      }}
+                      className="mt-3 px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 w-fit"
+                    >
+                      <Send className="w-3 h-3" /> Executar avís entrenadors ara
+                    </button>
+                  </div>
+
+                  <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 flex flex-col justify-between">
+                    <div>
+                      <div className="font-bold text-emerald-900">2️⃣ Dia {(config.dia_limit_pagament || 5) + 1} del mes (09:00h) → Atletes</div>
+                      <p className="text-[11px] text-emerald-800 mt-1">
+                        Envia un email súper amable i empàtic (CAT/ESP/ENG) només als atletes que l'endemà encara continuïn amb import pendent.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmDialog({
+                          isOpen: true,
+                          title: 'Enviar Recordatori Amable als Atletes Pendents',
+                          message: 'Vols enviar ara el correu amable de recordatori als atletes amb factures vençudes pendents de pagar?',
+                          confirmText: 'Enviar Recordatoris Polite',
+                          variant: 'warning',
+                          onConfirm: async () => {
+                            try {
+                              const res = await executarAvisosCobrament('atletes')
+                              showNotify('success', `S'han enviat ${res.enviats} recordatoris amables als atletes!`)
+                            } catch (err: any) {
+                              showNotify('error', err.response?.data?.error || 'Error enviant recordatoris als atletes')
+                            } finally {
+                              setConfirmDialog(null)
+                            }
+                          }
+                        })
+                      }}
+                      className="mt-3 px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 w-fit"
+                    >
+                      <Send className="w-3 h-3" /> Executar avís atletes ara
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2723,75 +3731,93 @@ export const FinanceAdminPage: React.FC = () => {
           {activeConfigSubtab === 'articles' && (
             <div className="glass-card p-6 space-y-4">
               <div className="flex items-center justify-between pb-3 border-b">
-                <div>
-                  <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
-                    <Package className="w-5 h-5 text-emerald-600" /> Catàleg d'Articles & Serveis Facturables
-                  </h3>
-                  <p className="text-xs text-slate-500">Articles predefinits per a factures i subscripcions recurrents (preus base, tipus d'IVA i unitat de negoci).</p>
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                      <Package className="w-5 h-5 text-emerald-600" /> Catàleg d'Articles & Serveis Facturables
+                    </h3>
+                    <p className="text-xs text-slate-500">Defineix el <strong>Preu Final (IVA inclòs)</strong> i el sistema calcula automàticament la Base Imposable i la Quota d'IVA.</p>
+                  </div>
+                  <button
+                    onClick={openCreateArticle}
+                    className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" /> Nou Article
+                  </button>
                 </div>
-                <button
-                  onClick={openCreateArticle}
-                  className="btn-primary text-xs py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" /> Nou Article
-                </button>
-              </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
-                    <tr>
-                      <th className="p-3">Codi</th>
-                      <th className="p-3">Nom de l'Article</th>
-                      <th className="p-3">Categoria</th>
-                      <th className="p-3">Unitat Negoci</th>
-                      <th className="p-3 text-right">Preu Base</th>
-                      <th className="p-3 text-right">IVA (%)</th>
-                      <th className="p-3 text-center">Estat</th>
-                      <th className="p-3 text-right">Accions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {articles.map(art => (
-                      <tr key={art.id} className="hover:bg-slate-50/50">
-                        <td className="p-3 font-mono font-bold text-slate-600">{art.codi || '—'}</td>
-                        <td className="p-3 font-bold text-slate-900">{art.nom}</td>
-                        <td className="p-3">
-                          {art.es_recurrent ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              🔄 Quota ({art.periodicitat_mesos === 1 ? 'Mensual' : art.periodicitat_mesos === 3 ? 'Trimestral' : art.periodicitat_mesos === 6 ? 'Semestral' : 'Anual'})
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 capitalize">
-                              {art.categoria.replace('_', ' ')}
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-slate-600">{art.unitat_negoci_nom || '—'}</td>
-                        <td className="p-3 text-right font-mono font-bold text-emerald-700">{art.preu_base.toFixed(2)} €</td>
-                        <td className="p-3 text-right font-mono text-slate-600">{art.iva_percentatge}%</td>
-                        <td className="p-3 text-center">
-                          {art.actiu ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Actiu</span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => openEditArticle(art)}
-                            className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
-                            title="Editar article"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            <span>Editar</span>
-                          </button>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold border-b">
+                      <tr>
+                        <th className="p-3">Codi</th>
+                        <th className="p-3">Nom de l'Article</th>
+                        <th className="p-3">Tipus</th>
+                        <th className="p-3">Categoria</th>
+                        <th className="p-3">Unitat Negoci</th>
+                        <th className="p-3 text-right">Preu Final (IVA incl.)</th>
+                        <th className="p-3 text-right">Base Imposable</th>
+                        <th className="p-3 text-right">Quota IVA</th>
+                        <th className="p-3 text-center">Estat</th>
+                        <th className="p-3 text-right">Accions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y">
+                      {articles.map(art => {
+                        const pvp = art.preu_final || Number((art.preu_base * (1 + art.iva_percentatge / 100)).toFixed(2))
+                        const { base, iva } = calcReverseVat(pvp, art.iva_percentatge)
+                        return (
+                          <tr key={art.id} className="hover:bg-slate-50/50">
+                            <td className="p-3 font-mono font-bold text-slate-600">{art.codi || '—'}</td>
+                            <td className="p-3 font-bold text-slate-900">{art.nom}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                art.tipus === 'compra'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : art.tipus === 'ambdos'
+                                  ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              }`}>
+                                {art.tipus === 'compra' ? 'Compra' : art.tipus === 'ambdos' ? 'Venda/Compra' : 'Venda'}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              {art.es_recurrent ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  🔄 Quota ({art.periodicitat_mesos === 1 ? 'Mensual' : art.periodicitat_mesos === 3 ? 'Trimestral' : art.periodicitat_mesos === 6 ? 'Semestral' : 'Anual'})
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 capitalize">
+                                  {art.categoria.replace('_', ' ')}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-slate-600">{art.unitat_negoci_nom || '—'}</td>
+                            <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">{pvp.toFixed(2)} €</td>
+                            <td className="p-3 text-right font-mono text-slate-700">{base.toFixed(2)} €</td>
+                            <td className="p-3 text-right font-mono text-slate-500">{iva.toFixed(2)} € ({art.iva_percentatge}%)</td>
+                            <td className="p-3 text-center">
+                              {art.actiu ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Actiu</span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">Inactiu</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                onClick={() => openEditArticle(art)}
+                                className="p-1.5 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors inline-flex items-center gap-1 font-bold text-[11px]"
+                                title="Editar article"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>Editar</span>
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
             </div>
           )}
 
@@ -3060,50 +4086,98 @@ export const FinanceAdminPage: React.FC = () => {
 
             <form onSubmit={handleCreateFactura} className="space-y-4 text-xs">
               <div>
-                <label className="font-bold text-slate-700">Client</label>
+                <label className="font-bold text-slate-700">Client / Atleta *</label>
                 <select
                   value={newFactura.client_id}
                   onChange={e => setNewFactura({ ...newFactura, client_id: e.target.value })}
                   className="w-full mt-1 p-2 border rounded-xl"
                   required
                 >
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal} ({c.nif_cif})</option>)}
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.nom_fiscal} ({c.nif_cif || 'Sense NIF'})</option>)}
                 </select>
               </div>
 
               <div>
-                <label className="font-bold text-slate-700">Unitat de Negoci</label>
+                <label className="font-bold text-emerald-800">Article del Catàleg (Obligatori) *</label>
                 <select
-                  value={newFactura.unitat_negoci_id}
-                  onChange={e => setNewFactura({ ...newFactura, unitat_negoci_id: e.target.value })}
-                  className="w-full mt-1 p-2 border rounded-xl"
+                  value={newFactura.article_id}
+                  onChange={e => handleSelectFacturaArticle(e.target.value)}
+                  className="w-full mt-1 p-2 border border-emerald-300 bg-emerald-50/40 rounded-xl font-bold text-slate-900"
                   required
                 >
-                  {unitats.map(u => <option key={u.id} value={u.id}>{u.nom}</option>)}
+                  <option value="">-- Selecciona un article --</option>
+                  {articles.filter(a => a.actiu && a.tipus !== 'compra').map(a => {
+                    const pvp = a.preu_final || Number((a.preu_base * (1 + a.iva_percentatge / 100)).toFixed(2))
+                    return (
+                      <option key={a.id} value={a.id}>
+                        {a.nom} — {pvp.toFixed(2)} € (IVA incl.)
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700">Unitat de Negoci *</label>
+                  <select
+                    value={newFactura.unitat_negoci_id}
+                    onChange={e => setNewFactura({ ...newFactura, unitat_negoci_id: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                    required
+                  >
+                    {unitats.map(u => <option key={u.id} value={u.id}>{u.nom}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Entrenador (autodetectat si buit)</label>
+                  <select
+                    value={newFactura.entrenador_id}
+                    onChange={e => setNewFactura({ ...newFactura, entrenador_id: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl"
+                  >
+                    <option value="">Automàtic segons atleta</option>
+                    {entrenadorsList.map(en => <option key={en.id} value={en.id}>{en.nom}</option>)}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="font-bold text-slate-700">Concepte</label>
+                <label className="font-bold text-slate-700">Concepte Principal *</label>
                 <input
                   type="text"
                   value={newFactura.concepte}
                   onChange={e => setNewFactura({ ...newFactura, concepte: e.target.value })}
-                  placeholder="Ex: Entrenament Personalitzat Abril"
+                  placeholder="Ex: Training Camp Pirineus 2027"
                   className="w-full mt-1 p-2 border rounded-xl"
                   required
                 />
               </div>
 
+              <div>
+                <label className="font-bold text-slate-700">Descripció / Detall addicional</label>
+                <input
+                  type="text"
+                  value={newFactura.descripcio_detall}
+                  onChange={e => setNewFactura({ ...newFactura, descripcio_detall: e.target.value })}
+                  placeholder="Ex: Estada, entrenaments guiats i allotjament..."
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="font-bold text-slate-700">Base Imposable (€)</label>
+                  <label className="font-bold text-emerald-800">Preu Final IVA incl. (€) *</label>
                   <input
                     type="number"
                     step="0.01"
-                    value={newFactura.base_imposable}
-                    onChange={e => setNewFactura({ ...newFactura, base_imposable: parseFloat(e.target.value) || 0 })}
-                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                    value={newFactura.total_pvp}
+                    onChange={e => {
+                      const pvp = parseFloat(e.target.value) || 0
+                      const { base } = calcReverseVat(pvp, newFactura.iva_percentatge, newFactura.irpf_percentatge)
+                      setNewFactura({ ...newFactura, total_pvp: pvp, base_imposable: base })
+                    }}
+                    className="w-full mt-1 p-2 border border-emerald-300 bg-emerald-50/40 rounded-xl font-black font-mono"
                     required
                   />
                 </div>
@@ -3112,7 +4186,11 @@ export const FinanceAdminPage: React.FC = () => {
                   <input
                     type="number"
                     value={newFactura.iva_percentatge}
-                    onChange={e => setNewFactura({ ...newFactura, iva_percentatge: parseFloat(e.target.value) || 0 })}
+                    onChange={e => {
+                      const iva = parseFloat(e.target.value) || 0
+                      const { base } = calcReverseVat(newFactura.total_pvp, iva, newFactura.irpf_percentatge)
+                      setNewFactura({ ...newFactura, iva_percentatge: iva, base_imposable: base })
+                    }}
                     className="w-full mt-1 p-2 border rounded-xl"
                   />
                 </div>
@@ -3126,6 +4204,18 @@ export const FinanceAdminPage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {(() => {
+                const { base, iva, irpf, total } = calcReverseVat(newFactura.total_pvp, newFactura.iva_percentatge, newFactura.irpf_percentatge)
+                return (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                    <span>Base: <strong>{base.toFixed(2)} €</strong></span>
+                    <span>Quota IVA: <strong>+{iva.toFixed(2)} €</strong></span>
+                    {irpf > 0 && <span className="text-rose-700">IRPF: <strong>-{irpf.toFixed(2)} €</strong></span>}
+                    <span className="text-emerald-800 font-black">Total: {total.toFixed(2)} €</span>
+                  </div>
+                )
+              })()}
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -3266,6 +4356,23 @@ export const FinanceAdminPage: React.FC = () => {
               </div>
 
               <div>
+                <label className="font-bold text-slate-700">Article de Compra (Opcional)</label>
+                <select
+                  value={newCompra.article_id}
+                  onChange={e => handleSelectCompraArticle(e.target.value)}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                >
+                  <option value="">Sense article de catàleg vinculat</option>
+                  {articles.filter(a => a.tipus === 'compra' || a.tipus === 'ambdos').map(a => {
+                    const pvp = a.preu_final || Number((a.preu_base * (1 + a.iva_percentatge / 100)).toFixed(2))
+                    return (
+                      <option key={a.id} value={a.id}>{a.nom} ({pvp.toFixed(2)} € IVA incl.)</option>
+                    )
+                  })}
+                </select>
+              </div>
+
+              <div>
                 <label className="font-bold text-slate-700">Concepte *</label>
                 <input
                   type="text"
@@ -3308,13 +4415,17 @@ export const FinanceAdminPage: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="font-bold text-slate-700">Base Imposable (€) *</label>
+                  <label className="font-bold text-rose-800">Import amb IVA (€) *</label>
                   <input
                     type="number"
                     step="0.01"
-                    value={newCompra.base_imposable}
-                    onChange={e => setNewCompra({ ...newCompra, base_imposable: parseFloat(e.target.value) || 0 })}
-                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                    value={newCompra.preu_amb_iva}
+                    onChange={e => {
+                      const pvp = parseFloat(e.target.value) || 0
+                      const { base } = calcReverseVat(pvp, newCompra.iva_percentatge, newCompra.irpf_percentatge)
+                      setNewCompra({ ...newCompra, preu_amb_iva: pvp, base_imposable: base })
+                    }}
+                    className="w-full mt-1 p-2 border border-rose-300 bg-rose-50/40 rounded-xl font-black font-mono"
                     required
                   />
                 </div>
@@ -3323,7 +4434,11 @@ export const FinanceAdminPage: React.FC = () => {
                   <input
                     type="number"
                     value={newCompra.iva_percentatge}
-                    onChange={e => setNewCompra({ ...newCompra, iva_percentatge: parseFloat(e.target.value) || 0 })}
+                    onChange={e => {
+                      const iva = parseFloat(e.target.value) || 0
+                      const { base } = calcReverseVat(newCompra.preu_amb_iva, iva, newCompra.irpf_percentatge)
+                      setNewCompra({ ...newCompra, iva_percentatge: iva, base_imposable: base })
+                    }}
                     className="w-full mt-1 p-2 border rounded-xl"
                   />
                 </div>
@@ -3337,6 +4452,18 @@ export const FinanceAdminPage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {(() => {
+                const { base, iva, irpf, total } = calcReverseVat(newCompra.preu_amb_iva, newCompra.iva_percentatge, newCompra.irpf_percentatge)
+                return (
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-[11px] font-mono">
+                    <span>Base: <strong>{base.toFixed(2)} €</strong></span>
+                    <span>Quota IVA: <strong>+{iva.toFixed(2)} €</strong></span>
+                    {irpf > 0 && <span className="text-rose-700">IRPF: <strong>-{irpf.toFixed(2)} €</strong></span>}
+                    <span className="text-slate-900 font-black">Líquid a Pagar: {total.toFixed(2)} €</span>
+                  </div>
+                )
+              })()}
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -3909,7 +5036,7 @@ export const FinanceAdminPage: React.FC = () => {
               <button onClick={() => setShowArticleModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
             </div>
             <form onSubmit={handleSaveArticle} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="font-bold text-slate-700">Codi Article</label>
                   <input
@@ -3921,6 +5048,18 @@ export const FinanceAdminPage: React.FC = () => {
                   />
                 </div>
                 <div>
+                  <label className="font-bold text-slate-700">Ús de l'Article</label>
+                  <select
+                    value={newArticle.tipus}
+                    onChange={e => setNewArticle({ ...newArticle, tipus: e.target.value as any })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                  >
+                    <option value="venda">Venda (Clients)</option>
+                    <option value="compra">Compra (Proveïdors)</option>
+                    <option value="ambdos">Venda i Compra</option>
+                  </select>
+                </div>
+                <div>
                   <label className="font-bold text-slate-700">Categoria</label>
                   <select
                     value={newArticle.categoria}
@@ -3928,8 +5067,8 @@ export const FinanceAdminPage: React.FC = () => {
                     className="w-full mt-1 p-2 border rounded-xl font-bold"
                   >
                     <option value="entrenament_recurrent">Entrenament / Servei</option>
-                    <option value="training_camp">Training Camp (Fites)</option>
-                    <option value="puntual">Puntual / Assessorament</option>
+                    <option value="training_camp">Training Camp</option>
+                    <option value="puntual">Puntual / Altres</option>
                   </select>
                 </div>
               </div>
@@ -3996,21 +5135,29 @@ export const FinanceAdminPage: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-bold text-slate-700">Preu Base Imposable (€) *</label>
+                  <label className="font-bold text-emerald-800">Preu Final (IVA inclòs) (€) *</label>
                   <input
                     type="number"
                     step="0.01"
                     required
-                    value={newArticle.preu_base}
-                    onChange={e => setNewArticle({ ...newArticle, preu_base: parseFloat(e.target.value) || 0 })}
-                    className="w-full mt-1 p-2 border rounded-xl font-bold font-mono"
+                    value={newArticle.preu_final}
+                    onChange={e => {
+                      const pvp = parseFloat(e.target.value) || 0
+                      const { base } = calcReverseVat(pvp, newArticle.iva_percentatge)
+                      setNewArticle({ ...newArticle, preu_final: pvp, preu_base: base })
+                    }}
+                    className="w-full mt-1 p-2 border border-emerald-300 bg-emerald-50/40 rounded-xl font-black font-mono text-slate-900"
                   />
                 </div>
                 <div>
                   <label className="font-bold text-slate-700">IVA (%)</label>
                   <select
                     value={newArticle.iva_percentatge}
-                    onChange={e => setNewArticle({ ...newArticle, iva_percentatge: parseFloat(e.target.value) || 0 })}
+                    onChange={e => {
+                      const iva = parseFloat(e.target.value) || 0
+                      const { base } = calcReverseVat(newArticle.preu_final, iva)
+                      setNewArticle({ ...newArticle, iva_percentatge: iva, preu_base: base })
+                    }}
                     className="w-full mt-1 p-2 border rounded-xl font-bold"
                   >
                     <option value={21}>21% (General)</option>
@@ -4020,6 +5167,24 @@ export const FinanceAdminPage: React.FC = () => {
                   </select>
                 </div>
               </div>
+              {(() => {
+                const { base, iva, pvp } = calcReverseVat(newArticle.preu_final, newArticle.iva_percentatge)
+                return (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-[11px] font-mono">
+                    <div>
+                      <span className="text-slate-500">Base Imposable calculada: </span>
+                      <strong className="text-slate-900">{base.toFixed(2)} €</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Quota d'IVA ({newArticle.iva_percentatge}%): </span>
+                      <strong className="text-slate-900">{iva.toFixed(2)} €</strong>
+                    </div>
+                    <div className="text-emerald-700 font-black">
+                      PVP: {pvp.toFixed(2)} €
+                    </div>
+                  </div>
+                )
+              })()}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="font-bold text-slate-700">Retenció IRPF (%)</label>
@@ -4454,6 +5619,183 @@ export const FinanceAdminPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL COBRAMENTS I PAGOS PARCIALS (TRAINING CAMPS & FACTURES) */}
+      {cobramentsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-3 border-b">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-mono font-bold text-xs">
+                    {cobramentsModal.numero_complet || 'FACTURA'}
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">{cobramentsModal.client_nom}</span>
+                </div>
+                <h3 className="font-black text-base text-slate-900 mt-1">Gestió de Cobraments i Pagos Parcials</h3>
+                <p className="text-xs text-slate-500">{cobramentsModal.concepte}</p>
+              </div>
+              <button onClick={() => setCobramentsModal(null)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+
+            {/* Resum Saldos + Barra de Progrés */}
+            {(() => {
+              const total = cobramentsModal.total_factura || 0
+              const cobrat = cobramentsModal.import_cobrat || 0
+              const pendent = cobramentsModal.import_pendent || 0
+              const pct = total > 0 ? Math.min(100, Math.round((cobrat / total) * 100)) : 0
+              return (
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Import Total</div>
+                      <div className="text-base font-black text-slate-900 font-mono mt-0.5">{total.toFixed(2)} €</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+                      <div className="text-[10px] uppercase font-bold text-emerald-700">Ja Cobrat ({pct}%)</div>
+                      <div className="text-base font-black text-emerald-800 font-mono mt-0.5">{cobrat.toFixed(2)} €</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+                      <div className="text-[10px] uppercase font-bold text-amber-700">Pendent</div>
+                      <div className="text-base font-black text-amber-900 font-mono mt-0.5">{pendent.toFixed(2)} €</div>
+                    </div>
+                  </div>
+                  <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Historial de pagaments registrats */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase text-slate-500 tracking-wider">
+                Historial de Pagaments Registrats ({cobramentsList.length})
+              </h4>
+              {cobramentsLoading ? (
+                <div className="py-6 text-center text-xs text-slate-400">Carregant pagaments...</div>
+              ) : cobramentsList.length === 0 ? (
+                <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-center text-xs text-slate-400">
+                  Encara no s'ha registrat cap pagament en aquesta factura.
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs">
+                  {cobramentsList.map((cob, idx) => (
+                    <div key={cob.id} className="p-3 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="font-bold text-slate-800 flex items-center gap-2">
+                          <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px]">#{idx + 1}</span>
+                          <span>{cob.data_cobrament}</span>
+                          <span className="text-[10px] uppercase px-2 py-0.2 rounded-full bg-slate-100 text-slate-600">{cob.metode_pagament}</span>
+                        </div>
+                        {cob.notes && <div className="text-[11px] text-slate-500 mt-0.5">{cob.notes}</div>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-emerald-700 text-sm">+{cob.import.toFixed(2)} €</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCobrament(cob.id)}
+                          title="Anul·lar aquest registre de cobrament"
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Formulari nou pagament parcial o total */}
+            {cobramentsModal.import_pendent > 0.009 ? (
+              <form onSubmit={handleAddCobrament} className="p-4 rounded-xl bg-indigo-50/50 border border-indigo-200 space-y-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-indigo-950">Registrar Nou Pagament (Parcial o Total)</span>
+                  <div className="flex items-center gap-1">
+                    {[
+                      { label: '25%', val: Number((cobramentsModal.total_factura * 0.25).toFixed(2)) },
+                      { label: '50%', val: Number((cobramentsModal.total_factura * 0.5).toFixed(2)) },
+                      { label: '100% Pendent', val: Number(cobramentsModal.import_pendent.toFixed(2)) }
+                    ].map(btn => (
+                      <button
+                        key={btn.label}
+                        type="button"
+                        onClick={() => setNewCobrament(prev => ({ ...prev, import: Math.min(Number(cobramentsModal.import_pendent.toFixed(2)), btn.val) }))}
+                        className="px-2 py-0.5 rounded bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-200 font-bold text-[10px]"
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="font-bold text-slate-700">Import pagat (€) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      max={Number(cobramentsModal.import_pendent.toFixed(2))}
+                      required
+                      value={newCobrament.import}
+                      onChange={e => setNewCobrament({ ...newCobrament, import: parseFloat(e.target.value) || 0 })}
+                      className="w-full mt-1 p-2 border border-indigo-300 rounded-xl bg-white font-black font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Data cobrament *</label>
+                    <input
+                      type="date"
+                      required
+                      value={newCobrament.data_cobrament}
+                      onChange={e => setNewCobrament({ ...newCobrament, data_cobrament: e.target.value })}
+                      className="w-full mt-1 p-2 border rounded-xl bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700">Mètode</label>
+                    <select
+                      value={newCobrament.metode_pagament}
+                      onChange={e => setNewCobrament({ ...newCobrament, metode_pagament: e.target.value })}
+                      className="w-full mt-1 p-2 border rounded-xl bg-white font-semibold"
+                    >
+                      <option value="transferencia">Transferència</option>
+                      <option value="sepa">Domiciliació SEPA</option>
+                      <option value="targeta">Targeta / Stripe</option>
+                      <option value="bizum">Bizum</option>
+                      <option value="efectiu">Efectiu</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700">Nota / Referència del pagament</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 1r pagament reserva Training Camp / Segon termini..."
+                    value={newCobrament.notes}
+                    onChange={e => setNewCobrament({ ...newCobrament, notes: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl bg-white"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button type="submit" className="btn-primary py-2 px-4 bg-indigo-600 hover:bg-indigo-700 font-bold">
+                    Registrar Cobrament ({newCobrament.import.toFixed(2)} €)
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Aquesta factura està completament pagada (pendent: 0,00 €).</span>
+              </div>
+            )}
           </div>
         </div>
       )}

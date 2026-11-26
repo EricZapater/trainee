@@ -10,6 +10,7 @@ import (
 	"os"
 
 	_ "embed"
+	"trainee-backend/internal/models"
 )
 
 //go:embed reminder_CAT.html
@@ -102,6 +103,8 @@ type Mailer interface {
 	SendNewAnunciNotification(toEmail, toName, autorNom, titol, descripcio, contacte, idioma string) error
 	SendNutricioRevisionNotification(toEmail, toName, planTitol, versio, dataRevisio, instruccions, idioma string) error
 	SendNutricioFeedbackNotification(toEmail, toName, atletaNom, planTitol, dataSortida, sensacions, idioma string) error
+	SendCoachUnconciliatedSummary(coachEmail, coachNom, mesLabel string, items []models.CoachUnconciliatedInvoice, idioma string) error
+	SendPolitePaymentReminder(atletaEmail, atletaNom, numFactura, concepte string, totalFactura, importPendent float64, dataVenciment, ibanEmpresa, nomComercial, idioma string) error
 }
 
 type LogMailer struct{}
@@ -158,6 +161,16 @@ func (m *LogMailer) SendNutricioRevisionNotification(toEmail, toName, planTitol,
 
 func (m *LogMailer) SendNutricioFeedbackNotification(toEmail, toName, atletaNom, planTitol, dataSortida, sensacions, idioma string) error {
 	log.Printf("[LOG-MAILER] Sending nutricio feedback notification to %s from %s on plan %s", toEmail, atletaNom, planTitol)
+	return nil
+}
+
+func (m *LogMailer) SendCoachUnconciliatedSummary(coachEmail, coachNom, mesLabel string, items []models.CoachUnconciliatedInvoice, idioma string) error {
+	log.Printf("[LOG-MAILER] Avis dia limit a entrenador %s (%s) pel mes %s amb %d atletes pendents de conciliar", coachNom, coachEmail, mesLabel, len(items))
+	return nil
+}
+
+func (m *LogMailer) SendPolitePaymentReminder(atletaEmail, atletaNom, numFactura, concepte string, totalFactura, importPendent float64, dataVenciment, ibanEmpresa, nomComercial, idioma string) error {
+	log.Printf("[LOG-MAILER] Recordatori amable (dia limit+1) a atleta %s (%s) per factura %s (%s) pendent %.2f € [idioma=%s]", atletaNom, atletaEmail, numFactura, concepte, importPendent, idioma)
 	return nil
 }
 
@@ -817,6 +830,232 @@ func (m *SMTPMailer) SendNutricioFeedbackNotification(toEmail, toName, atletaNom
 	}
 
 	return m.sendRawEmail(toEmail, subject, body.String())
+}
+
+const coachUnconciliatedHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b; line-height: 1.6; max-width: 680px; margin: 0 auto; padding: 20px; }
+  .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 24px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+  th { background: #f8fafc; text-align: left; padding: 10px; border-bottom: 2px solid #e2e8f0; color: #64748b; text-transform: uppercase; font-size: 11px; }
+  td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
+  .badge { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">Avís Dia Límit de Pagament · {{.MesLabel}}</span>
+    <h2 style="margin-top: 12px; color: #0f172a;">Hola {{.CoachNom}},</h2>
+    <p>Avui és el dia límit mensual de pagament configurat a l'empresa. T'enviem aquest resum informatiu amb els teus atletes que, a hores d'ara, encara consten com a <strong>pendents de conciliar</strong> per part d'Administració:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Atleta</th>
+          <th>Factura</th>
+          <th>Concepte</th>
+          <th style="text-align:right;">Total</th>
+          <th style="text-align:right;">Pendent</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Items}}
+        <tr>
+          <td><strong>{{.AtletaNom}}</strong></td>
+          <td>{{.NumeroFactura}}</td>
+          <td>{{.Concepte}}</td>
+          <td style="text-align:right;">{{printf "%.2f" .TotalFactura}} €</td>
+          <td style="text-align:right; color:#b45309; font-weight:700;">{{printf "%.2f" .ImportPendent}} €</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    <p style="margin-top: 18px; font-size: 13px; color: #475569;">
+      ℹ️ <strong>Nota:</strong> Qui marca la conciliació a l'aplicació és exclusivament Administració. Si tens constància d'algun canvi o acord amb algun d'aquests atletes, comenta-ho amb Administració avui mateix, ja que demà s'enviarà automàticament un recordatori amable als atletes que continuïn pendents.
+    </p>
+    <p style="margin-top: 24px; color: #64748b; font-size: 12px;">Salutacions,<br>Administració · TrainEE</p>
+  </div>
+</body>
+</html>
+`
+
+const politePaymentCATHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #334155; line-height: 1.7; max-width: 600px; margin: 0 auto; padding: 20px; }
+  .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px; }
+  .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 14px; }
+  .btn { display: inline-block; padding: 11px 22px; background-color: #059669; color: #ffffff !important; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="color: #0f172a; margin-top: 0;">Hola {{.AtletaNom}}! 👋</h2>
+    <p>Esperem que estiguis tenint una molt bona setmana i que els entrenaments vagin genial!</p>
+    <p>T'escrivim amb tota la confiança només per fer-te un petit recordatori amable, ja que revisant l'administració hem vist que ens consta pendent de conciliar la següent factura:</p>
+    <div class="box">
+      <div><strong>Factura:</strong> {{.NumFactura}}</div>
+      <div><strong>Concepte:</strong> {{.Concepte}}</div>
+      <div><strong>Import total:</strong> {{printf "%.2f" .TotalFactura}} €</div>
+      <div style="margin-top: 6px; color: #047857; font-size: 15px;"><strong>Import pendent: {{printf "%.2f" .ImportPendent}} €</strong></div>
+      {{if .IbanEmpresa}}<div style="margin-top: 8px; font-size: 13px; color: #475569;"><strong>IBAN per a transferència:</strong> <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">{{.IbanEmpresa}}</code></div>{{end}}
+    </div>
+    <p style="font-size: 14px; color: #475569;">
+      🙏 <em>Si ja has fet el pagament o la transferència en les últimes hores, moltíssimes gràcies i disculpa les molèsties! De vegades els moviments bancaris triguen un parell de dies a reflectir-se, així que pots ignorar completament aquest missatge.</em>
+    </p>
+    <p>Pots consultar o descarregar la factura en qualsevol moment des del teu espai personal:</p>
+    <a href="{{.AppURL}}/factures" class="btn">Veure les meves factures</a>
+    <p style="margin-top: 28px; color: #64748b; font-size: 13px;">Qualsevol dubte o consulta, som a la teva disposició.<br>Moltes gràcies per la teva confiança i bons entrenaments!<br><strong>L'equip de {{.NomComercial}}</strong></p>
+  </div>
+</body>
+</html>
+`
+
+const politePaymentESPHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #334155; line-height: 1.7; max-width: 600px; margin: 0 auto; padding: 20px; }
+  .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px; }
+  .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 14px; }
+  .btn { display: inline-block; padding: 11px 22px; background-color: #059669; color: #ffffff !important; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="color: #0f172a; margin-top: 0;">¡Hola {{.AtletaNom}}! 👋</h2>
+    <p>¡Esperamos que estés teniendo una gran semana y que los entrenamientos vayan genial!</p>
+    <p>Te escribimos con total confianza únicamente para hacerte un pequeño recordatorio amable, ya que revisando la administración hemos visto que nos consta pendiente de conciliar la siguiente factura:</p>
+    <div class="box">
+      <div><strong>Factura:</strong> {{.NumFactura}}</div>
+      <div><strong>Concepto:</strong> {{.Concepte}}</div>
+      <div><strong>Importe total:</strong> {{printf "%.2f" .TotalFactura}} €</div>
+      <div style="margin-top: 6px; color: #047857; font-size: 15px;"><strong>Importe pendiente: {{printf "%.2f" .ImportPendent}} €</strong></div>
+      {{if .IbanEmpresa}}<div style="margin-top: 8px; font-size: 13px; color: #475569;"><strong>IBAN para transferencia:</strong> <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">{{.IbanEmpresa}}</code></div>{{end}}
+    </div>
+    <p style="font-size: 14px; color: #475569;">
+      🙏 <em>Si ya has realizado el pago o la transferencia en las últimas horas, ¡muchísimas gracias y disculpa las molestias! A veces las transferencias bancarias tardan un par de días en reflejarse, así que puedes ignorar por completo este mensaje.</em>
+    </p>
+    <p>Puedes consultar o descargar tu factura en cualquier momento desde tu espacio personal:</p>
+    <a href="{{.AppURL}}/factures" class="btn">Ver mis facturas</a>
+    <p style="margin-top: 28px; color: #64748b; font-size: 13px;">Para cualquier duda o consulta, estamos a tu entera disposición.<br>¡Muchas gracias por tu confianza y buenos entrenos!<br><strong>El equipo de {{.NomComercial}}</strong></p>
+  </div>
+</body>
+</html>
+`
+
+const politePaymentENGHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #334155; line-height: 1.7; max-width: 600px; margin: 0 auto; padding: 20px; }
+  .card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px; }
+  .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 20px 0; font-size: 14px; }
+  .btn { display: inline-block; padding: 11px 22px; background-color: #059669; color: #ffffff !important; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; margin-top: 8px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h2 style="color: #0f172a; margin-top: 0;">Hi {{.AtletaNom}}! 👋</h2>
+    <p>We hope you are having a great week and that your training is going smoothly!</p>
+    <p>We are reaching out with a very gentle and friendly reminder, as our records show the following invoice is still awaiting reconciliation:</p>
+    <div class="box">
+      <div><strong>Invoice:</strong> {{.NumFactura}}</div>
+      <div><strong>Description:</strong> {{.Concepte}}</div>
+      <div><strong>Total amount:</strong> {{printf "%.2f" .TotalFactura}} €</div>
+      <div style="margin-top: 6px; color: #047857; font-size: 15px;"><strong>Remaining balance: {{printf "%.2f" .ImportPendent}} €</strong></div>
+      {{if .IbanEmpresa}}<div style="margin-top: 8px; font-size: 13px; color: #475569;"><strong>IBAN for bank transfer:</strong> <code style="background:#e2e8f0;padding:2px 6px;border-radius:4px;">{{.IbanEmpresa}}</code></div>{{end}}
+    </div>
+    <p style="font-size: 14px; color: #475569;">
+      🙏 <em>If you have already sent the payment in the last couple of days, thank you very much and please disregard this message while the bank transfer settles!</em>
+    </p>
+    <p>You can view or download your invoice anytime from your athlete portal:</p>
+    <a href="{{.AppURL}}/factures" class="btn">View my invoices</a>
+    <p style="margin-top: 28px; color: #64748b; font-size: 13px;">Please let us know if you have any questions at all.<br>Thank you so much for your trust and happy training!<br><strong>The {{.NomComercial}} Team</strong></p>
+  </div>
+</body>
+</html>
+`
+
+func (m *SMTPMailer) SendCoachUnconciliatedSummary(coachEmail, coachNom, mesLabel string, items []models.CoachUnconciliatedInvoice, idioma string) error {
+	subject := fmt.Sprintf("Resum d'atletes pendents de conciliar (%s)", mesLabel)
+	tmpl, err := template.New("coach_unconciliated").Parse(coachUnconciliatedHTML)
+	if err != nil {
+		return err
+	}
+	data := struct {
+		CoachNom string
+		MesLabel string
+		Items    []models.CoachUnconciliatedInvoice
+	}{
+		CoachNom: coachNom,
+		MesLabel: mesLabel,
+		Items:    items,
+	}
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return err
+	}
+	return m.sendRawEmail(coachEmail, subject, body.String())
+}
+
+func (m *SMTPMailer) SendPolitePaymentReminder(atletaEmail, atletaNom, numFactura, concepte string, totalFactura, importPendent float64, dataVenciment, ibanEmpresa, nomComercial, idioma string) error {
+	if nomComercial == "" {
+		nomComercial = "Entrenador Trail"
+	}
+	var subject, tmplHTML string
+	switch idioma {
+	case "ENG":
+		subject = fmt.Sprintf("Friendly reminder: Invoice %s (%s)", numFactura, nomComercial)
+		tmplHTML = politePaymentENGHTML
+	case "ESP":
+		subject = fmt.Sprintf("Recordatorio amable: Factura %s (%s)", numFactura, nomComercial)
+		tmplHTML = politePaymentESPHTML
+	default:
+		subject = fmt.Sprintf("Recordatori amable: Factura %s (%s)", numFactura, nomComercial)
+		tmplHTML = politePaymentCATHTML
+	}
+
+	tmpl, err := template.New("polite_payment").Parse(tmplHTML)
+	if err != nil {
+		return err
+	}
+	appURL := os.Getenv("FRONTEND_URL")
+	if appURL == "" {
+		appURL = "https://trainee.entrenadortrail.es"
+	}
+	data := struct {
+		AtletaNom     string
+		NumFactura    string
+		Concepte      string
+		TotalFactura  float64
+		ImportPendent float64
+		DataVenciment string
+		IbanEmpresa   string
+		NomComercial  string
+		AppURL        string
+	}{
+		AtletaNom:     atletaNom,
+		NumFactura:    numFactura,
+		Concepte:      concepte,
+		TotalFactura:  totalFactura,
+		ImportPendent: importPendent,
+		DataVenciment: dataVenciment,
+		IbanEmpresa:   ibanEmpresa,
+		NomComercial:  nomComercial,
+		AppURL:        appURL,
+	}
+	var body bytes.Buffer
+	if err := tmpl.Execute(&body, data); err != nil {
+		return err
+	}
+	return m.sendRawEmail(atletaEmail, subject, body.String())
 }
 
 // NewMailer creates a new Mailer. If host is empty, it returns a LogMailer.

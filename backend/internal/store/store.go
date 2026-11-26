@@ -263,6 +263,19 @@ type Store interface {
 
 	// Cashflow Dinàmic
 	GetDynamicCashflowForecast(ctx context.Context, pastMonths, futureMonths int) (*models.DynamicCashflowForecast, error)
+
+	// Cobraments parcials de factures
+	ListFinFacturaCobraments(ctx context.Context, facturaID string) ([]models.FinFacturaCobrament, error)
+	CreateFinFacturaCobrament(ctx context.Context, facturaID string, req models.CreateFinFacturaCobramentRequest, createdBy *string) (*models.FinFacturaVenda, error)
+	DeleteFinFacturaCobrament(ctx context.Context, facturaID, cobramentID string) (*models.FinFacturaVenda, error)
+
+	// Liquidació per Entrenador
+	GetFinLiquidacioEntrenadors(ctx context.Context, mes string) (*models.FinLiquidacioEntrenadorsResponse, error)
+
+	// Avisos automàtics de cobrament (Dia Límit i Dia Límit + 1)
+	GetPendingCoachBillingNotices(ctx context.Context, cutoffDate, anyMes string) ([]models.CoachBillingNoticeGroup, error)
+	GetPendingAthletePoliteNotices(ctx context.Context, cutoffDate, anyMes string) ([]models.AthletePoliteNoticeItem, error)
+	LogBillingNoticeSent(ctx context.Context, tipus, anyMes string, destinatariID *string, destinatariEmail string, facturaID *string) error
 }
 
 

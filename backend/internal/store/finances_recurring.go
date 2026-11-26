@@ -54,7 +54,8 @@ func (s *PostgresStore) GetAtletaEconomica(ctx context.Context, athleteOrUserID 
 		SELECT u.id, u.nom, COALESCE(u.cognoms, ''), u.email,
 		       COALESCE(fc.nom_fiscal, ''), COALESCE(fc.nif_cif, ''), COALESCE(fc.adreca, ''), COALESCE(fc.poblacio, ''), COALESCE(fc.cp, ''),
 		       u.article_quota_id, a.nom, a.preu_base::float8, a.iva_percentatge::float8,
-		       ROUND((a.preu_base * (1 + a.iva_percentatge / 100.0))::numeric, 2)::float8,
+		       CASE WHEN a.preu_final IS NOT NULL AND a.preu_final <> 0 THEN a.preu_final::float8
+		            ELSE ROUND((a.preu_base * (1 + a.iva_percentatge / 100.0))::numeric, 2)::float8 END,
 		       a.periodicitat_mesos,
 		       a.unitat_negoci_id, un.nom,
 		       COALESCE(u.forma_pagament, 'sepa_domiciliacio'), COALESCE(u.iban, ''),
@@ -206,6 +207,14 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 	// Assegurar que tots els atletes tenen registre a fin_clients
 	_, _ = s.SyncAtletesToFinClients(ctx)
 
+	// Obtenir dia límit configurat a l'empresa
+	diaLimit := 5
+	_ = s.pool.QueryRow(ctx, `SELECT COALESCE(dia_limit_pagament, 5) FROM fin_configuracio_empresa WHERE id = 1`).Scan(&diaLimit)
+	if diaLimit < 1 || diaLimit > 27 {
+		diaLimit = 5
+	}
+	vencimentMes := fmt.Sprintf("%s-%02d", mes, diaLimit)
+
 	items := []models.GraellaMesItem{}
 	var totalPvp, totalBase, totalIva float64
 
@@ -213,7 +222,8 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 	rowsA, errA := s.pool.Query(ctx, `
 		SELECT u.id, fc.id, fc.nom_fiscal, COALESCE(fc.nif_cif, ''),
 		       a.id, a.nom, a.unitat_negoci_id, un.nom,
-		       a.preu_base::float8, a.iva_percentatge::float8,
+		       CASE WHEN a.preu_final <> 0 THEN a.preu_final::float8 ELSE ROUND((a.preu_base * (1.0 + a.iva_percentatge / 100.0))::numeric, 2)::float8 END,
+		       a.iva_percentatge::float8,
 		       u.forma_pagament, COALESCE(u.iban, ''),
 		       u.pausat_facturacio,
 		       atl.entrenador_id, ent.nom,
@@ -244,12 +254,13 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 		for rowsA.Next() {
 			var uID, cID, cNom, cNif, aID, aNom, forma, iban string
 			var unID, unNom, coachID, coachNom, jaID, jaNum *string
-			var base, ivaPct float64
+			var pvp, ivaPct float64
 			var pausat bool
 
-			if err := rowsA.Scan(&uID, &cID, &cNom, &cNif, &aID, &aNom, &unID, &unNom, &base, &ivaPct, &forma, &iban, &pausat, &coachID, &coachNom, &jaID, &jaNum); err == nil {
-				ivaImp := roundCurrency(base * ivaPct / 100.0)
-				pvp := roundCurrency(base + ivaImp)
+			if err := rowsA.Scan(&uID, &cID, &cNom, &cNif, &aID, &aNom, &unID, &unNom, &pvp, &ivaPct, &forma, &iban, &pausat, &coachID, &coachNom, &jaID, &jaNum); err == nil {
+				pvp = roundCurrency(pvp)
+				base := roundCurrency(pvp / (1.0 + ivaPct/100.0))
+				ivaImp := roundCurrency(pvp - base)
 				concepte := fmt.Sprintf("%s - %s", aNom, formatMonthCatalan(mes))
 				jaEmesa := jaID != nil && *jaID != ""
 
@@ -273,7 +284,7 @@ func (s *PostgresStore) GetGraellaMes(ctx context.Context, mes string) (*models.
 					IvaImport:      ivaImp,
 					TotalPvp:       pvp,
 					Pausat:         pausat,
-					DataVenciment:  fmt.Sprintf("%s-05", mes),
+					DataVenciment:  vencimentMes,
 					JaEmesa:        jaEmesa,
 					FacturaID:      jaID,
 					FacturaNumero:  jaNum,
@@ -373,10 +384,15 @@ func (s *PostgresStore) EmetreGraella(ctx context.Context, req models.EmetreGrae
 		return nil, fmt.Errorf("cap element seleccionat per a facturar")
 	}
 
+	diaLimit := 5
+	_ = s.pool.QueryRow(ctx, `SELECT COALESCE(dia_limit_pagament, 5) FROM fin_configuracio_empresa WHERE id = 1`).Scan(&diaLimit)
+	if diaLimit < 1 || diaLimit > 27 {
+		diaLimit = 5
+	}
 	dataEmissio := fmt.Sprintf("%s-01", req.Mes)
 	periodeInici := dataEmissio
 	periodeFi := lastDayOfMonth(req.Mes)
-	dataVenciment := fmt.Sprintf("%s-05", req.Mes)
+	dataVenciment := fmt.Sprintf("%s-%02d", req.Mes, diaLimit)
 
 	facturesCreades := 0
 	totalFacturat := 0.0
@@ -432,6 +448,7 @@ func (s *PostgresStore) EmetreGraella(ctx context.Context, req models.EmetreGrae
 			ArticleID:       it.ArticleID,
 			Concepte:        it.Concepte,
 			BaseImposable:   it.BaseImposable,
+			TotalPvp:        it.TotalPvp,
 			IvaPercentatge:  it.IvaPercentatge,
 			DataEmissio:     dataEmissio,
 			DataVenciment:   dataVenciment,
@@ -561,10 +578,10 @@ func (s *PostgresStore) GetDynamicCashflowForecast(ctx context.Context, pastMont
 
 	// Obtenir saldo actual aproximat
 	var saldoInicialTall float64
-	_ = s.pool.QueryRow(ctx, `SELECT COALESCE(saldo_inicial_banc, 0)::float8 FROM fin_configuracio_empresa WHERE id = 1`).Scan(&saldoInicialTall)
+	_ = s.pool.QueryRow(ctx, `SELECT COALESCE(saldo_inicial, 0)::float8 FROM fin_configuracio_empresa WHERE id = 1`).Scan(&saldoInicialTall)
 
 	var cobramentsConciliats, pagamentsConciliats float64
-	_ = s.pool.QueryRow(ctx, `SELECT COALESCE(SUM(total_factura), 0)::float8 FROM fin_factures_venda WHERE estat_cobrament = 'cobrada'`).Scan(&cobramentsConciliats)
+	_ = s.pool.QueryRow(ctx, `SELECT COALESCE(SUM(import_cobrat), 0)::float8 FROM fin_factures_venda WHERE estat_document = 'emesa'`).Scan(&cobramentsConciliats)
 	_ = s.pool.QueryRow(ctx, `
 		SELECT COALESCE((
 			(SELECT COALESCE(SUM(total_pagar), 0)::float8 FROM fin_compres WHERE estat_pagament = 'pagada') +
@@ -604,7 +621,7 @@ func (s *PostgresStore) GetDynamicCashflowForecast(ctx context.Context, pastMont
 	// Calculem la suma mensual aproximada de quotes
 	var totalQuotesRecurrents float64
 	_ = s.pool.QueryRow(ctx, `
-		SELECT COALESCE(SUM(a.preu_base * (1 + a.iva_percentatge / 100.0)), 0)::float8
+		SELECT COALESCE(SUM(CASE WHEN a.preu_final <> 0 THEN a.preu_final ELSE a.preu_base * (1 + a.iva_percentatge / 100.0) END), 0)::float8
 		FROM usuaris u
 		JOIN fin_articles a ON a.id = u.article_quota_id
 		WHERE u.rol = 'atleta' AND u.actiu = TRUE AND u.pausat_facturacio = FALSE
@@ -624,9 +641,9 @@ func (s *PostgresStore) GetDynamicCashflowForecast(ctx context.Context, pastMont
 		if col.Tipus == "past" {
 			// Dades reals conciliades
 			_ = s.pool.QueryRow(ctx, `
-				SELECT COALESCE(SUM(total_factura), 0)::float8
+				SELECT COALESCE(SUM(import_cobrat), 0)::float8
 				FROM fin_factures_venda
-				WHERE estat_cobrament = 'cobrada' AND TO_CHAR(data_emissio, 'YYYY-MM') = $1
+				WHERE estat_document = 'emesa' AND TO_CHAR(data_emissio, 'YYYY-MM') = $1
 			`, mKey).Scan(&col.QuotesAtletes)
 
 			_ = s.pool.QueryRow(ctx, `

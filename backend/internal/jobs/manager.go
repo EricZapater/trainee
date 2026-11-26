@@ -21,6 +21,7 @@ type JobManager struct {
 
 	weekEntryID     cron.EntryID
 	reminderEntryID cron.EntryID
+	billingEntryID  cron.EntryID
 }
 
 func NewJobManager(s store.Store, mail mailer.Mailer, jwtSecret string) *JobManager {
@@ -41,6 +42,20 @@ func (jm *JobManager) Start() error {
 
 	if err := jm.ReloadReminderCron(); err != nil {
 		log.Printf("[JobManager] Error carregant ReminderCron: %v", err)
+	}
+
+	// Programar revisió diària d'avisos de cobrament a les 09:00h
+	billingID, err := jm.c.AddFunc("0 9 * * *", func() {
+		log.Println("[CRON-BILLING] Verificant dia límit de pagament...")
+		if err := RunDailyBillingReminders(jm.store, jm.mail); err != nil {
+			log.Printf("[CRON-BILLING] Error executant avisos de cobrament: %v", err)
+		}
+	})
+	if err != nil {
+		log.Printf("[JobManager] Error programant BillingRemindersCron: %v", err)
+	} else {
+		jm.billingEntryID = billingID
+		log.Println("[JobManager] BillingRemindersCron programat diàriament a les 09:00h.")
 	}
 
 	return nil

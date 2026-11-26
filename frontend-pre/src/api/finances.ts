@@ -20,6 +20,8 @@ export interface FinConfiguracioEmpresa {
   irpf_defecte_compres: number
   saldo_inicial: number
   data_tall_saldo: string
+  dia_limit_pagament?: number
+  avisos_impagament_actius?: boolean
   updated_at?: string
 }
 
@@ -100,12 +102,14 @@ export interface FinArticle {
   codi: string
   nom: string
   descripcio: string
+  tipus?: 'venda' | 'compra' | 'ambdos'
   categoria: string
   es_recurrent?: boolean
   periodicitat_mesos?: 1 | 3 | 6 | 12
   unitat_negoci_id: string
   unitat_negoci_nom?: string
   preu_base: number
+  preu_final: number
   iva_percentatge: number
   irpf_percentatge: number
   causa_exempcio: string
@@ -200,16 +204,29 @@ export interface FinFacturaVenda {
   irpf_percentatge: number
   irpf_import: number
   total_factura: number
+  import_cobrat: number
+  import_pendent: number
   data_emissio: string
   data_venciment: string
   periode_inici: string
   periode_fi: string
-  estat_cobrament: 'pendent' | 'pagada' | 'impagada' | 'compensada'
+  estat_cobrament: 'pendent' | 'parcial' | 'pagada' | 'impagada' | 'compensada'
   data_conciliacio?: string | null
   data_impagament?: string | null
   motiu_impagament: string
   notes_tresoreria: string
   emesa_at?: string
+}
+
+export interface FinFacturaCobrament {
+  id: string
+  factura_id: string
+  data_cobrament: string
+  import: number
+  metode_pagament: string
+  notes: string
+  created_by?: string | null
+  created_at: string
 }
 
 export interface FinCompra {
@@ -222,6 +239,8 @@ export interface FinCompra {
   unitat_negoci_nom?: string
   entrenador_id?: string | null
   entrenador_nom?: string
+  article_id?: string | null
+  article_nom?: string
   concepte: string
   base_imposable: number
   iva_percentatge: number
@@ -409,6 +428,13 @@ export const marcarImpagadaFinFacturaVenda = (id: string, data?: { data_impagame
 export const crearAbonamentFinFacturaVenda = (id: string, data: { serie_rectificativa_id?: string; motiu_rectificacio: string; base_abonar_positiva?: number; data_emissio?: string; emetre_directe?: boolean }) =>
   api.post<FinFacturaVenda>(`/finances/factures/${id}/abonament`, data).then(r => r.data)
 
+export const listFacturaCobraments = (facturaId: string) =>
+  api.get<FinFacturaCobrament[]>(`/finances/factures/${facturaId}/cobraments`).then(r => r.data)
+export const createFacturaCobrament = (facturaId: string, data: { data_cobrament: string; import: number; metode_pagament?: string; notes?: string }) =>
+  api.post<FinFacturaVenda>(`/finances/factures/${facturaId}/cobraments`, data).then(r => r.data)
+export const deleteFacturaCobrament = (facturaId: string, cobramentId: string) =>
+  api.delete<FinFacturaVenda>(`/finances/factures/${facturaId}/cobraments/${cobramentId}`).then(r => r.data)
+
 export const listFinCompres = (params?: { estat_pagament?: string; unitat_negoci_id?: string; entrenador_id?: string }) =>
   api.get<FinCompra[]>('/finances/compres', { params }).then(r => r.data)
 export const createFinCompra = (data: any) => api.post<FinCompra>('/finances/compres', data).then(r => r.data)
@@ -536,6 +562,7 @@ export interface EmetreGraellaRequest {
     client_id: string
     concepte: string
     base_imposable: number
+    total_pvp?: number
     iva_percentatge: number
     fita_id?: string | null
     centre_cost_id?: string | null
@@ -590,4 +617,66 @@ export const generarDespesesRecurrentsMes = (mes?: string) =>
 
 export const getDynamicCashflow = (past?: number, future?: number) =>
   api.get<DynamicCashflowForecast>('/finances/tresoreria/dynamic-cashflow', { params: { past, future } }).then(r => r.data)
+
+export interface FinLiquidacioVendaItem {
+  id: string
+  numero: string
+  data_emissio: string
+  client_nom: string
+  article_nom: string
+  concepte: string
+  estat_cobrament: string
+  total_factura: number
+  import_cobrat: number
+  import_pendent: number
+}
+
+export interface FinLiquidacioCompraItem {
+  id: string
+  tipus: 'compra' | 'despesa'
+  data: string
+  proveidor_nom: string
+  num_document: string
+  concepte: string
+  estat: string
+  import_total: number
+}
+
+export interface FinLiquidacioEntrenadorRow {
+  entrenador_id: string
+  entrenador_nom: string
+  num_factures_venda: number
+  num_compres_despeses: number
+  venut: number
+  cobrat: number
+  pendent: number
+  impagat: number
+  no_cobrat_total: number
+  compres_factures: number
+  despeses_operatives: number
+  comprat: number
+  net_sobre_venut: number
+  net_sobre_cobrat: number
+  detall_vendes: FinLiquidacioVendaItem[]
+  detall_compres: FinLiquidacioCompraItem[]
+}
+
+export interface FinLiquidacioEntrenadorsResponse {
+  mes: string
+  total_venut: number
+  total_cobrat: number
+  total_pendent: number
+  total_impagat: number
+  total_no_cobrat: number
+  total_comprat: number
+  liquidacio_sobre_venut: number
+  liquidacio_sobre_cobrat: number
+  files: FinLiquidacioEntrenadorRow[]
+}
+
+export const getFinLiquidacioEntrenadors = (mes?: string) =>
+  api.get<FinLiquidacioEntrenadorsResponse>('/finances/liquidacio-entrenadors', { params: { mes } }).then(r => r.data)
+
+export const executarAvisosCobrament = (mode: 'entrenadors' | 'atletes') =>
+  api.post<{ enviats: number; mode: string }>('/finances/avisos-cobrament/executar', { mode }).then(r => r.data)
 

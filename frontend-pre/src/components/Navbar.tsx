@@ -88,6 +88,7 @@ export const Navbar: React.FC = () => {
     { to: '/finances?tab=vendes', label: 'Vendes & Factures', desc: 'Factures puntuals i vendes a terminis', icon: FileText },
     { to: '/finances?tab=compres', label: 'Compres & Proveïdors', desc: 'Factures de compra i centres de cost', icon: ArrowDownLeft },
     { to: '/finances?tab=despeses', label: 'Despeses Operatives', desc: 'Nòmines, autònoms, IRPF i fixes dia 1', icon: CreditCard },
+    { to: '/finances?tab=liquidacio', label: '🤝 Liquidació Entrenadors', desc: 'Venut, cobrat i impagat menys comprat', icon: Users },
     { to: '/finances?tab=resum', label: 'Visor de Marge (P&L)', desc: 'Vendes vs Compres i Despeses', icon: TrendingUp },
     { to: '/finances?tab=tresoreria', label: 'Previsió de Caixa (Cashflow)', desc: 'Flux de caixa dinàmic mòbil', icon: DollarSign },
     { to: '/finances?tab=config', label: 'Mestres & Configuració', desc: 'Articles, formes pagament, sèries i IVA', icon: Building2 },

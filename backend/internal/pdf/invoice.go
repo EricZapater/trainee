@@ -322,7 +322,21 @@ func GenerateInvoiceHTML(f *models.FinFacturaVenda, cfg *models.FinConfiguracioE
     <div class="totals-row total-final">
       <span>TOTAL FACTURA</span>
       <span>` + fmt.Sprintf("%.2f €", f.TotalFactura) + `</span>
+    </div>`)
+
+	if f.ImportCobrat > 0 && f.ImportPendent > 0 {
+		buf.WriteString(`
+    <div class="totals-row" style="color: #047857; font-weight: 700; margin-top: 6px;">
+      <span>Pagat a compte</span>
+      <span>-` + fmt.Sprintf("%.2f €", f.ImportCobrat) + `</span>
     </div>
+    <div class="totals-row" style="color: #b45309; font-weight: 800; border-top: 1px dashed #cbd5e1; padding-top: 6px;">
+      <span>PENDENT DE PAGAMENT</span>
+      <span>` + fmt.Sprintf("%.2f €", f.ImportPendent) + `</span>
+    </div>`)
+	}
+
+	buf.WriteString(`
   </div>
 </div>`)
 

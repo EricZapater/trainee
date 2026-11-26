@@ -42,6 +42,12 @@ export const AthleteInvoicesPage: React.FC = () => {
             <CheckCircle2 className="w-3.5 h-3.5" /> Pagada
           </span>
         )
+      case 'parcial':
+        return (
+          <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-fit">
+            <Clock className="w-3.5 h-3.5" /> Pagament parcial
+          </span>
+        )
       case 'impagada':
         return (
           <span className="bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1 w-fit">
@@ -138,10 +144,16 @@ export const AthleteInvoicesPage: React.FC = () => {
 
                 <div className="pt-3 border-t border-border-light flex items-center justify-between">
                   <div>
-                    <div className="text-[10px] uppercase font-bold text-slate-400">Total a pagar</div>
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Import Total</div>
                     <div className="text-lg font-black text-brand-600 leading-tight">
                       {f.total_factura.toFixed(2)} €
                     </div>
+                    {f.import_pendent > 0 && f.estat_cobrament !== 'pagada' && (
+                      <div className="text-xs font-bold text-amber-700 mt-0.5">
+                        Pendent: {f.import_pendent.toFixed(2)} €
+                        {f.import_cobrat > 0 ? ` (pagat ${f.import_cobrat.toFixed(2)} €)` : ''}
+                      </div>
+                    )}
                   </div>
 
                   <a

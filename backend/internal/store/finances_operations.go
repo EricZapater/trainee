@@ -95,6 +95,7 @@ const selectFacturaVendaSQL = `
 	       fv.concepte, fv.descripcio_detall,
 	       fv.base_imposable::float8, fv.iva_percentatge::float8, fv.causa_exempcio, fv.iva_import::float8,
 	       fv.irpf_percentatge::float8, fv.irpf_import::float8, fv.total_factura::float8,
+	       fv.import_cobrat::float8, fv.import_pendent::float8,
 	       TO_CHAR(fv.data_emissio, 'YYYY-MM-DD'), TO_CHAR(fv.data_venciment, 'YYYY-MM-DD'),
 	       TO_CHAR(fv.periode_inici, 'YYYY-MM-DD'), TO_CHAR(fv.periode_fi, 'YYYY-MM-DD'),
 	       fv.estat_cobrament,
@@ -126,6 +127,7 @@ func scanFacturaVenda(scanner interface {
 		&f.Concepte, &f.DescripcioDetall,
 		&f.BaseImposable, &f.IvaPercentatge, &f.CausaExempcio, &f.IvaImport,
 		&f.IrpfPercentatge, &f.IrpfImport, &f.TotalFactura,
+		&f.ImportCobrat, &f.ImportPendent,
 		&f.DataEmissio, &f.DataVenciment, &f.PeriodeInici, &f.PeriodeFi,
 		&f.EstatCobrament, &f.DataConciliacio, &f.DataImpagament,
 		&f.MotiuImpagament, &f.NotesTresoreria, &f.EmesaAt,
@@ -218,13 +220,33 @@ func (s *PostgresStore) ListFinFacturesByUsuari(ctx context.Context, usuariID st
 	return list, rows.Err()
 }
 
+func computeVendaAmounts(req models.UpsertFinFacturaVendaRequest) (base, ivaPct, ivaImp, irpfPct, irpfImp, total, pendent float64) {
+	ivaPct = roundCurrency(req.IvaPercentatge)
+	irpfPct = roundCurrency(req.IrpfPercentatge)
+	if req.TotalPvp != nil && *req.TotalPvp != 0 {
+		pvp := roundCurrency(*req.TotalPvp)
+		base = roundCurrency(pvp / (1.0 + ivaPct/100.0))
+		ivaImp = roundCurrency(pvp - base)
+		irpfImp = roundCurrency(base * irpfPct / 100.0)
+		total = roundCurrency(pvp - irpfImp)
+	} else {
+		base = roundCurrency(req.BaseImposable)
+		ivaImp = roundCurrency(base * ivaPct / 100.0)
+		irpfImp = roundCurrency(base * irpfPct / 100.0)
+		total = roundCurrency(base + ivaImp - irpfImp)
+	}
+	if total > 0 {
+		pendent = total
+	}
+	return
+}
+
 func (s *PostgresStore) CreateFinFacturaVenda(ctx context.Context, req models.UpsertFinFacturaVendaRequest) (*models.FinFacturaVenda, error) {
-	base := roundCurrency(req.BaseImposable)
-	ivaPct := roundCurrency(req.IvaPercentatge)
-	irpfPct := roundCurrency(req.IrpfPercentatge)
-	ivaImp := roundCurrency(base * ivaPct / 100.0)
-	irpfImp := roundCurrency(base * irpfPct / 100.0)
-	total := roundCurrency(base + ivaImp - irpfImp)
+	artID := nullableUUID(req.ArticleID)
+	if artID == nil {
+		return nil, fmt.Errorf("cal seleccionar un article vinculat per a la factura")
+	}
+	base, ivaPct, ivaImp, irpfPct, irpfImp, total, pendent := computeVendaAmounts(req)
 
 	serieID := nullableUUID(req.SerieID)
 	if serieID == nil {
@@ -254,15 +276,15 @@ func (s *PostgresStore) CreateFinFacturaVenda(ctx context.Context, req models.Up
 			serie_id, tipus_factura, estat_document, client_id,
 			unitat_negoci_id, entrenador_id, article_id, concepte, descripcio_detall,
 			base_imposable, iva_percentatge, causa_exempcio, iva_import,
-			irpf_percentatge, irpf_import, total_factura,
+			irpf_percentatge, irpf_import, total_factura, import_cobrat, import_pendent,
 			data_emissio, data_venciment, periode_inici, periode_fi,
 			estat_cobrament, notes_tresoreria
-		) VALUES ($1,'F1','esborrany',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::date,$16::date,$17::date,$18::date,'pendent',$19)
+		) VALUES ($1,'F1','esborrany',$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,0,$15,$16::date,$17::date,$18::date,$19::date,'pendent',$20)
 		RETURNING id
 	`,
-		serieID, req.ClientID, req.UnitatNegociID, coachID, nullableUUID(req.ArticleID),
+		serieID, req.ClientID, req.UnitatNegociID, coachID, artID,
 		req.Concepte, req.DescripcioDetall, base, ivaPct, req.CausaExempcio, ivaImp,
-		irpfPct, irpfImp, total, req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi, req.NotesTresoreria,
+		irpfPct, irpfImp, total, pendent, req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi, req.NotesTresoreria,
 	).Scan(&id)
 	if err != nil {
 		return nil, err
@@ -288,26 +310,25 @@ func (s *PostgresStore) UpdateFinFacturaVenda(ctx context.Context, id string, re
 		return nil, fmt.Errorf("prohibit modificar una factura ja emesa amb número de registre (utilitza un abonament rectificatiu)")
 	}
 
-	base := roundCurrency(req.BaseImposable)
-	ivaPct := roundCurrency(req.IvaPercentatge)
-	irpfPct := roundCurrency(req.IrpfPercentatge)
-	ivaImp := roundCurrency(base * ivaPct / 100.0)
-	irpfImp := roundCurrency(base * irpfPct / 100.0)
-	total := roundCurrency(base + ivaImp - irpfImp)
+	artID := nullableUUID(req.ArticleID)
+	if artID == nil {
+		return nil, fmt.Errorf("cal seleccionar un article vinculat per a la factura")
+	}
+	base, ivaPct, ivaImp, irpfPct, irpfImp, total, pendent := computeVendaAmounts(req)
 
 	_, err = s.pool.Exec(ctx, `
 		UPDATE fin_factures_venda
 		SET serie_id = $1, client_id = $2, unitat_negoci_id = $3, entrenador_id = $4, article_id = $5,
 		    concepte = $6, descripcio_detall = $7,
 		    base_imposable = $8, iva_percentatge = $9, causa_exempcio = $10, iva_import = $11,
-		    irpf_percentatge = $12, irpf_import = $13, total_factura = $14,
-		    data_emissio = $15::date, data_venciment = $16::date, periode_inici = $17::date, periode_fi = $18::date,
-		    notes_tresoreria = $19, updated_at = now()
-		WHERE id = $20 AND estat_document = 'esborrany'
+		    irpf_percentatge = $12, irpf_import = $13, total_factura = $14, import_pendent = $15,
+		    data_emissio = $16::date, data_venciment = $17::date, periode_inici = $18::date, periode_fi = $19::date,
+		    notes_tresoreria = $20, updated_at = now()
+		WHERE id = $21 AND estat_document = 'esborrany'
 	`,
-		nullableUUID(req.SerieID), req.ClientID, req.UnitatNegociID, nullableUUID(req.EntrenadorID), nullableUUID(req.ArticleID),
+		nullableUUID(req.SerieID), req.ClientID, req.UnitatNegociID, nullableUUID(req.EntrenadorID), artID,
 		req.Concepte, req.DescripcioDetall, base, ivaPct, req.CausaExempcio, ivaImp,
-		irpfPct, irpfImp, total, req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
+		irpfPct, irpfImp, total, pendent, req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
 		req.NotesTresoreria, id,
 	)
 	if err != nil {
@@ -480,6 +501,7 @@ func (s *PostgresStore) EmetreFinFacturaVenda(ctx context.Context, id string, re
 		SET serie_id = $1, numero_seq = $2, numero_complet = $3,
 		    estat_document = 'emesa', data_emissio = $4::date, data_venciment = $5::date,
 		    emissor_snapshot = $6::jsonb, client_snapshot = $7::jsonb,
+		    import_pendent = CASE WHEN estat_cobrament = 'pendent' AND import_cobrat = 0 THEN total_factura ELSE import_pendent END,
 		    emesa_at = now(), verifactu_estat = 'pendent_fase2', updated_at = now()
 		WHERE id = $8
 	`, *serieID, nextNum, numComplet, dataEmissio, dataVenciment, string(emissorJSON), string(clientJSON), id)
@@ -494,18 +516,36 @@ func (s *PostgresStore) EmetreFinFacturaVenda(ctx context.Context, id string, re
 }
 
 func (s *PostgresStore) ConciliarFinFacturaVenda(ctx context.Context, id string, req models.ConciliarDocumentRequest) (*models.FinFacturaVenda, error) {
-	tag, err := s.pool.Exec(ctx, `
+	fv, err := s.GetFinFacturaVendaByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if fv.EstatDocument != "emesa" {
+		return nil, fmt.Errorf("només es poden conciliar factures emeses")
+	}
+	if fv.TotalFactura > 0 && fv.ImportPendent > 0.009 {
+		notes := req.Notes
+		if notes == "" {
+			notes = "Cobrament conciliat al 100%"
+		}
+		_, err = s.pool.Exec(ctx, `
+			INSERT INTO fin_factures_cobraments (factura_id, data_cobrament, import, metode_pagament, notes)
+			VALUES ($1, $2::date, $3, 'conciliacio', $4)
+		`, id, req.DataConciliacio, roundCurrency(fv.ImportPendent), notes)
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = s.pool.Exec(ctx, `
 		UPDATE fin_factures_venda
 		SET estat_cobrament = 'pagada', data_conciliacio = $1::date,
+		    import_cobrat = total_factura, import_pendent = 0,
 		    notes_tresoreria = CASE WHEN $2 <> '' THEN $2 ELSE notes_tresoreria END,
 		    updated_at = now()
 		WHERE id = $3 AND estat_document = 'emesa'
 	`, req.DataConciliacio, req.Notes, id)
 	if err != nil {
 		return nil, err
-	}
-	if tag.RowsAffected() == 0 {
-		return nil, fmt.Errorf("només es poden conciliar factures emeses")
 	}
 	return s.GetFinFacturaVendaByID(ctx, id)
 }
@@ -608,7 +648,7 @@ func (s *PostgresStore) CrearAbonamentFacturaVenda(ctx context.Context, origenID
 		}
 		// Si és abonament total d'una factura que encara no s'havia cobrat, compensem ambdues perquè no quedin pendents a caixa
 		if esTotal && (orig.EstatCobrament == "pendent" || orig.EstatCobrament == "impagada") {
-			_, _ = s.pool.Exec(ctx, `UPDATE fin_factures_venda SET estat_cobrament = 'compensada', updated_at = now() WHERE id IN ($1, $2)`, orig.ID, rectID)
+			_, _ = s.pool.Exec(ctx, `UPDATE fin_factures_venda SET estat_cobrament = 'compensada', import_pendent = 0, updated_at = now() WHERE id IN ($1, $2)`, orig.ID, rectID)
 			return s.GetFinFacturaVendaByID(ctx, rectID)
 		}
 		return emitted, nil
@@ -620,10 +660,29 @@ func (s *PostgresStore) CrearAbonamentFacturaVenda(ctx context.Context, origenID
 // 6. Factures de Compra, Entitat Despesa i Plantilles Recurrents
 // ============================================================
 
+func computeCompraAmounts(req models.UpsertFinCompraRequest) (base, ivaPct, ivaImp, irpfPct, irpfImp, total float64) {
+	ivaPct = roundCurrency(req.IvaPercentatge)
+	irpfPct = roundCurrency(req.IrpfPercentatge)
+	if req.PreuAmbIva != nil && *req.PreuAmbIva != 0 {
+		pvp := roundCurrency(*req.PreuAmbIva)
+		base = roundCurrency(pvp / (1.0 + ivaPct/100.0))
+		ivaImp = roundCurrency(pvp - base)
+		irpfImp = roundCurrency(base * irpfPct / 100.0)
+		total = roundCurrency(pvp - irpfImp)
+	} else {
+		base = roundCurrency(req.BaseImposable)
+		ivaImp = roundCurrency(base * ivaPct / 100.0)
+		irpfImp = roundCurrency(base * irpfPct / 100.0)
+		total = roundCurrency(base + ivaImp - irpfImp)
+	}
+	return
+}
+
 func (s *PostgresStore) ListFinCompres(ctx context.Context, estatPag, unitatID, entrenadorID string) ([]models.FinCompra, error) {
 	query := `
 		SELECT c.id, c.proveidor_id, p.nom_fiscal, p.nif_cif, c.num_factura_proveidor,
-		       c.unitat_negoci_id, COALESCE(un.nom, ''), c.entrenador_id, en.nom, c.concepte,
+		       c.unitat_negoci_id, COALESCE(un.nom, ''), c.entrenador_id, en.nom,
+		       c.article_id, ar.nom, c.concepte,
 		       c.base_imposable::float8, c.iva_percentatge::float8, c.iva_import::float8,
 		       c.irpf_percentatge::float8, c.irpf_import::float8, c.total_pagar::float8,
 		       TO_CHAR(c.data_emissio, 'YYYY-MM-DD'), TO_CHAR(c.data_venciment, 'YYYY-MM-DD'),
@@ -635,6 +694,7 @@ func (s *PostgresStore) ListFinCompres(ctx context.Context, estatPag, unitatID, 
 		JOIN fin_proveidors p ON p.id = c.proveidor_id
 		LEFT JOIN fin_unitats_negoci un ON un.id = c.unitat_negoci_id
 		LEFT JOIN entrenadors en ON en.id = c.entrenador_id
+		LEFT JOIN fin_articles ar ON ar.id = c.article_id
 		WHERE 1=1
 	`
 	args := []any{}
@@ -669,7 +729,8 @@ func (s *PostgresStore) ListFinCompres(ctx context.Context, estatPag, unitatID, 
 		var c models.FinCompra
 		if err := rows.Scan(
 			&c.ID, &c.ProveidorID, &c.ProveidorNom, &c.ProveidorNif, &c.NumFacturaProveidor,
-			&c.UnitatNegociID, &c.UnitatNegociNom, &c.EntrenadorID, &c.EntrenadorNom, &c.Concepte,
+			&c.UnitatNegociID, &c.UnitatNegociNom, &c.EntrenadorID, &c.EntrenadorNom,
+			&c.ArticleID, &c.ArticleNom, &c.Concepte,
 			&c.BaseImposable, &c.IvaPercentatge, &c.IvaImport,
 			&c.IrpfPercentatge, &c.IrpfImport, &c.TotalPagar,
 			&c.DataEmissio, &c.DataVenciment, &c.PeriodeInici, &c.PeriodeFi,
@@ -683,12 +744,7 @@ func (s *PostgresStore) ListFinCompres(ctx context.Context, estatPag, unitatID, 
 }
 
 func (s *PostgresStore) CreateFinCompra(ctx context.Context, req models.UpsertFinCompraRequest) (*models.FinCompra, error) {
-	base := roundCurrency(req.BaseImposable)
-	ivaPct := roundCurrency(req.IvaPercentatge)
-	irpfPct := roundCurrency(req.IrpfPercentatge)
-	ivaImp := roundCurrency(base * ivaPct / 100.0)
-	irpfImp := roundCurrency(base * irpfPct / 100.0)
-	total := roundCurrency(base + ivaImp - irpfImp)
+	base, ivaPct, ivaImp, irpfPct, irpfImp, total := computeCompraAmounts(req)
 
 	estat := req.EstatPagament
 	if estat == "" {
@@ -702,14 +758,14 @@ func (s *PostgresStore) CreateFinCompra(ctx context.Context, req models.UpsertFi
 	var id string
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO fin_compres (
-			proveidor_id, num_factura_proveidor, unitat_negoci_id, entrenador_id, concepte,
+			proveidor_id, num_factura_proveidor, unitat_negoci_id, entrenador_id, article_id, concepte,
 			base_imposable, iva_percentatge, iva_import, irpf_percentatge, irpf_import, total_pagar,
 			data_emissio, data_venciment, periode_inici, periode_fi,
 			estat_pagament, data_conciliacio, fitxer_adjunt_path, notes
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::date,$13::date,$14::date,$15::date,$16,$17::date,$18,$19)
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::date,$14::date,$15::date,$16::date,$17,$18::date,$19,$20)
 		RETURNING id
 	`,
-		req.ProveidorID, req.NumFacturaProveidor, nullableUUID(req.UnitatNegociID), nullableUUID(req.EntrenadorID), req.Concepte,
+		req.ProveidorID, req.NumFacturaProveidor, nullableUUID(req.UnitatNegociID), nullableUUID(req.EntrenadorID), nullableUUID(req.ArticleID), req.Concepte,
 		base, ivaPct, ivaImp, irpfPct, irpfImp, total,
 		req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
 		estat, dataConc, req.FitxerAdjuntPath, req.Notes,
@@ -731,12 +787,7 @@ func (s *PostgresStore) CreateFinCompra(ctx context.Context, req models.UpsertFi
 }
 
 func (s *PostgresStore) UpdateFinCompra(ctx context.Context, id string, req models.UpsertFinCompraRequest) (*models.FinCompra, error) {
-	base := roundCurrency(req.BaseImposable)
-	ivaPct := roundCurrency(req.IvaPercentatge)
-	irpfPct := roundCurrency(req.IrpfPercentatge)
-	ivaImp := roundCurrency(base * ivaPct / 100.0)
-	irpfImp := roundCurrency(base * irpfPct / 100.0)
-	total := roundCurrency(base + ivaImp - irpfImp)
+	base, ivaPct, ivaImp, irpfPct, irpfImp, total := computeCompraAmounts(req)
 
 	estat := req.EstatPagament
 	if estat == "" {
@@ -749,15 +800,15 @@ func (s *PostgresStore) UpdateFinCompra(ctx context.Context, id string, req mode
 
 	_, err := s.pool.Exec(ctx, `
 		UPDATE fin_compres
-		SET proveidor_id = $1, num_factura_proveidor = $2, unitat_negoci_id = $3, entrenador_id = $4, concepte = $5,
-		    base_imposable = $6, iva_percentatge = $7, iva_import = $8, irpf_percentatge = $9, irpf_import = $10, total_pagar = $11,
-		    data_emissio = $12::date, data_venciment = $13::date, periode_inici = $14::date, periode_fi = $15::date,
-		    estat_pagament = $16, data_conciliacio = $17::date,
-		    fitxer_adjunt_path = CASE WHEN $18 <> '' THEN $18 ELSE fitxer_adjunt_path END,
-		    notes = $19, updated_at = now()
-		WHERE id = $20
+		SET proveidor_id = $1, num_factura_proveidor = $2, unitat_negoci_id = $3, entrenador_id = $4, article_id = $5, concepte = $6,
+		    base_imposable = $7, iva_percentatge = $8, iva_import = $9, irpf_percentatge = $10, irpf_import = $11, total_pagar = $12,
+		    data_emissio = $13::date, data_venciment = $14::date, periode_inici = $15::date, periode_fi = $16::date,
+		    estat_pagament = $17, data_conciliacio = $18::date,
+		    fitxer_adjunt_path = CASE WHEN $19 <> '' THEN $19 ELSE fitxer_adjunt_path END,
+		    notes = $20, updated_at = now()
+		WHERE id = $21
 	`,
-		req.ProveidorID, req.NumFacturaProveidor, nullableUUID(req.UnitatNegociID), nullableUUID(req.EntrenadorID), req.Concepte,
+		req.ProveidorID, req.NumFacturaProveidor, nullableUUID(req.UnitatNegociID), nullableUUID(req.EntrenadorID), nullableUUID(req.ArticleID), req.Concepte,
 		base, ivaPct, ivaImp, irpfPct, irpfImp, total,
 		req.DataEmissio, req.DataVenciment, req.PeriodeInici, req.PeriodeFi,
 		estat, dataConc, req.FitxerAdjuntPath, req.Notes, id,
@@ -1356,14 +1407,21 @@ func (s *PostgresStore) GetFinCashflowForecast(ctx context.Context, horitzoDies 
 			resp.CobramentsConciliats += f.TotalFactura
 			continue
 		}
+		if f.EstatCobrament == "parcial" && f.ImportCobrat > 0 {
+			resp.CobramentsConciliats += f.ImportCobrat
+		}
 		if f.EstatCobrament == "impagada" {
-			resp.TotalImpagatsExclosos += f.TotalFactura
+			resp.TotalImpagatsExclosos += f.ImportPendent
 			continue
 		}
-		if f.EstatCobrament == "pendent" {
+		if f.EstatCobrament == "pendent" || f.EstatCobrament == "parcial" {
+			pendingAmt := f.ImportPendent
+			if pendingAmt == 0 && f.TotalFactura < 0 {
+				pendingAmt = f.TotalFactura
+			}
 			isOverdue := f.DataVenciment < today
 			if isOverdue {
-				resp.EndarreritsCobrar += f.TotalFactura
+				resp.EndarreritsCobrar += pendingAmt
 				if !inclouEndarrerits {
 					continue
 				}
@@ -1374,7 +1432,7 @@ func (s *PostgresStore) GetFinCashflowForecast(ctx context.Context, horitzoDies 
 			}
 			if effDate <= horizonEnd {
 				tipus := "entrada"
-				amt := f.TotalFactura
+				amt := pendingAmt
 				if amt < 0 {
 					tipus = "sortida"
 					amt = -amt

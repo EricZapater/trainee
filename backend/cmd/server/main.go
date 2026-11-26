@@ -107,7 +107,7 @@ func main() {
 	systemLogsHandler := handlers.NewSystemLogsHandler(s)
 	settingsHandler := handlers.NewSettingsHandler(s, jm)
 	adminHandler := handlers.NewAdminHandler(s, mailService, cfg.JWTSecret)
-	financesHandler := handlers.NewFinancesHandler(s, fileUploader)
+	financesHandler := handlers.NewFinancesHandler(s, fileUploader, mailService)
 
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -362,6 +362,9 @@ func main() {
 		financesRoutes.POST("/factures/:id/conciliar", financesHandler.ConciliarFacturaVenda)
 		financesRoutes.POST("/factures/:id/marcar-impagada", financesHandler.MarcarImpagadaFacturaVenda)
 		financesRoutes.POST("/factures/:id/abonament", financesHandler.CrearAbonamentFacturaVenda)
+		financesRoutes.GET("/factures/:id/cobraments", financesHandler.ListFacturaCobraments)
+		financesRoutes.POST("/factures/:id/cobraments", financesHandler.CreateFacturaCobrament)
+		financesRoutes.DELETE("/factures/:id/cobraments/:cobrament_id", financesHandler.DeleteFacturaCobrament)
 
 		// Compres i Despeses
 		financesRoutes.GET("/compres", financesHandler.ListCompres)
@@ -386,6 +389,9 @@ func main() {
 		financesRoutes.GET("/informes/resultats/csv", financesHandler.ExportInformeCSV)
 		financesRoutes.GET("/tresoreria/cashflow", financesHandler.GetCashflowForecast)
 		financesRoutes.GET("/tresoreria/dynamic-cashflow", financesHandler.GetDynamicCashflow)
+		financesRoutes.GET("/liquidacio-entrenadors", financesHandler.GetLiquidacioEntrenadors)
+		financesRoutes.GET("/liquidacio-entrenadors/csv", financesHandler.ExportLiquidacioEntrenadorsCSV)
+		financesRoutes.POST("/avisos-cobrament/executar", financesHandler.ExecutarAvisosCobrament)
 
 		// Gestió Econòmica d'Atletes & Graella Periòdica
 		financesRoutes.GET("/atletes/:id/economica", financesHandler.GetAtletaEconomica)

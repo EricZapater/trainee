@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"trainee-backend/internal/jobs"
+	"trainee-backend/internal/mailer"
 	"trainee-backend/internal/models"
 	"trainee-backend/internal/pdf"
 	"trainee-backend/internal/store"
@@ -17,10 +19,11 @@ import (
 type FinancesHandler struct {
 	Store    store.Store
 	Uploader *uploader.Uploader
+	Mail     mailer.Mailer
 }
 
-func NewFinancesHandler(s store.Store, u *uploader.Uploader) *FinancesHandler {
-	return &FinancesHandler{Store: s, Uploader: u}
+func NewFinancesHandler(s store.Store, u *uploader.Uploader, m mailer.Mailer) *FinancesHandler {
+	return &FinancesHandler{Store: s, Uploader: u, Mail: m}
 }
 
 // ============================================================
@@ -1028,4 +1031,137 @@ func (h *FinancesHandler) GetDynamicCashflow(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, res)
+}
+
+// ============================================================
+// 9. Cobraments Parcials, Liquidació Entrenadors i Avisos
+// ============================================================
+
+func (h *FinancesHandler) ListFacturaCobraments(c *gin.Context) {
+	id := c.Param("id")
+	list, err := h.Store.ListFinFacturaCobraments(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+func (h *FinancesHandler) CreateFacturaCobrament(c *gin.Context) {
+	id := c.Param("id")
+	var req models.CreateFinFacturaCobramentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	userID := c.GetString("user_id")
+	var createdBy *string
+	if userID != "" {
+		createdBy = &userID
+	}
+	fv, err := h.Store.CreateFinFacturaCobrament(c.Request.Context(), id, req, createdBy)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, fv)
+}
+
+func (h *FinancesHandler) DeleteFacturaCobrament(c *gin.Context) {
+	id := c.Param("id")
+	cobramentID := c.Param("cobrament_id")
+	fv, err := h.Store.DeleteFinFacturaCobrament(c.Request.Context(), id, cobramentID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, fv)
+}
+
+func (h *FinancesHandler) GetLiquidacioEntrenadors(c *gin.Context) {
+	mes := c.Query("mes")
+	if mes == "" {
+		mes = time.Now().Format("2006-01")
+	}
+	res, err := h.Store.GetFinLiquidacioEntrenadors(c.Request.Context(), mes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *FinancesHandler) ExportLiquidacioEntrenadorsCSV(c *gin.Context) {
+	mes := c.Query("mes")
+	if mes == "" {
+		mes = time.Now().Format("2006-01")
+	}
+	res, err := h.Store.GetFinLiquidacioEntrenadors(c.Request.Context(), mes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=liquidacio_entrenadors_%s.csv", mes))
+
+	writer := csv.NewWriter(c.Writer)
+	_ = writer.Write([]string{
+		"Entrenador",
+		"Núm. Factures Venda",
+		"Venut Total IVA incl. (€)",
+		"Cobrat (€)",
+		"Pendent En Curs (€)",
+		"Impagat (€)",
+		"Total No Cobrat (€)",
+		"Compres + Despeses (€)",
+		"Balanç s/ Venut (€)",
+		"Liquidació Neta s/ Cobrat (€)",
+	})
+
+	for _, r := range res.Files {
+		_ = writer.Write([]string{
+			r.EntrenadorNom,
+			strconv.Itoa(r.NumFacturesVenda),
+			fmt.Sprintf("%.2f", r.Venut),
+			fmt.Sprintf("%.2f", r.Cobrat),
+			fmt.Sprintf("%.2f", r.Pendent),
+			fmt.Sprintf("%.2f", r.Impagat),
+			fmt.Sprintf("%.2f", r.NoCobratTotal),
+			fmt.Sprintf("%.2f", r.Comprat),
+			fmt.Sprintf("%.2f", r.NetSobreVenut),
+			fmt.Sprintf("%.2f", r.NetSobreCobrat),
+		})
+	}
+
+	_ = writer.Write([]string{
+		"TOTAL GLOBAL (" + mes + ")",
+		"-",
+		fmt.Sprintf("%.2f", res.TotalVenut),
+		fmt.Sprintf("%.2f", res.TotalCobrat),
+		fmt.Sprintf("%.2f", res.TotalPendent),
+		fmt.Sprintf("%.2f", res.TotalImpagat),
+		fmt.Sprintf("%.2f", res.TotalNoCobrat),
+		fmt.Sprintf("%.2f", res.TotalComprat),
+		fmt.Sprintf("%.2f", res.LiquidacioSobreVenut),
+		fmt.Sprintf("%.2f", res.LiquidacioSobreCobrat),
+	})
+
+	writer.Flush()
+}
+
+func (h *FinancesHandler) ExecutarAvisosCobrament(c *gin.Context) {
+	var req struct {
+		Mode string `json:"mode" binding:"required,oneof=entrenadors atletes"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	sent, err := jobs.ExecuteBillingReminderAction(c.Request.Context(), h.Store, h.Mail, req.Mode, time.Now())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"enviats": sent, "mode": req.Mode})
 }

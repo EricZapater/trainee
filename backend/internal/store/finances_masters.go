@@ -62,14 +62,16 @@ func (s *PostgresStore) GetFinConfiguracioEmpresa(ctx context.Context) (*models.
 		SELECT id, rao_social, nom_comercial, nif_cif, adreca, cp, poblacio, provincia, pais,
 		       email_administracio, telefon, iban_principal, logo_url, peu_legal,
 		       iva_defecte::float8, irpf_defecte_vendes::float8, irpf_defecte_compres::float8,
-		       saldo_inicial::float8, TO_CHAR(data_tall_saldo, 'YYYY-MM-DD'), updated_at
+		       saldo_inicial::float8, TO_CHAR(data_tall_saldo, 'YYYY-MM-DD'),
+		       COALESCE(dia_limit_pagament, 5), COALESCE(avisos_impagament_actius, FALSE), updated_at
 		FROM fin_configuracio_empresa
 		WHERE id = 1
 	`).Scan(
 		&c.ID, &c.RaoSocial, &c.NomComercial, &c.NifCif, &c.Adreca, &c.CP, &c.Poblacio, &c.Provincia, &c.Pais,
 		&c.EmailAdministracio, &c.Telefon, &c.IbanPrincipal, &c.LogoURL, &c.PeuLegal,
 		&c.IvaDefecte, &c.IrpfDefecteVendes, &c.IrpfDefecteCompres,
-		&c.SaldoInicial, &c.DataTallSaldo, &c.UpdatedAt,
+		&c.SaldoInicial, &c.DataTallSaldo,
+		&c.DiaLimitPagament, &c.AvisosImpagamentActius, &c.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -84,13 +86,21 @@ func (s *PostgresStore) UpdateFinConfiguracioEmpresa(ctx context.Context, req mo
 	if req.DataTallSaldo == "" {
 		req.DataTallSaldo = time.Now().Format("2006-01-02")
 	}
+	diaLimit := req.DiaLimitPagament
+	if diaLimit < 1 {
+		diaLimit = 5
+	}
+	if diaLimit > 27 {
+		diaLimit = 27
+	}
 	_, err := s.pool.Exec(ctx, `
 		UPDATE fin_configuracio_empresa
 		SET rao_social = $1, nom_comercial = $2, nif_cif = $3, adreca = $4, cp = $5,
 		    poblacio = $6, provincia = $7, pais = $8, email_administracio = $9, telefon = $10,
 		    iban_principal = $11, logo_url = $12, peu_legal = $13,
 		    iva_defecte = $14, irpf_defecte_vendes = $15, irpf_defecte_compres = $16,
-		    saldo_inicial = $17, data_tall_saldo = $18::date, updated_at = now()
+		    saldo_inicial = $17, data_tall_saldo = $18::date,
+		    dia_limit_pagament = $19, avisos_impagament_actius = $20, updated_at = now()
 		WHERE id = 1
 	`,
 		req.RaoSocial, req.NomComercial, req.NifCif, req.Adreca, req.CP,
@@ -98,6 +108,7 @@ func (s *PostgresStore) UpdateFinConfiguracioEmpresa(ctx context.Context, req mo
 		req.IbanPrincipal, req.LogoURL, req.PeuLegal,
 		roundCurrency(req.IvaDefecte), roundCurrency(req.IrpfDefecteVendes), roundCurrency(req.IrpfDefecteCompres),
 		roundCurrency(req.SaldoInicial), req.DataTallSaldo,
+		diaLimit, req.AvisosImpagamentActius,
 	)
 	if err != nil {
 		return nil, err
@@ -509,10 +520,29 @@ func (s *PostgresStore) UpdateFinProveidor(ctx context.Context, id string, req m
 	return &pr, nil
 }
 
+func resolveArticlePrices(req models.UpsertFinArticleRequest) (preuBase, preuFinal, ivaPct float64, tipus string) {
+	ivaPct = roundCurrency(req.IvaPercentatge)
+	tipus = req.Tipus
+	if tipus != "compra" && tipus != "ambdos" {
+		tipus = "venda"
+	}
+	if req.PreuFinal > 0 || req.PreuBase == 0 {
+		preuFinal = roundCurrency(req.PreuFinal)
+		preuBase = roundCurrency(preuFinal / (1.0 + ivaPct/100.0))
+	} else {
+		preuBase = roundCurrency(req.PreuBase)
+		preuFinal = roundCurrency(preuBase * (1.0 + ivaPct/100.0))
+	}
+	return
+}
+
 func (s *PostgresStore) ListFinArticles(ctx context.Context) ([]models.FinArticle, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT a.id, a.codi, a.nom, a.descripcio, a.categoria, a.es_recurrent, a.periodicitat_mesos, a.unitat_negoci_id, un.nom,
-		       a.preu_base::float8, a.iva_percentatge::float8, a.irpf_percentatge::float8,
+		SELECT a.id, a.codi, a.nom, a.descripcio, COALESCE(a.tipus, 'venda'), a.categoria,
+		       a.es_recurrent, a.periodicitat_mesos, a.unitat_negoci_id, un.nom,
+		       a.preu_base::float8,
+		       CASE WHEN a.preu_final <> 0 THEN a.preu_final::float8 ELSE ROUND((a.preu_base * (1.0 + a.iva_percentatge / 100.0))::numeric, 2)::float8 END,
+		       a.iva_percentatge::float8, a.irpf_percentatge::float8,
 		       a.causa_exempcio, a.actiu, a.created_at, a.updated_at
 		FROM fin_articles a
 		JOIN fin_unitats_negoci un ON un.id = a.unitat_negoci_id
@@ -527,8 +557,10 @@ func (s *PostgresStore) ListFinArticles(ctx context.Context) ([]models.FinArticl
 	for rows.Next() {
 		var ar models.FinArticle
 		if err := rows.Scan(
-			&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Categoria, &ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID, &ar.UnitatNegociNom,
-			&ar.PreuBase, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
+			&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Tipus, &ar.Categoria,
+			&ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID, &ar.UnitatNegociNom,
+			&ar.PreuBase, &ar.PreuFinal, &ar.IvaPercentatge, &ar.IrpfPercentatge,
+			&ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -538,17 +570,22 @@ func (s *PostgresStore) ListFinArticles(ctx context.Context) ([]models.FinArticl
 }
 
 func (s *PostgresStore) CreateFinArticle(ctx context.Context, req models.UpsertFinArticleRequest) (*models.FinArticle, error) {
+	preuBase, preuFinal, ivaPct, tipus := resolveArticlePrices(req)
+	cat := req.Categoria
+	if cat == "" {
+		cat = "puntual"
+	}
 	var ar models.FinArticle
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO fin_articles (codi, nom, descripcio, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base, iva_percentatge, irpf_percentatge, causa_exempcio, actiu)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-		RETURNING id, codi, nom, descripcio, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base::float8, iva_percentatge::float8, irpf_percentatge::float8, causa_exempcio, actiu, created_at, updated_at
+		INSERT INTO fin_articles (codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base, preu_final, iva_percentatge, irpf_percentatge, causa_exempcio, actiu)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		RETURNING id, codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base::float8, preu_final::float8, iva_percentatge::float8, irpf_percentatge::float8, causa_exempcio, actiu, created_at, updated_at
 	`,
-		req.Codi, req.Nom, req.Descripcio, req.Categoria, req.EsRecurrent, req.PeriodicitatMesos, req.UnitatNegociID,
-		roundCurrency(req.PreuBase), roundCurrency(req.IvaPercentatge), roundCurrency(req.IrpfPercentatge), req.CausaExempcio, req.Actiu,
+		req.Codi, req.Nom, req.Descripcio, tipus, cat, req.EsRecurrent, req.PeriodicitatMesos, req.UnitatNegociID,
+		preuBase, preuFinal, ivaPct, roundCurrency(req.IrpfPercentatge), req.CausaExempcio, req.Actiu,
 	).Scan(
-		&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Categoria, &ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID,
-		&ar.PreuBase, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
+		&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Tipus, &ar.Categoria, &ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID,
+		&ar.PreuBase, &ar.PreuFinal, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -557,19 +594,24 @@ func (s *PostgresStore) CreateFinArticle(ctx context.Context, req models.UpsertF
 }
 
 func (s *PostgresStore) UpdateFinArticle(ctx context.Context, id string, req models.UpsertFinArticleRequest) (*models.FinArticle, error) {
+	preuBase, preuFinal, ivaPct, tipus := resolveArticlePrices(req)
+	cat := req.Categoria
+	if cat == "" {
+		cat = "puntual"
+	}
 	var ar models.FinArticle
 	err := s.pool.QueryRow(ctx, `
 		UPDATE fin_articles
-		SET codi = $1, nom = $2, descripcio = $3, categoria = $4, es_recurrent = $5, periodicitat_mesos = $6, unitat_negoci_id = $7,
-		    preu_base = $8, iva_percentatge = $9, irpf_percentatge = $10, causa_exempcio = $11, actiu = $12, updated_at = now()
-		WHERE id = $13
-		RETURNING id, codi, nom, descripcio, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base::float8, iva_percentatge::float8, irpf_percentatge::float8, causa_exempcio, actiu, created_at, updated_at
+		SET codi = $1, nom = $2, descripcio = $3, tipus = $4, categoria = $5, es_recurrent = $6, periodicitat_mesos = $7, unitat_negoci_id = $8,
+		    preu_base = $9, preu_final = $10, iva_percentatge = $11, irpf_percentatge = $12, causa_exempcio = $13, actiu = $14, updated_at = now()
+		WHERE id = $15
+		RETURNING id, codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base::float8, preu_final::float8, iva_percentatge::float8, irpf_percentatge::float8, causa_exempcio, actiu, created_at, updated_at
 	`,
-		req.Codi, req.Nom, req.Descripcio, req.Categoria, req.EsRecurrent, req.PeriodicitatMesos, req.UnitatNegociID,
-		roundCurrency(req.PreuBase), roundCurrency(req.IvaPercentatge), roundCurrency(req.IrpfPercentatge), req.CausaExempcio, req.Actiu, id,
+		req.Codi, req.Nom, req.Descripcio, tipus, cat, req.EsRecurrent, req.PeriodicitatMesos, req.UnitatNegociID,
+		preuBase, preuFinal, ivaPct, roundCurrency(req.IrpfPercentatge), req.CausaExempcio, req.Actiu, id,
 	).Scan(
-		&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Categoria, &ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID,
-		&ar.PreuBase, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
+		&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Tipus, &ar.Categoria, &ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID,
+		&ar.PreuBase, &ar.PreuFinal, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

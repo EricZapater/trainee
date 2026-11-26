@@ -476,6 +476,7 @@ export const ProfilePage: React.FC = () => {
                       <th className="p-3">Concepte</th>
                       <th className="p-3">Unitat Negoci</th>
                       <th className="p-3 text-right">Total</th>
+                      <th className="p-3 text-right">Pendent</th>
                       <th className="p-3 text-center">Estat Pagament</th>
                       <th className="p-3 text-right">PDF</th>
                     </tr>
@@ -483,7 +484,9 @@ export const ProfilePage: React.FC = () => {
                   <tbody className="divide-y divide-border">
                     {invoices.map(inv => {
                       const isPaid = inv.estat_cobrament === 'pagada'
+                      const isPartial = inv.estat_cobrament === 'parcial'
                       const isOverdue = inv.estat_cobrament === 'impagada'
+                      const pendentAmt = inv.import_pendent ?? (isPaid ? 0 : inv.total_factura)
                       return (
                         <tr key={inv.id} className="hover:bg-bg-surface/40 transition-colors">
                           <td className="p-3 font-mono font-bold text-brand-600">
@@ -501,10 +504,17 @@ export const ProfilePage: React.FC = () => {
                           <td className="p-3 text-right font-bold text-text-primary whitespace-nowrap">
                             {inv.total_factura.toFixed(2)} €
                           </td>
+                          <td className={`p-3 text-right font-bold whitespace-nowrap ${pendentAmt > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                            {pendentAmt.toFixed(2)} €
+                          </td>
                           <td className="p-3 text-center">
                             {isPaid ? (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                 Pagada
+                              </span>
+                            ) : isPartial ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                                Parcial ({inv.import_cobrat.toFixed(0)}€/{inv.total_factura.toFixed(0)}€)
                               </span>
                             ) : isOverdue ? (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">

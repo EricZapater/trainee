@@ -10,26 +10,28 @@ import (
 // ============================================================
 
 type FinConfiguracioEmpresa struct {
-	ID                 int       `json:"id"`
-	RaoSocial          string    `json:"rao_social"`
-	NomComercial       string    `json:"nom_comercial"`
-	NifCif             string    `json:"nif_cif"`
-	Adreca             string    `json:"adreca"`
-	CP                 string    `json:"cp"`
-	Poblacio           string    `json:"poblacio"`
-	Provincia          string    `json:"provincia"`
-	Pais               string    `json:"pais"`
-	EmailAdministracio string    `json:"email_administracio"`
-	Telefon            string    `json:"telefon"`
-	IbanPrincipal      string    `json:"iban_principal"`
-	LogoURL            string    `json:"logo_url"`
-	PeuLegal           string    `json:"peu_legal"`
-	IvaDefecte         float64   `json:"iva_defecte"`
-	IrpfDefecteVendes  float64   `json:"irpf_defecte_vendes"`
-	IrpfDefecteCompres float64   `json:"irpf_defecte_compres"`
-	SaldoInicial       float64   `json:"saldo_inicial"`
-	DataTallSaldo      string    `json:"data_tall_saldo"` // YYYY-MM-DD
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                     int       `json:"id"`
+	RaoSocial              string    `json:"rao_social"`
+	NomComercial           string    `json:"nom_comercial"`
+	NifCif                 string    `json:"nif_cif"`
+	Adreca                 string    `json:"adreca"`
+	CP                     string    `json:"cp"`
+	Poblacio               string    `json:"poblacio"`
+	Provincia              string    `json:"provincia"`
+	Pais                   string    `json:"pais"`
+	EmailAdministracio     string    `json:"email_administracio"`
+	Telefon                string    `json:"telefon"`
+	IbanPrincipal          string    `json:"iban_principal"`
+	LogoURL                string    `json:"logo_url"`
+	PeuLegal               string    `json:"peu_legal"`
+	IvaDefecte             float64   `json:"iva_defecte"`
+	IrpfDefecteVendes      float64   `json:"irpf_defecte_vendes"`
+	IrpfDefecteCompres     float64   `json:"irpf_defecte_compres"`
+	SaldoInicial           float64   `json:"saldo_inicial"`
+	DataTallSaldo          string    `json:"data_tall_saldo"` // YYYY-MM-DD
+	DiaLimitPagament       int       `json:"dia_limit_pagament"`
+	AvisosImpagamentActius bool      `json:"avisos_impagament_actius"`
+	UpdatedAt              time.Time `json:"updated_at"`
 }
 
 type FinImpost struct {
@@ -174,37 +176,41 @@ type UpsertFinProveidorRequest struct {
 }
 
 type FinArticle struct {
-	ID              string    `json:"id"`
-	Codi            string    `json:"codi"`
-	Nom             string    `json:"nom"`
-	Descripcio      string    `json:"descripcio"`
-	Categoria       string    `json:"categoria"` // entrenament_recurrent, training_camp, puntual, etc.
-	EsRecurrent     bool      `json:"es_recurrent"`
-	PeriodicitatMesos *int    `json:"periodicitat_mesos,omitempty"` // 1, 3, 6, 12
-	UnitatNegociID  string    `json:"unitat_negoci_id"`
-	UnitatNegociNom string    `json:"unitat_negoci_nom,omitempty"`
-	PreuBase        float64   `json:"preu_base"`
-	IvaPercentatge  float64   `json:"iva_percentatge"`
-	IrpfPercentatge float64   `json:"irpf_percentatge"`
-	CausaExempcio   string    `json:"causa_exempcio"`
-	Actiu           bool      `json:"actiu"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID                string    `json:"id"`
+	Codi              string    `json:"codi"`
+	Nom               string    `json:"nom"`
+	Descripcio        string    `json:"descripcio"`
+	Tipus             string    `json:"tipus"`     // venda | compra | ambdos
+	Categoria         string    `json:"categoria"` // entrenament_recurrent, training_camp, puntual, etc.
+	EsRecurrent       bool      `json:"es_recurrent"`
+	PeriodicitatMesos *int      `json:"periodicitat_mesos,omitempty"` // 1, 3, 6, 12
+	UnitatNegociID    string    `json:"unitat_negoci_id"`
+	UnitatNegociNom   string    `json:"unitat_negoci_nom,omitempty"`
+	PreuBase          float64   `json:"preu_base"`
+	PreuFinal         float64   `json:"preu_final"`
+	IvaPercentatge    float64   `json:"iva_percentatge"`
+	IrpfPercentatge   float64   `json:"irpf_percentatge"`
+	CausaExempcio     string    `json:"causa_exempcio"`
+	Actiu             bool      `json:"actiu"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type UpsertFinArticleRequest struct {
-	Codi            string  `json:"codi"`
-	Nom             string  `json:"nom" binding:"required"`
-	Descripcio      string  `json:"descripcio"`
-	Categoria       string  `json:"categoria"`
-	EsRecurrent     bool    `json:"es_recurrent"`
-	PeriodicitatMesos *int  `json:"periodicitat_mesos"`
-	UnitatNegociID  string  `json:"unitat_negoci_id" binding:"required"`
-	PreuBase        float64 `json:"preu_base"`
-	IvaPercentatge  float64 `json:"iva_percentatge"`
-	IrpfPercentatge float64 `json:"irpf_percentatge"`
-	CausaExempcio   string  `json:"causa_exempcio"`
-	Actiu           bool    `json:"actiu"`
+	Codi              string  `json:"codi"`
+	Nom               string  `json:"nom" binding:"required"`
+	Descripcio        string  `json:"descripcio"`
+	Tipus             string  `json:"tipus"`
+	Categoria         string  `json:"categoria"`
+	EsRecurrent       bool    `json:"es_recurrent"`
+	PeriodicitatMesos *int    `json:"periodicitat_mesos"`
+	UnitatNegociID    string  `json:"unitat_negoci_id" binding:"required"`
+	PreuBase          float64 `json:"preu_base"`
+	PreuFinal         float64 `json:"preu_final"`
+	IvaPercentatge    float64 `json:"iva_percentatge"`
+	IrpfPercentatge   float64 `json:"irpf_percentatge"`
+	CausaExempcio     string  `json:"causa_exempcio"`
+	Actiu             bool    `json:"actiu"`
 }
 
 type FinSubscripcio struct {
@@ -340,11 +346,13 @@ type FinFacturaVenda struct {
 	IrpfPercentatge    float64         `json:"irpf_percentatge"`
 	IrpfImport         float64         `json:"irpf_import"`
 	TotalFactura       float64         `json:"total_factura"`
+	ImportCobrat       float64         `json:"import_cobrat"`
+	ImportPendent      float64         `json:"import_pendent"`
 	DataEmissio        string          `json:"data_emissio"`
 	DataVenciment      string          `json:"data_venciment"`
 	PeriodeInici       string          `json:"periode_inici"`
 	PeriodeFi          string          `json:"periode_fi"`
-	EstatCobrament     string          `json:"estat_cobrament"` // pendent, pagada, impagada, compensada
+	EstatCobrament     string          `json:"estat_cobrament"` // pendent, parcial, pagada, impagada, compensada
 	DataConciliacio    *string         `json:"data_conciliacio"`
 	DataImpagament     *string         `json:"data_impagament"`
 	MotiuImpagament    string          `json:"motiu_impagament"`
@@ -357,23 +365,42 @@ type FinFacturaVenda struct {
 }
 
 type UpsertFinFacturaVendaRequest struct {
-	SerieID          *string `json:"serie_id"`
-	ClientID         string  `json:"client_id" binding:"required"`
-	UnitatNegociID   string  `json:"unitat_negoci_id" binding:"required"`
-	EntrenadorID     *string `json:"entrenador_id"`
-	ArticleID        *string `json:"article_id"`
-	Concepte         string  `json:"concepte" binding:"required"`
-	DescripcioDetall string  `json:"descripcio_detall"`
-	BaseImposable    float64 `json:"base_imposable"`
-	IvaPercentatge   float64 `json:"iva_percentatge"`
-	CausaExempcio    string  `json:"causa_exempcio"`
-	IrpfPercentatge  float64 `json:"irpf_percentatge"`
-	DataEmissio      string  `json:"data_emissio" binding:"required"`
-	DataVenciment    string  `json:"data_venciment" binding:"required"`
-	PeriodeInici     string  `json:"periode_inici" binding:"required"`
-	PeriodeFi        string  `json:"periode_fi" binding:"required"`
-	NotesTresoreria  string  `json:"notes_tresoreria"`
-	EmetreDirecte    bool    `json:"emetre_directe"`
+	SerieID          *string  `json:"serie_id"`
+	ClientID         string   `json:"client_id" binding:"required"`
+	UnitatNegociID   string   `json:"unitat_negoci_id" binding:"required"`
+	EntrenadorID     *string  `json:"entrenador_id"`
+	ArticleID        *string  `json:"article_id"`
+	Concepte         string   `json:"concepte" binding:"required"`
+	DescripcioDetall string   `json:"descripcio_detall"`
+	BaseImposable    float64  `json:"base_imposable"`
+	TotalPvp         *float64 `json:"total_pvp,omitempty"`
+	IvaPercentatge   float64  `json:"iva_percentatge"`
+	CausaExempcio    string   `json:"causa_exempcio"`
+	IrpfPercentatge  float64  `json:"irpf_percentatge"`
+	DataEmissio      string   `json:"data_emissio" binding:"required"`
+	DataVenciment    string   `json:"data_venciment" binding:"required"`
+	PeriodeInici     string   `json:"periode_inici" binding:"required"`
+	PeriodeFi        string   `json:"periode_fi" binding:"required"`
+	NotesTresoreria  string   `json:"notes_tresoreria"`
+	EmetreDirecte    bool     `json:"emetre_directe"`
+}
+
+type FinFacturaCobrament struct {
+	ID             string    `json:"id"`
+	FacturaID      string    `json:"factura_id"`
+	DataCobrament  string    `json:"data_cobrament"`
+	Import         float64   `json:"import"`
+	MetodePagament string    `json:"metode_pagament"`
+	Notes          string    `json:"notes"`
+	CreatedBy      *string   `json:"created_by,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type CreateFinFacturaCobramentRequest struct {
+	DataCobrament  string  `json:"data_cobrament" binding:"required"`
+	Import         float64 `json:"import" binding:"required,gt=0"`
+	MetodePagament string  `json:"metode_pagament"`
+	Notes          string  `json:"notes"`
 }
 
 type EmetreFacturaRequest struct {
@@ -410,6 +437,8 @@ type FinCompra struct {
 	UnitatNegociNom     string    `json:"unitat_negoci_nom,omitempty"`
 	EntrenadorID        *string   `json:"entrenador_id"`
 	EntrenadorNom       *string   `json:"entrenador_nom,omitempty"`
+	ArticleID           *string   `json:"article_id"`
+	ArticleNom          *string   `json:"article_nom,omitempty"`
 	Concepte            string    `json:"concepte"`
 	BaseImposable       float64   `json:"base_imposable"`
 	IvaPercentatge      float64   `json:"iva_percentatge"`
@@ -429,22 +458,24 @@ type FinCompra struct {
 }
 
 type UpsertFinCompraRequest struct {
-	ProveidorID         string  `json:"proveidor_id" binding:"required"`
-	NumFacturaProveidor string  `json:"num_factura_proveidor" binding:"required"`
-	UnitatNegociID      *string `json:"unitat_negoci_id"`
-	EntrenadorID        *string `json:"entrenador_id"`
-	Concepte            string  `json:"concepte" binding:"required"`
-	BaseImposable       float64 `json:"base_imposable"`
-	IvaPercentatge      float64 `json:"iva_percentatge"`
-	IrpfPercentatge     float64 `json:"irpf_percentatge"`
-	DataEmissio         string  `json:"data_emissio" binding:"required"`
-	DataVenciment       string  `json:"data_venciment" binding:"required"`
-	PeriodeInici        string  `json:"periode_inici" binding:"required"`
-	PeriodeFi           string  `json:"periode_fi" binding:"required"`
-	EstatPagament       string  `json:"estat_pagament"`
-	DataConciliacio     *string `json:"data_conciliacio"`
-	FitxerAdjuntPath    string  `json:"fitxer_adjunt_path"`
-	Notes               string  `json:"notes"`
+	ProveidorID         string   `json:"proveidor_id" binding:"required"`
+	NumFacturaProveidor string   `json:"num_factura_proveidor" binding:"required"`
+	UnitatNegociID      *string  `json:"unitat_negoci_id"`
+	EntrenadorID        *string  `json:"entrenador_id"`
+	ArticleID           *string  `json:"article_id"`
+	Concepte            string   `json:"concepte" binding:"required"`
+	BaseImposable       float64  `json:"base_imposable"`
+	PreuAmbIva          *float64 `json:"preu_amb_iva,omitempty"`
+	IvaPercentatge      float64  `json:"iva_percentatge"`
+	IrpfPercentatge     float64  `json:"irpf_percentatge"`
+	DataEmissio         string   `json:"data_emissio" binding:"required"`
+	DataVenciment       string   `json:"data_venciment" binding:"required"`
+	PeriodeInici        string   `json:"periode_inici" binding:"required"`
+	PeriodeFi           string   `json:"periode_fi" binding:"required"`
+	EstatPagament       string   `json:"estat_pagament"`
+	DataConciliacio     *string  `json:"data_conciliacio"`
+	FitxerAdjuntPath    string   `json:"fitxer_adjunt_path"`
+	Notes               string   `json:"notes"`
 }
 
 type FinDespesa struct {
@@ -681,16 +712,17 @@ type GraellaMesResponse struct {
 }
 
 type EmetreGraellaItemRequest struct {
-	ID             string  `json:"id"`
-	TipusOrigen    string  `json:"tipus_origen"` // "quota_recurrent" o "venciment_pactat"
-	ClientID       string  `json:"client_id"`
-	Concepte       string  `json:"concepte"`
-	BaseImposable  float64 `json:"base_imposable"`
-	IvaPercentatge float64 `json:"iva_percentatge"`
-	FitaID         *string `json:"fita_id,omitempty"`
-	CentreCostID   *string `json:"centre_cost_id,omitempty"`
-	EntrenadorID   *string `json:"entrenador_id,omitempty"`
-	ArticleID      *string `json:"article_id,omitempty"`
+	ID             string   `json:"id"`
+	TipusOrigen    string   `json:"tipus_origen"` // "quota_recurrent" o "venciment_pactat"
+	ClientID       string   `json:"client_id"`
+	Concepte       string   `json:"concepte"`
+	BaseImposable  float64  `json:"base_imposable"`
+	TotalPvp       *float64 `json:"total_pvp,omitempty"`
+	IvaPercentatge float64  `json:"iva_percentatge"`
+	FitaID         *string  `json:"fita_id,omitempty"`
+	CentreCostID   *string  `json:"centre_cost_id,omitempty"`
+	EntrenadorID   *string  `json:"entrenador_id,omitempty"`
+	ArticleID      *string  `json:"article_id,omitempty"`
 }
 
 type EmetreGraellaRequest struct {
@@ -724,4 +756,99 @@ type DynamicCashflowForecast struct {
 	FutureMonths int                   `json:"future_months"`
 	SaldoActual  float64               `json:"saldo_actual"`
 	Columns      []CashflowMonthColumn `json:"columns"`
+}
+
+// ============================================================
+// Liquidació Mensual per Entrenador (Total Factura IVA inclòs)
+// ============================================================
+
+type FinLiquidacioVendaItem struct {
+	ID             string  `json:"id"`
+	Numero         string  `json:"numero"`
+	DataEmissio    string  `json:"data_emissio"`
+	ClientNom      string  `json:"client_nom"`
+	ArticleNom     string  `json:"article_nom"`
+	Concepte       string  `json:"concepte"`
+	EstatCobrament string  `json:"estat_cobrament"`
+	TotalFactura   float64 `json:"total_factura"`
+	ImportCobrat   float64 `json:"import_cobrat"`
+	ImportPendent  float64 `json:"import_pendent"`
+}
+
+type FinLiquidacioCompraItem struct {
+	ID           string  `json:"id"`
+	Tipus        string  `json:"tipus"` // "compra" | "despesa"
+	Data         string  `json:"data"`
+	ProveidorNom string  `json:"proveidor_nom"`
+	NumDocument  string  `json:"num_document"`
+	Concepte     string  `json:"concepte"`
+	Estat        string  `json:"estat"`
+	ImportTotal  float64 `json:"import_total"`
+}
+
+type FinLiquidacioEntrenadorRow struct {
+	EntrenadorID       string                    `json:"entrenador_id"`
+	EntrenadorNom      string                    `json:"entrenador_nom"`
+	NumFacturesVenda   int                       `json:"num_factures_venda"`
+	NumCompresDespeses int                       `json:"num_compres_despeses"`
+	Venut              float64                   `json:"venut"`
+	Cobrat             float64                   `json:"cobrat"`
+	Pendent            float64                   `json:"pendent"`
+	Impagat            float64                   `json:"impagat"`
+	NoCobratTotal      float64                   `json:"no_cobrat_total"`
+	CompresFactures    float64                   `json:"compres_factures"`
+	DespesesOperatives float64                   `json:"despeses_operatives"`
+	Comprat            float64                   `json:"comprat"`
+	NetSobreVenut      float64                   `json:"net_sobre_venut"`
+	NetSobreCobrat     float64                   `json:"net_sobre_cobrat"`
+	DetallVendes       []FinLiquidacioVendaItem  `json:"detall_vendes"`
+	DetallCompres      []FinLiquidacioCompraItem `json:"detall_compres"`
+}
+
+type FinLiquidacioEntrenadorsResponse struct {
+	Mes                   string                       `json:"mes"`
+	TotalVenut            float64                      `json:"total_venut"`
+	TotalCobrat           float64                      `json:"total_cobrat"`
+	TotalPendent          float64                      `json:"total_pendent"`
+	TotalImpagat          float64                      `json:"total_impagat"`
+	TotalNoCobrat         float64                      `json:"total_no_cobrat"`
+	TotalComprat          float64                      `json:"total_comprat"`
+	LiquidacioSobreVenut  float64                      `json:"liquidacio_sobre_venut"`
+	LiquidacioSobreCobrat float64                      `json:"liquidacio_sobre_cobrat"`
+	Files                 []FinLiquidacioEntrenadorRow `json:"files"`
+}
+
+// ============================================================
+// Avisos Automàtics de Cobrament (Dia Límit & Dia Límit + 1)
+// ============================================================
+
+type CoachUnconciliatedInvoice struct {
+	FacturaID     string  `json:"factura_id"`
+	NumeroFactura string  `json:"numero_factura"`
+	AtletaNom     string  `json:"atleta_nom"`
+	Concepte      string  `json:"concepte"`
+	DataVenciment string  `json:"data_venciment"`
+	TotalFactura  float64 `json:"total_factura"`
+	ImportPendent float64 `json:"import_pendent"`
+}
+
+type CoachBillingNoticeGroup struct {
+	EntrenadorID    string                      `json:"entrenador_id"`
+	EntrenadorNom   string                      `json:"entrenador_nom"`
+	EntrenadorEmail string                      `json:"entrenador_email"`
+	Idioma          string                      `json:"idioma"`
+	Items           []CoachUnconciliatedInvoice `json:"items"`
+}
+
+type AthletePoliteNoticeItem struct {
+	FacturaID     string  `json:"factura_id"`
+	NumeroFactura string  `json:"numero_factura"`
+	UsuariID      *string `json:"usuari_id"`
+	AtletaNom     string  `json:"atleta_nom"`
+	AtletaEmail   string  `json:"atleta_email"`
+	Idioma        string  `json:"idioma"`
+	Concepte      string  `json:"concepte"`
+	DataVenciment string  `json:"data_venciment"`
+	TotalFactura  float64 `json:"total_factura"`
+	ImportPendent float64 `json:"import_pendent"`
 }
