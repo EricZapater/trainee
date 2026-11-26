@@ -983,11 +983,11 @@ const politePaymentENGHTML = `
 </html>
 `
 
-func (m *SMTPMailer) SendCoachUnconciliatedSummary(coachEmail, coachNom, mesLabel string, items []models.CoachUnconciliatedInvoice, idioma string) error {
+func RenderCoachUnconciliatedEmail(coachNom, mesLabel string, items []models.CoachUnconciliatedInvoice, idioma string) (string, string, error) {
 	subject := fmt.Sprintf("Resum d'atletes pendents de conciliar (%s)", mesLabel)
 	tmpl, err := template.New("coach_unconciliated").Parse(coachUnconciliatedHTML)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 	data := struct {
 		CoachNom string
@@ -1000,12 +1000,12 @@ func (m *SMTPMailer) SendCoachUnconciliatedSummary(coachEmail, coachNom, mesLabe
 	}
 	var body bytes.Buffer
 	if err := tmpl.Execute(&body, data); err != nil {
-		return err
+		return "", "", err
 	}
-	return m.sendRawEmail(coachEmail, subject, body.String())
+	return subject, body.String(), nil
 }
 
-func (m *SMTPMailer) SendPolitePaymentReminder(atletaEmail, atletaNom, numFactura, concepte string, totalFactura, importPendent float64, dataVenciment, ibanEmpresa, nomComercial, idioma string) error {
+func RenderPolitePaymentReminderEmail(atletaNom, numFactura, concepte string, totalFactura, importPendent float64, dataVenciment, ibanEmpresa, nomComercial, idioma string) (string, string, error) {
 	if nomComercial == "" {
 		nomComercial = "Entrenador Trail"
 	}
@@ -1024,7 +1024,7 @@ func (m *SMTPMailer) SendPolitePaymentReminder(atletaEmail, atletaNom, numFactur
 
 	tmpl, err := template.New("polite_payment").Parse(tmplHTML)
 	if err != nil {
-		return err
+		return "", "", err
 	}
 	appURL := os.Getenv("FRONTEND_URL")
 	if appURL == "" {
@@ -1053,9 +1053,25 @@ func (m *SMTPMailer) SendPolitePaymentReminder(atletaEmail, atletaNom, numFactur
 	}
 	var body bytes.Buffer
 	if err := tmpl.Execute(&body, data); err != nil {
+		return "", "", err
+	}
+	return subject, body.String(), nil
+}
+
+func (m *SMTPMailer) SendCoachUnconciliatedSummary(coachEmail, coachNom, mesLabel string, items []models.CoachUnconciliatedInvoice, idioma string) error {
+	subject, htmlBody, err := RenderCoachUnconciliatedEmail(coachNom, mesLabel, items, idioma)
+	if err != nil {
 		return err
 	}
-	return m.sendRawEmail(atletaEmail, subject, body.String())
+	return m.sendRawEmail(coachEmail, subject, htmlBody)
+}
+
+func (m *SMTPMailer) SendPolitePaymentReminder(atletaEmail, atletaNom, numFactura, concepte string, totalFactura, importPendent float64, dataVenciment, ibanEmpresa, nomComercial, idioma string) error {
+	subject, htmlBody, err := RenderPolitePaymentReminderEmail(atletaNom, numFactura, concepte, totalFactura, importPendent, dataVenciment, ibanEmpresa, nomComercial, idioma)
+	if err != nil {
+		return err
+	}
+	return m.sendRawEmail(atletaEmail, subject, htmlBody)
 }
 
 // NewMailer creates a new Mailer. If host is empty, it returns a LogMailer.

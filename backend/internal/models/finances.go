@@ -762,47 +762,36 @@ type DynamicCashflowForecast struct {
 // Liquidació Mensual per Entrenador (Total Factura IVA inclòs)
 // ============================================================
 
-type FinLiquidacioVendaItem struct {
-	ID             string  `json:"id"`
-	Numero         string  `json:"numero"`
-	DataEmissio    string  `json:"data_emissio"`
-	ClientNom      string  `json:"client_nom"`
+type FinLiquidacioArticleGroup struct {
+	Key            string  `json:"key"`
 	ArticleNom     string  `json:"article_nom"`
-	Concepte       string  `json:"concepte"`
-	EstatCobrament string  `json:"estat_cobrament"`
-	TotalFactura   float64 `json:"total_factura"`
-	ImportCobrat   float64 `json:"import_cobrat"`
-	ImportPendent  float64 `json:"import_pendent"`
-}
-
-type FinLiquidacioCompraItem struct {
-	ID           string  `json:"id"`
-	Tipus        string  `json:"tipus"` // "compra" | "despesa"
-	Data         string  `json:"data"`
-	ProveidorNom string  `json:"proveidor_nom"`
-	NumDocument  string  `json:"num_document"`
-	Concepte     string  `json:"concepte"`
-	Estat        string  `json:"estat"`
-	ImportTotal  float64 `json:"import_total"`
+	Tipus          string  `json:"tipus"` // "venda" | "compra" | "despesa"
+	NumMoviments   int     `json:"num_moviments"`
+	Venut          float64 `json:"venut"`
+	Cobrat         float64 `json:"cobrat"`
+	Pendent        float64 `json:"pendent"`
+	Impagat        float64 `json:"impagat"`
+	Comprat        float64 `json:"comprat"`
+	NetSobreVenut  float64 `json:"net_sobre_venut"`
+	NetSobreCobrat float64 `json:"net_sobre_cobrat"`
 }
 
 type FinLiquidacioEntrenadorRow struct {
-	EntrenadorID       string                    `json:"entrenador_id"`
-	EntrenadorNom      string                    `json:"entrenador_nom"`
-	NumFacturesVenda   int                       `json:"num_factures_venda"`
-	NumCompresDespeses int                       `json:"num_compres_despeses"`
-	Venut              float64                   `json:"venut"`
-	Cobrat             float64                   `json:"cobrat"`
-	Pendent            float64                   `json:"pendent"`
-	Impagat            float64                   `json:"impagat"`
-	NoCobratTotal      float64                   `json:"no_cobrat_total"`
-	CompresFactures    float64                   `json:"compres_factures"`
-	DespesesOperatives float64                   `json:"despeses_operatives"`
-	Comprat            float64                   `json:"comprat"`
-	NetSobreVenut      float64                   `json:"net_sobre_venut"`
-	NetSobreCobrat     float64                   `json:"net_sobre_cobrat"`
-	DetallVendes       []FinLiquidacioVendaItem  `json:"detall_vendes"`
-	DetallCompres      []FinLiquidacioCompraItem `json:"detall_compres"`
+	EntrenadorID       string                      `json:"entrenador_id"`
+	EntrenadorNom      string                      `json:"entrenador_nom"`
+	NumFacturesVenda   int                         `json:"num_factures_venda"`
+	NumCompresDespeses int                         `json:"num_compres_despeses"`
+	Venut              float64                     `json:"venut"`
+	Cobrat             float64                     `json:"cobrat"`
+	Pendent            float64                     `json:"pendent"`
+	Impagat            float64                     `json:"impagat"`
+	NoCobratTotal      float64                     `json:"no_cobrat_total"`
+	CompresFactures    float64                     `json:"compres_factures"`
+	DespesesOperatives float64                     `json:"despeses_operatives"`
+	Comprat            float64                     `json:"comprat"`
+	NetSobreVenut      float64                     `json:"net_sobre_venut"`
+	NetSobreCobrat     float64                     `json:"net_sobre_cobrat"`
+	PerArticle         []FinLiquidacioArticleGroup `json:"per_article"`
 }
 
 type FinLiquidacioEntrenadorsResponse struct {

@@ -1165,3 +1165,150 @@ func (h *FinancesHandler) ExecutarAvisosCobrament(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"enviats": sent, "mode": req.Mode})
 }
+
+func (h *FinancesHandler) PreviewAvisosCobrament(c *gin.Context) {
+	mode := c.Query("mode")
+	if mode != "atletes" {
+		mode = "entrenadors"
+	}
+	idioma := c.Query("idioma")
+	if idioma != "ESP" && idioma != "ENG" {
+		idioma = "CAT"
+	}
+
+	ctx := c.Request.Context()
+	cfg, _ := h.Store.GetFinConfiguracioEmpresa(ctx)
+	if cfg == nil {
+		cfg = &models.FinConfiguracioEmpresa{NomComercial: "TrainEE", DiaLimitPagament: 5}
+	}
+	nomComercial := cfg.NomComercial
+	if nomComercial == "" {
+		nomComercial = cfg.RaoSocial
+	}
+	now := time.Now()
+	anyMes := now.Format("2006-01")
+	cutoff := "2099-12-31" // Per mostrar factures pendents reals encara que no sigui avui el dia límit
+
+	type PreviewMailItem struct {
+		DestinatariNom   string `json:"destinatari_nom"`
+		DestinatariEmail string `json:"destinatari_email"`
+		Idioma           string `json:"idioma"`
+		Subject          string `json:"subject"`
+		HTML             string `json:"html"`
+	}
+
+	if mode == "entrenadors" {
+		groups, _ := h.Store.GetPendingCoachBillingNotices(ctx, cutoff, "__preview_no_log__")
+		if len(groups) > 0 {
+			previews := []PreviewMailItem{}
+			for _, g := range groups {
+				subj, htmlBody, err := mailer.RenderCoachUnconciliatedEmail(g.EntrenadorNom, anyMes, g.Items, g.Idioma)
+				if err == nil {
+					previews = append(previews, PreviewMailItem{
+						DestinatariNom:   g.EntrenadorNom,
+						DestinatariEmail: g.EntrenadorEmail,
+						Idioma:           g.Idioma,
+						Subject:          subj,
+						HTML:             htmlBody,
+					})
+				}
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"mode":       mode,
+				"es_exemple": false,
+				"previews":   previews,
+			})
+			return
+		}
+
+		// Exemple realista si no hi ha cap factura pendent
+		sampleItems := []models.CoachUnconciliatedInvoice{
+			{
+				NumeroFactura: "F2026-0104",
+				AtletaNom:     "Marc Vila Puig",
+				Concepte:      "Quota Entrenament Mensual - " + anyMes,
+				DataVenciment: fmt.Sprintf("%s-%02d", anyMes, cfg.DiaLimitPagament),
+				TotalFactura:  75.00,
+				ImportPendent: 75.00,
+			},
+			{
+				NumeroFactura: "F2026-0112",
+				AtletaNom:     "Laia Serra Costa",
+				Concepte:      "Training Camp Pirineus (Pagament Parcial)",
+				DataVenciment: fmt.Sprintf("%s-%02d", anyMes, cfg.DiaLimitPagament),
+				TotalFactura:  450.00,
+				ImportPendent: 225.00,
+			},
+		}
+		subj, htmlBody, _ := mailer.RenderCoachUnconciliatedEmail("Entrenador d'Exemple", anyMes, sampleItems, idioma)
+		c.JSON(http.StatusOK, gin.H{
+			"mode":       mode,
+			"es_exemple": true,
+			"previews": []PreviewMailItem{
+				{
+					DestinatariNom:   "Entrenador d'Exemple",
+					DestinatariEmail: "entrenador@exemple.cat",
+					Idioma:           idioma,
+					Subject:          subj,
+					HTML:             htmlBody,
+				},
+			},
+		})
+		return
+	}
+
+	// Mode: atletes
+	items, _ := h.Store.GetPendingAthletePoliteNotices(ctx, cutoff, "__preview_no_log__")
+	if len(items) > 0 {
+		previews := []PreviewMailItem{}
+		for _, it := range items {
+			lang := it.Idioma
+			if c.Query("idioma") != "" {
+				lang = idioma
+			}
+			subj, htmlBody, err := mailer.RenderPolitePaymentReminderEmail(
+				it.AtletaNom, it.NumeroFactura, it.Concepte,
+				it.TotalFactura, it.ImportPendent, it.DataVenciment,
+				cfg.IbanPrincipal, nomComercial, lang,
+			)
+			if err == nil {
+				previews = append(previews, PreviewMailItem{
+					DestinatariNom:   it.AtletaNom,
+					DestinatariEmail: it.AtletaEmail,
+					Idioma:           lang,
+					Subject:          subj,
+					HTML:             htmlBody,
+				})
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"mode":       mode,
+			"es_exemple": false,
+			"previews":   previews,
+		})
+		return
+	}
+
+	ibanSample := cfg.IbanPrincipal
+	if ibanSample == "" {
+		ibanSample = "ES00 0000 0000 0000 0000 0000"
+	}
+	subj, htmlBody, _ := mailer.RenderPolitePaymentReminderEmail(
+		"Marc Vila", "F2026-0104", "Quota Entrenament Trail - "+anyMes,
+		75.00, 75.00, fmt.Sprintf("%s-%02d", anyMes, cfg.DiaLimitPagament),
+		ibanSample, nomComercial, idioma,
+	)
+	c.JSON(http.StatusOK, gin.H{
+		"mode":       mode,
+		"es_exemple": true,
+		"previews": []PreviewMailItem{
+			{
+				DestinatariNom:   "Marc Vila (Exemple)",
+				DestinatariEmail: "atleta@exemple.cat",
+				Idioma:           idioma,
+				Subject:          subj,
+				HTML:             htmlBody,
+			},
+		},
+	})
+}

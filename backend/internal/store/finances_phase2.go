@@ -193,60 +193,89 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 		return nil, err
 	}
 
-	byCoach := map[string]*models.FinLiquidacioEntrenadorRow{}
+	type coachAcc struct {
+		row      *models.FinLiquidacioEntrenadorRow
+		artMap   map[string]*models.FinLiquidacioArticleGroup
+		artOrder []string
+	}
+
+	byCoach := map[string]*coachAcc{}
 	orderedIDs := []string{}
 	for _, e := range entrenadors {
-		byCoach[e.ID] = &models.FinLiquidacioEntrenadorRow{
-			EntrenadorID:  e.ID,
-			EntrenadorNom: e.Nom,
-			DetallVendes:  []models.FinLiquidacioVendaItem{},
-			DetallCompres: []models.FinLiquidacioCompraItem{},
+		byCoach[e.ID] = &coachAcc{
+			row: &models.FinLiquidacioEntrenadorRow{
+				EntrenadorID:  e.ID,
+				EntrenadorNom: e.Nom,
+				PerArticle:    []models.FinLiquidacioArticleGroup{},
+			},
+			artMap:   map[string]*models.FinLiquidacioArticleGroup{},
+			artOrder: []string{},
 		}
 		orderedIDs = append(orderedIDs, e.ID)
 	}
-	byCoach["__none__"] = &models.FinLiquidacioEntrenadorRow{
-		EntrenadorID:  "__none__",
-		EntrenadorNom: "Sense Entrenador / Estructura",
-		DetallVendes:  []models.FinLiquidacioVendaItem{},
-		DetallCompres: []models.FinLiquidacioCompraItem{},
+	byCoach["__none__"] = &coachAcc{
+		row: &models.FinLiquidacioEntrenadorRow{
+			EntrenadorID:  "__none__",
+			EntrenadorNom: "Sense Entrenador / Estructura",
+			PerArticle:    []models.FinLiquidacioArticleGroup{},
+		},
+		artMap:   map[string]*models.FinLiquidacioArticleGroup{},
+		artOrder: []string{},
 	}
 
-	getRow := func(cID *string, cNom *string) *models.FinLiquidacioEntrenadorRow {
+	getAcc := func(cID *string, cNom *string) *coachAcc {
 		key := "__none__"
 		if cID != nil && *cID != "" {
 			key = *cID
 		}
-		if r, ok := byCoach[key]; ok {
-			return r
+		if acc, ok := byCoach[key]; ok {
+			return acc
 		}
 		nom := "Entrenador"
 		if cNom != nil && *cNom != "" {
 			nom = *cNom
 		}
-		r := &models.FinLiquidacioEntrenadorRow{
-			EntrenadorID:  key,
-			EntrenadorNom: nom,
-			DetallVendes:  []models.FinLiquidacioVendaItem{},
-			DetallCompres: []models.FinLiquidacioCompraItem{},
+		acc := &coachAcc{
+			row: &models.FinLiquidacioEntrenadorRow{
+				EntrenadorID:  key,
+				EntrenadorNom: nom,
+				PerArticle:    []models.FinLiquidacioArticleGroup{},
+			},
+			artMap:   map[string]*models.FinLiquidacioArticleGroup{},
+			artOrder: []string{},
 		}
-		byCoach[key] = r
+		byCoach[key] = acc
 		orderedIDs = append(orderedIDs, key)
-		return r
+		return acc
 	}
 
-	// 1. Vendes emeses del mes seleccionat (sempre sobre Total Factura IVA inclòs)
+	getArt := func(acc *coachAcc, key, nom, tipus string) *models.FinLiquidacioArticleGroup {
+		if g, ok := acc.artMap[key]; ok {
+			return g
+		}
+		g := &models.FinLiquidacioArticleGroup{
+			Key:        key,
+			ArticleNom: nom,
+			Tipus:      tipus,
+		}
+		acc.artMap[key] = g
+		acc.artOrder = append(acc.artOrder, key)
+		return g
+	}
+
+	// 1. Vendes emeses del mes seleccionat (sempre sobre Total Factura IVA inclòs), agrupades per article
 	rowsV, err := s.pool.Query(ctx, `
-		SELECT fv.id, COALESCE(fv.numero_complet, 'ESBORRANY'), TO_CHAR(fv.data_emissio, 'YYYY-MM-DD'),
-		       cl.nom_fiscal, COALESCE(ar.nom, ''), fv.concepte, fv.estat_cobrament,
+		SELECT COALESCE(fv.article_id::text, '__venda_sense_art__'),
+		       COALESCE(NULLIF(ar.nom, ''), ' Altres vendes sense article'),
+		       fv.estat_cobrament,
 		       fv.total_factura::float8, fv.import_cobrat::float8, fv.import_pendent::float8,
 		       fv.entrenador_id, en.nom
 		FROM fin_factures_venda fv
-		JOIN fin_clients cl ON cl.id = fv.client_id
 		LEFT JOIN fin_articles ar ON ar.id = fv.article_id
 		LEFT JOIN entrenadors en ON en.id = fv.entrenador_id
 		WHERE fv.estat_document = 'emesa'
 		  AND TO_CHAR(fv.data_emissio, 'YYYY-MM') = $1
-		ORDER BY fv.data_emissio ASC, fv.numero_seq ASC
+		ORDER BY ar.nom ASC NULLS LAST
 	`, mes)
 	if err != nil {
 		return nil, err
@@ -254,36 +283,41 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 	defer rowsV.Close()
 
 	for rowsV.Next() {
-		var it models.FinLiquidacioVendaItem
+		var artKey, artNom, estatCob string
+		var totalF, cobratF, pendentF float64
 		var cID, cNom *string
-		if err := rowsV.Scan(
-			&it.ID, &it.Numero, &it.DataEmissio, &it.ClientNom, &it.ArticleNom,
-			&it.Concepte, &it.EstatCobrament, &it.TotalFactura, &it.ImportCobrat, &it.ImportPendent,
-			&cID, &cNom,
-		); err != nil {
+		if err := rowsV.Scan(&artKey, &artNom, &estatCob, &totalF, &cobratF, &pendentF, &cID, &cNom); err != nil {
 			return nil, err
 		}
-		row := getRow(cID, cNom)
-		row.NumFacturesVenda++
-		row.Venut += it.TotalFactura
-		row.Cobrat += it.ImportCobrat
-		if it.EstatCobrament == "impagada" {
-			row.Impagat += it.ImportPendent
-		} else if it.EstatCobrament != "compensada" && it.EstatCobrament != "pagada" {
-			row.Pendent += it.ImportPendent
+		acc := getAcc(cID, cNom)
+		acc.row.NumFacturesVenda++
+		acc.row.Venut += totalF
+		acc.row.Cobrat += cobratF
+
+		g := getArt(acc, "venda:"+artKey, artNom, "venda")
+		g.NumMoviments++
+		g.Venut += totalF
+		g.Cobrat += cobratF
+
+		if estatCob == "impagada" {
+			acc.row.Impagat += pendentF
+			g.Impagat += pendentF
+		} else if estatCob != "compensada" && estatCob != "pagada" {
+			acc.row.Pendent += pendentF
+			g.Pendent += pendentF
 		}
-		row.DetallVendes = append(row.DetallVendes, it)
 	}
 
-	// 2. Factures de Compra del mes (Total a pagar IVA inclòs)
+	// 2. Factures de Compra del mes (Total a pagar IVA inclòs), agrupades per article
 	rowsC, err := s.pool.Query(ctx, `
-		SELECT c.id, TO_CHAR(c.data_emissio, 'YYYY-MM-DD'), p.nom_fiscal, c.num_factura_proveidor,
-		       c.concepte, c.estat_pagament, c.total_pagar::float8, c.entrenador_id, en.nom
+		SELECT COALESCE(c.article_id::text, '__compra_general__'),
+		       COALESCE(NULLIF(ar.nom, ''), 'Factures de Compra (General)'),
+		       c.total_pagar::float8, c.entrenador_id, en.nom
 		FROM fin_compres c
-		JOIN fin_proveidors p ON p.id = c.proveidor_id
+		LEFT JOIN fin_articles ar ON ar.id = c.article_id
 		LEFT JOIN entrenadors en ON en.id = c.entrenador_id
 		WHERE TO_CHAR(c.data_emissio, 'YYYY-MM') = $1
-		ORDER BY c.data_emissio ASC
+		ORDER BY ar.nom ASC NULLS LAST
 	`, mes)
 	if err != nil {
 		return nil, err
@@ -291,49 +325,61 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 	defer rowsC.Close()
 
 	for rowsC.Next() {
-		var it models.FinLiquidacioCompraItem
+		var artKey, artNom string
+		var totalP float64
 		var cID, cNom *string
-		it.Tipus = "compra"
-		if err := rowsC.Scan(
-			&it.ID, &it.Data, &it.ProveidorNom, &it.NumDocument,
-			&it.Concepte, &it.Estat, &it.ImportTotal, &cID, &cNom,
-		); err != nil {
+		if err := rowsC.Scan(&artKey, &artNom, &totalP, &cID, &cNom); err != nil {
 			return nil, err
 		}
-		row := getRow(cID, cNom)
-		row.NumCompresDespeses++
-		row.CompresFactures += it.ImportTotal
-		row.DetallCompres = append(row.DetallCompres, it)
+		acc := getAcc(cID, cNom)
+		acc.row.NumCompresDespeses++
+		acc.row.CompresFactures += totalP
+
+		g := getArt(acc, "compra:"+artKey, artNom, "compra")
+		g.NumMoviments++
+		g.Comprat += totalP
 	}
 
-	// 3. Despeses Operatives del mes (Import Total)
+	// 3. Despeses Operatives del mes (Import Total), agrupades per categoria
 	rowsD, err := s.pool.Query(ctx, `
-		SELECT d.id, TO_CHAR(d.data_devengo, 'YYYY-MM-DD'), d.beneficiari_nom, d.categoria,
-		       d.concepte, d.estat_pagament, d.import_total::float8, d.entrenador_id, en.nom
+		SELECT d.categoria, d.import_total::float8, d.entrenador_id, en.nom
 		FROM fin_despeses d
 		LEFT JOIN entrenadors en ON en.id = d.entrenador_id
 		WHERE TO_CHAR(d.data_devengo, 'YYYY-MM') = $1
-		ORDER BY d.data_devengo ASC
+		ORDER BY d.categoria ASC
 	`, mes)
 	if err != nil {
 		return nil, err
 	}
 	defer rowsD.Close()
 
+	catLabels := map[string]string{
+		"nomina":           "Despesa: Nòmina",
+		"seguretat_social": "Despesa: Seguretat Social / Autònom",
+		"banc":             "Despesa: Comissió Bancària",
+		"impostos":         "Despesa: Impostos / Taxes",
+		"dietes":           "Despesa: Dietes / Desplaçaments",
+		"altres":           "Despesa: Altres despeses",
+	}
+
 	for rowsD.Next() {
-		var it models.FinLiquidacioCompraItem
+		var cat string
+		var impTotal float64
 		var cID, cNom *string
-		it.Tipus = "despesa"
-		if err := rowsD.Scan(
-			&it.ID, &it.Data, &it.ProveidorNom, &it.NumDocument,
-			&it.Concepte, &it.Estat, &it.ImportTotal, &cID, &cNom,
-		); err != nil {
+		if err := rowsD.Scan(&cat, &impTotal, &cID, &cNom); err != nil {
 			return nil, err
 		}
-		row := getRow(cID, cNom)
-		row.NumCompresDespeses++
-		row.DespesesOperatives += it.ImportTotal
-		row.DetallCompres = append(row.DetallCompres, it)
+		acc := getAcc(cID, cNom)
+		acc.row.NumCompresDespeses++
+		acc.row.DespesesOperatives += impTotal
+
+		label := catLabels[cat]
+		if label == "" {
+			label = "Despesa: " + cat
+		}
+		g := getArt(acc, "despesa:"+cat, label, "despesa")
+		g.NumMoviments++
+		g.Comprat += impTotal
 	}
 
 	resp := &models.FinLiquidacioEntrenadorsResponse{
@@ -342,15 +388,28 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 	}
 
 	sort.SliceStable(orderedIDs, func(i, j int) bool {
-		return byCoach[orderedIDs[i]].EntrenadorNom < byCoach[orderedIDs[j]].EntrenadorNom
+		return byCoach[orderedIDs[i]].row.EntrenadorNom < byCoach[orderedIDs[j]].row.EntrenadorNom
 	})
 
 	allKeys := append(orderedIDs, "__none__")
 	for _, key := range allKeys {
-		r := byCoach[key]
+		acc := byCoach[key]
+		r := acc.row
 		if key == "__none__" && r.NumFacturesVenda == 0 && r.NumCompresDespeses == 0 {
 			continue
 		}
+		for _, aKey := range acc.artOrder {
+			g := acc.artMap[aKey]
+			g.Venut = roundCurrency(g.Venut)
+			g.Cobrat = roundCurrency(g.Cobrat)
+			g.Pendent = roundCurrency(g.Pendent)
+			g.Impagat = roundCurrency(g.Impagat)
+			g.Comprat = roundCurrency(g.Comprat)
+			g.NetSobreVenut = roundCurrency(g.Venut - g.Comprat)
+			g.NetSobreCobrat = roundCurrency(g.Cobrat - g.Comprat)
+			r.PerArticle = append(r.PerArticle, *g)
+		}
+
 		r.Venut = roundCurrency(r.Venut)
 		r.Cobrat = roundCurrency(r.Cobrat)
 		r.Pendent = roundCurrency(r.Pendent)

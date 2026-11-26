@@ -391,6 +391,7 @@ func main() {
 		financesRoutes.GET("/tresoreria/dynamic-cashflow", financesHandler.GetDynamicCashflow)
 		financesRoutes.GET("/liquidacio-entrenadors", financesHandler.GetLiquidacioEntrenadors)
 		financesRoutes.GET("/liquidacio-entrenadors/csv", financesHandler.ExportLiquidacioEntrenadorsCSV)
+		financesRoutes.GET("/avisos-cobrament/preview", financesHandler.PreviewAvisosCobrament)
 		financesRoutes.POST("/avisos-cobrament/executar", financesHandler.ExecutarAvisosCobrament)
 
 		// Gestió Econòmica d'Atletes & Graella Periòdica

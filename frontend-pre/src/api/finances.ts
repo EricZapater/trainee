@@ -618,28 +618,18 @@ export const generarDespesesRecurrentsMes = (mes?: string) =>
 export const getDynamicCashflow = (past?: number, future?: number) =>
   api.get<DynamicCashflowForecast>('/finances/tresoreria/dynamic-cashflow', { params: { past, future } }).then(r => r.data)
 
-export interface FinLiquidacioVendaItem {
-  id: string
-  numero: string
-  data_emissio: string
-  client_nom: string
+export interface FinLiquidacioArticleGroup {
+  key: string
   article_nom: string
-  concepte: string
-  estat_cobrament: string
-  total_factura: number
-  import_cobrat: number
-  import_pendent: number
-}
-
-export interface FinLiquidacioCompraItem {
-  id: string
-  tipus: 'compra' | 'despesa'
-  data: string
-  proveidor_nom: string
-  num_document: string
-  concepte: string
-  estat: string
-  import_total: number
+  tipus: 'venda' | 'compra' | 'despesa'
+  num_moviments: number
+  venut: number
+  cobrat: number
+  pendent: number
+  impagat: number
+  comprat: number
+  net_sobre_venut: number
+  net_sobre_cobrat: number
 }
 
 export interface FinLiquidacioEntrenadorRow {
@@ -657,8 +647,7 @@ export interface FinLiquidacioEntrenadorRow {
   comprat: number
   net_sobre_venut: number
   net_sobre_cobrat: number
-  detall_vendes: FinLiquidacioVendaItem[]
-  detall_compres: FinLiquidacioCompraItem[]
+  per_article: FinLiquidacioArticleGroup[]
 }
 
 export interface FinLiquidacioEntrenadorsResponse {
@@ -674,9 +663,65 @@ export interface FinLiquidacioEntrenadorsResponse {
   files: FinLiquidacioEntrenadorRow[]
 }
 
+export interface BillingEmailPreviewItem {
+  destinatari_nom: string
+  destinatari_email: string
+  idioma: string
+  subject: string
+  html: string
+}
+
+export interface BillingEmailPreviewResponse {
+  mode: 'entrenadors' | 'atletes'
+  es_exemple: boolean
+  previews: BillingEmailPreviewItem[]
+}
+
 export const getFinLiquidacioEntrenadors = (mes?: string) =>
   api.get<FinLiquidacioEntrenadorsResponse>('/finances/liquidacio-entrenadors', { params: { mes } }).then(r => r.data)
 
+export const previewAvisosCobrament = (mode: 'entrenadors' | 'atletes', idioma?: 'CAT' | 'ESP' | 'ENG') =>
+  api.get<BillingEmailPreviewResponse>('/finances/avisos-cobrament/preview', { params: { mode, idioma } }).then(r => r.data)
+
 export const executarAvisosCobrament = (mode: 'entrenadors' | 'atletes') =>
   api.post<{ enviats: number; mode: string }>('/finances/avisos-cobrament/executar', { mode }).then(r => r.data)
+
+export const openFacturaDocument = async (facturaId: string) => {
+  const win = window.open('', '_blank')
+  try {
+    const res = await api.get<string>(`/finances/factures/${facturaId}/pdf`, {
+      responseType: 'text'
+    })
+    if (win) {
+      win.document.open()
+      win.document.write(res.data)
+      win.document.close()
+    } else {
+      const blob = new Blob([res.data], { type: 'text/html;charset=utf-8' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.target = '_blank'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+  } catch (err) {
+    if (win) win.close()
+    throw err
+  }
+}
+
+export const downloadAuthenticatedCsv = async (endpoint: string, filename: string) => {
+  const res = await api.get(endpoint, { responseType: 'blob' })
+  const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' })
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  window.URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+}
 

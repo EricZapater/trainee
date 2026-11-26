@@ -77,7 +77,10 @@ import {
   createFacturaCobrament,
   deleteFacturaCobrament,
   getFinLiquidacioEntrenadors,
+  previewAvisosCobrament,
   executarAvisosCobrament,
+  openFacturaDocument,
+  downloadAuthenticatedCsv,
   type FinConfiguracioEmpresa,
   type FinUnitatNegoci,
   type FinSerie,
@@ -94,7 +97,8 @@ import {
   type GraellaMesResponse,
   type EmetreGraellaResponse,
   type DynamicCashflowForecast,
-  type FinLiquidacioEntrenadorsResponse
+  type FinLiquidacioEntrenadorsResponse,
+  type BillingEmailPreviewResponse
 } from '../api/finances'
 
 type TabKey = 'graella' | 'vendes' | 'compres' | 'despeses' | 'liquidacio' | 'resum' | 'tresoreria' | 'config'
@@ -277,6 +281,41 @@ export const FinanceAdminPage: React.FC = () => {
   const [liquidacioData, setLiquidacioData] = useState<FinLiquidacioEntrenadorsResponse | null>(null)
   const [liquidacioLoading, setLiquidacioLoading] = useState(false)
   const [expandedLiquidacioCoach, setExpandedLiquidacioCoach] = useState<Record<string, boolean>>({})
+
+  // Previsualització d'emails de cobrament state
+  const [emailPreviewModal, setEmailPreviewModal] = useState<{
+    isOpen: boolean
+    mode: 'entrenadors' | 'atletes'
+    idioma: 'CAT' | 'ESP' | 'ENG'
+    selectedIndex: number
+    loading: boolean
+    data: BillingEmailPreviewResponse | null
+  } | null>(null)
+
+  const openEmailPreview = async (mode: 'entrenadors' | 'atletes', idioma: 'CAT' | 'ESP' | 'ENG' = 'CAT') => {
+    setEmailPreviewModal({
+      isOpen: true,
+      mode,
+      idioma,
+      selectedIndex: 0,
+      loading: true,
+      data: null
+    })
+    try {
+      const res = await previewAvisosCobrament(mode, idioma)
+      setEmailPreviewModal({
+        isOpen: true,
+        mode,
+        idioma,
+        selectedIndex: 0,
+        loading: false,
+        data: res
+      })
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error carregant previsualització de l\'email')
+      setEmailPreviewModal(null)
+    }
+  }
 
   const [showCompraModal, setShowCompraModal] = useState(false)
   const [editingCompraId, setEditingCompraId] = useState<string | null>(null)
@@ -1794,14 +1833,14 @@ export const FinanceAdminPage: React.FC = () => {
                 onChange={e => setReportEnd(e.target.value)}
                 className="px-2.5 py-1.5 rounded-xl border border-border-light text-xs font-semibold bg-white"
               />
-              <a
-                href={`/api/finances/informes/resultats/csv?data_inici=${reportStart}&data_fi=${reportEnd}&mode=${reportMode}`}
-                download
+              <button
+                type="button"
+                onClick={() => downloadAuthenticatedCsv(`/finances/informes/resultats/csv?data_inici=${reportStart}&data_fi=${reportEnd}&mode=${reportMode}`, `informe_resultats_${reportMode}_${reportStart}_${reportEnd}.csv`)}
                 className="p-1.5 rounded-xl bg-white border border-border-light text-slate-700 hover:text-emerald-700 shadow-sm text-xs font-bold flex items-center gap-1"
                 title="Descarregar CSV per a gestoria"
               >
                 <Download className="w-4 h-4" /> CSV
-              </a>
+              </button>
             </div>
           </div>
 
@@ -2415,15 +2454,20 @@ export const FinanceAdminPage: React.FC = () => {
                           </td>
                           <td className="py-3 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <a
-                                href={`/api/finances/factures/${f.id}/pdf`}
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    await openFacturaDocument(f.id)
+                                  } catch (err: any) {
+                                    showNotify('error', 'Error obrint el document de la factura')
+                                  }
+                                }}
                                 className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
                                 title="Veure Factura / Imprimir"
                               >
                                 <Eye className="w-3.5 h-3.5" />
-                              </a>
+                              </button>
 
                               {!isEmesa && (
                                 <>
@@ -3057,13 +3101,13 @@ export const FinanceAdminPage: React.FC = () => {
                 <RefreshCw className={`w-4 h-4 ${liquidacioLoading ? 'animate-spin text-indigo-600' : ''}`} />
               </button>
 
-              <a
-                href={`/api/finances/liquidacio-entrenadors/csv?mes=${liquidacioMes}`}
-                download
+              <button
+                type="button"
+                onClick={() => downloadAuthenticatedCsv(`/finances/liquidacio-entrenadors/csv?mes=${liquidacioMes}`, `liquidacio_entrenadors_${liquidacioMes}.csv`)}
                 className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-indigo-700 shadow-sm text-xs font-bold flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" /> Exportar CSV
-              </a>
+              </button>
             </div>
           </div>
 
@@ -3169,62 +3213,63 @@ export const FinanceAdminPage: React.FC = () => {
                         {isExpanded && (
                           <tr className="bg-slate-50/70">
                             <td colSpan={8} className="p-4">
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                {/* Detall Vendes */}
-                                <div className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-2">
-                                  <h4 className="font-bold text-xs text-emerald-800 uppercase tracking-wider">
-                                    Detall de Factures de Venda ({row.detall_vendes.length})
+                              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                                  <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Package className="w-3.5 h-3.5 text-indigo-600" />
+                                    Agrupació per Article i Categoria ({row.entrenador_nom})
                                   </h4>
-                                  {row.detall_vendes.length === 0 ? (
-                                    <p className="text-xs text-slate-400 italic py-2">Cap factura de venda aquest mes.</p>
-                                  ) : (
-                                    <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
-                                      {row.detall_vendes.map(v => (
-                                        <div key={v.id} className="py-2 flex items-center justify-between gap-2 text-[11px]">
-                                          <div className="min-w-0">
-                                            <div className="font-bold text-slate-800 truncate">{v.client_nom} · <span className="font-mono text-slate-500">{v.numero}</span></div>
-                                            <div className="text-slate-500 truncate">{v.concepte}</div>
-                                          </div>
-                                          <div className="text-right shrink-0 font-mono">
-                                            <div className="font-bold text-slate-900">{v.total_factura.toFixed(2)} €</div>
-                                            <div className={`text-[10px] font-bold ${
-                                              v.estat_cobrament === 'pagada' ? 'text-emerald-700' : v.estat_cobrament === 'impagada' ? 'text-rose-700' : 'text-amber-700'
-                                            }`}>
-                                              {v.estat_cobrament === 'pagada' ? 'Cobrada' : `Pendent: ${v.import_pendent.toFixed(2)} €`}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
+                                  <span className="text-[11px] text-slate-400 font-medium">
+                                    {row.per_article?.length || 0} grups d'article
+                                  </span>
                                 </div>
 
-                                {/* Detall Compres i Despeses */}
-                                <div className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-2">
-                                  <h4 className="font-bold text-xs text-rose-800 uppercase tracking-wider">
-                                    Detall de Compres i Despeses Imputades ({row.detall_compres.length})
-                                  </h4>
-                                  {row.detall_compres.length === 0 ? (
-                                    <p className="text-xs text-slate-400 italic py-2">Cap compra ni despesa imputada aquest mes.</p>
-                                  ) : (
-                                    <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
-                                      {row.detall_compres.map(c => (
-                                        <div key={c.id} className="py-2 flex items-center justify-between gap-2 text-[11px]">
-                                          <div className="min-w-0">
-                                            <div className="font-bold text-slate-800 truncate">
-                                              <span className="uppercase text-[9px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 mr-1.5">{c.tipus}</span>
-                                              {c.proveidor_nom}
-                                            </div>
-                                            <div className="text-slate-500 truncate">{c.concepte} ({c.data})</div>
-                                          </div>
-                                          <div className="text-right shrink-0 font-mono font-bold text-rose-700">
-                                            -{c.import_total.toFixed(2)} €
-                                          </div>
-                                        </div>
+                                {!row.per_article || row.per_article.length === 0 ? (
+                                  <p className="text-xs text-slate-400 italic p-4 text-center">Cap article facturat ni compra/despesa aquest mes.</p>
+                                ) : (
+                                  <table className="w-full text-left text-[11px]">
+                                    <thead>
+                                      <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold">
+                                        <th className="py-2 px-4">Article / Concepte Agrupat</th>
+                                        <th className="py-2 px-3 text-center">Tipus</th>
+                                        <th className="py-2 px-3 text-center">Docs</th>
+                                        <th className="py-2 px-3 text-right">Venut</th>
+                                        <th className="py-2 px-3 text-right">Cobrat</th>
+                                        <th className="py-2 px-3 text-right">Pendent</th>
+                                        <th className="py-2 px-3 text-right">Impagat</th>
+                                        <th className="py-2 px-3 text-right">Comprat</th>
+                                        <th className="py-2 px-4 text-right text-indigo-900">Net s/ Cobrat</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-medium">
+                                      {row.per_article.map(ag => (
+                                        <tr key={ag.key} className="hover:bg-slate-50/60">
+                                          <td className="py-2.5 px-4 font-bold text-slate-800">{ag.article_nom}</td>
+                                          <td className="py-2.5 px-3 text-center">
+                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                              ag.tipus === 'venda'
+                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                : ag.tipus === 'compra'
+                                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                : 'bg-amber-50 text-amber-800 border border-amber-200'
+                                            }`}>
+                                              {ag.tipus}
+                                            </span>
+                                          </td>
+                                          <td className="py-2.5 px-3 text-center font-mono text-slate-500">{ag.num_moviments}</td>
+                                          <td className="py-2.5 px-3 text-right font-mono text-slate-900">{ag.venut > 0 ? `${ag.venut.toFixed(2)} €` : '—'}</td>
+                                          <td className="py-2.5 px-3 text-right font-mono text-emerald-700 font-bold">{ag.cobrat > 0 ? `${ag.cobrat.toFixed(2)} €` : '—'}</td>
+                                          <td className="py-2.5 px-3 text-right font-mono text-amber-700">{ag.pendent > 0 ? `${ag.pendent.toFixed(2)} €` : '—'}</td>
+                                          <td className="py-2.5 px-3 text-right font-mono text-rose-700">{ag.impagat > 0 ? `${ag.impagat.toFixed(2)} €` : '—'}</td>
+                                          <td className="py-2.5 px-3 text-right font-mono text-rose-700">{ag.comprat > 0 ? `-${ag.comprat.toFixed(2)} €` : '—'}</td>
+                                          <td className={`py-2.5 px-4 text-right font-mono font-black ${ag.net_sobre_cobrat >= 0 ? 'text-indigo-900' : 'text-rose-700'}`}>
+                                            {ag.net_sobre_cobrat.toFixed(2)} €
+                                          </td>
+                                        </tr>
                                       ))}
-                                    </div>
-                                  )}
-                                </div>
+                                    </tbody>
+                                  </table>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -3445,31 +3490,40 @@ export const FinanceAdminPage: React.FC = () => {
                         Envia un resum informatiu a cada entrenador amb els seus atletes que Administració encara no ha marcat com a conciliats.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setConfirmDialog({
-                          isOpen: true,
-                          title: 'Enviar Resum Informatiu als Entrenadors',
-                          message: 'Vols executar ara mateix l\'enviament del resum d\'atletes pendents de conciliar a cada entrenador?',
-                          confirmText: 'Enviar a Entrenadors',
-                          variant: 'info',
-                          onConfirm: async () => {
-                            try {
-                              const res = await executarAvisosCobrament('entrenadors')
-                              showNotify('success', `S'han enviat ${res.enviats} correus de resum als entrenadors!`)
-                            } catch (err: any) {
-                              showNotify('error', err.response?.data?.error || 'Error enviant avisos als entrenadors')
-                            } finally {
-                              setConfirmDialog(null)
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEmailPreview('entrenadors', 'CAT')}
+                        className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 rounded-lg font-bold text-[11px] flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Previsualitzar Email
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmDialog({
+                            isOpen: true,
+                            title: 'Enviar Resum Informatiu als Entrenadors',
+                            message: 'Vols executar ara mateix l\'enviament del resum d\'atletes pendents de conciliar a cada entrenador?',
+                            confirmText: 'Enviar a Entrenadors',
+                            variant: 'info',
+                            onConfirm: async () => {
+                              try {
+                                const res = await executarAvisosCobrament('entrenadors')
+                                showNotify('success', `S'han enviat ${res.enviats} correus de resum als entrenadors!`)
+                              } catch (err: any) {
+                                showNotify('error', err.response?.data?.error || 'Error enviant avisos als entrenadors')
+                              } finally {
+                                setConfirmDialog(null)
+                              }
                             }
-                          }
-                        })
-                      }}
-                      className="mt-3 px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 w-fit"
-                    >
-                      <Send className="w-3 h-3" /> Executar avís entrenadors ara
-                    </button>
+                          })
+                        }}
+                        className="px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg font-bold text-[11px] flex items-center gap-1.5"
+                      >
+                        <Send className="w-3 h-3" /> Enviar ara
+                      </button>
+                    </div>
                   </div>
 
                   <div className="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200 flex flex-col justify-between">
@@ -3479,31 +3533,40 @@ export const FinanceAdminPage: React.FC = () => {
                         Envia un email súper amable i empàtic (CAT/ESP/ENG) només als atletes que l'endemà encara continuïn amb import pendent.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setConfirmDialog({
-                          isOpen: true,
-                          title: 'Enviar Recordatori Amable als Atletes Pendents',
-                          message: 'Vols enviar ara el correu amable de recordatori als atletes amb factures vençudes pendents de pagar?',
-                          confirmText: 'Enviar Recordatoris Polite',
-                          variant: 'warning',
-                          onConfirm: async () => {
-                            try {
-                              const res = await executarAvisosCobrament('atletes')
-                              showNotify('success', `S'han enviat ${res.enviats} recordatoris amables als atletes!`)
-                            } catch (err: any) {
-                              showNotify('error', err.response?.data?.error || 'Error enviant recordatoris als atletes')
-                            } finally {
-                              setConfirmDialog(null)
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEmailPreview('atletes', 'CAT')}
+                        className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border border-emerald-300 rounded-lg font-bold text-[11px] flex items-center gap-1.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Previsualitzar Email
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmDialog({
+                            isOpen: true,
+                            title: 'Enviar Recordatori Amable als Atletes Pendents',
+                            message: 'Vols enviar ara el correu amable de recordatori als atletes amb factures vençudes pendents de pagar?',
+                            confirmText: 'Enviar Recordatoris Polite',
+                            variant: 'warning',
+                            onConfirm: async () => {
+                              try {
+                                const res = await executarAvisosCobrament('atletes')
+                                showNotify('success', `S'han enviat ${res.enviats} recordatoris amables als atletes!`)
+                              } catch (err: any) {
+                                showNotify('error', err.response?.data?.error || 'Error enviant recordatoris als atletes')
+                              } finally {
+                                setConfirmDialog(null)
+                              }
                             }
-                          }
-                        })
-                      }}
-                      className="mt-3 px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 w-fit"
-                    >
-                      <Send className="w-3 h-3" /> Executar avís atletes ara
-                    </button>
+                          })
+                        }}
+                        className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-lg font-bold text-[11px] flex items-center gap-1.5"
+                      >
+                        <Send className="w-3 h-3" /> Enviar ara
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -5796,6 +5859,138 @@ export const FinanceAdminPage: React.FC = () => {
                 <span>Aquesta factura està completament pagada (pendent: 0,00 €).</span>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PREVISUALITZACIÓ D'EMAILS (ENTRENADORS I ATLETES) */}
+      {emailPreviewModal?.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[92vh] flex flex-col">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    emailPreviewModal.mode === 'entrenadors'
+                      ? 'bg-amber-100 text-amber-900'
+                      : 'bg-emerald-100 text-emerald-900'
+                  }`}>
+                    {emailPreviewModal.mode === 'entrenadors' ? 'Dia Límit · Email a Entrenadors' : 'Dia Límit + 1 · Email Polite a Atletes'}
+                  </span>
+                  {emailPreviewModal.data && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      emailPreviewModal.data.es_exemple
+                        ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                        : 'bg-indigo-50 text-indigo-800 border border-indigo-200'
+                    }`}>
+                      {emailPreviewModal.data.es_exemple
+                        ? 'Dades d\'exemple (cap factura pendent actualment)'
+                        : `${emailPreviewModal.data.previews.length} destinataris amb factures pendents reals`}
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-black text-base text-slate-900 mt-1">Previsualització Exacta del Correu Electrònic</h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Selector de mode ràpid */}
+                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+                  <button
+                    type="button"
+                    onClick={() => openEmailPreview('entrenadors', emailPreviewModal.idioma)}
+                    className={`px-2.5 py-1 rounded-md ${emailPreviewModal.mode === 'entrenadors' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
+                  >
+                    Entrenador
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEmailPreview('atletes', emailPreviewModal.idioma)}
+                    className={`px-2.5 py-1 rounded-md ${emailPreviewModal.mode === 'atletes' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}`}
+                  >
+                    Atleta
+                  </button>
+                </div>
+
+                {/* Selector d'idioma per a l'email de l'atleta */}
+                {emailPreviewModal.mode === 'atletes' && (
+                  <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+                    {(['CAT', 'ESP', 'ENG'] as const).map(lang => (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => openEmailPreview('atletes', lang)}
+                        className={`px-2 py-1 rounded-md ${emailPreviewModal.idioma === lang ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600'}`}
+                      >
+                        {lang}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button onClick={() => setEmailPreviewModal(null)} className="p-1 text-slate-400 hover:text-slate-700">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {emailPreviewModal.loading ? (
+              <div className="py-16 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+                <RefreshCw className="w-6 h-6 animate-spin text-emerald-600" />
+                <span>Generant previsualització del correu...</span>
+              </div>
+            ) : emailPreviewModal.data && emailPreviewModal.data.previews.length > 0 ? (() => {
+              const previews = emailPreviewModal.data.previews
+              const current = previews[emailPreviewModal.selectedIndex] || previews[0]
+              return (
+                <>
+                  {previews.length > 1 && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="font-bold text-slate-600">Destinatari a previsualitzar:</span>
+                      <select
+                        value={emailPreviewModal.selectedIndex}
+                        onChange={e => setEmailPreviewModal({ ...emailPreviewModal, selectedIndex: parseInt(e.target.value) || 0 })}
+                        className="p-1.5 border border-slate-200 rounded-lg bg-white font-semibold text-slate-800"
+                      >
+                        {previews.map((p, idx) => (
+                          <option key={idx} value={idx}>
+                            {p.destinatari_nom} ({p.destinatari_email})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1">
+                    <div>
+                      <span className="text-slate-400 font-bold uppercase text-[10px] mr-2">Per a:</span>
+                      <span className="font-semibold text-slate-800">{current.destinatari_nom} &lt;{current.destinatari_email}&gt;</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold uppercase text-[10px] mr-2">Assumpte:</span>
+                      <span className="font-bold text-slate-900">{current.subject}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-h-[380px] border border-slate-200 rounded-xl overflow-hidden bg-slate-100">
+                    <iframe
+                      title="Email Preview"
+                      srcDoc={current.html}
+                      className="w-full h-[420px] bg-white border-0"
+                    />
+                  </div>
+                </>
+              )
+            })() : null}
+
+            <div className="pt-2 border-t flex justify-end">
+              <button
+                type="button"
+                onClick={() => setEmailPreviewModal(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+              >
+                Tancar Previsualització
+              </button>
+            </div>
           </div>
         </div>
       )}

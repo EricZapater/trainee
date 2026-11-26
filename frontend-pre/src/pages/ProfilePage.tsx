@@ -15,7 +15,8 @@ import { useAuth } from '../context/AuthContext'
 import { 
   getMyFiscalProfile, 
   updateMyFiscalProfile, 
-  listMyFactures, 
+  listMyFactures,
+  openFacturaDocument,
   type FinClient, 
   type FinFacturaVenda 
 } from '../api/finances'
@@ -142,20 +143,11 @@ export const ProfilePage: React.FC = () => {
     }
   }
 
-  const downloadPdf = async (facturaId: string, invoiceNum: string) => {
+  const downloadPdf = async (facturaId: string) => {
     try {
-      const res = await api.get(`/finances/factures/${facturaId}/pdf`, { responseType: 'blob' })
-      const blob = new Blob([res.data], { type: 'application/pdf' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `factura_${invoiceNum || facturaId}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      await openFacturaDocument(facturaId)
     } catch (err) {
-      alert('Error descarregant el PDF de la factura.')
+      alert('Error obrint el document de la factura.')
     }
   }
 
@@ -528,9 +520,9 @@ export const ProfilePage: React.FC = () => {
                           </td>
                           <td className="p-3 text-right">
                             <button
-                              onClick={() => downloadPdf(inv.id, inv.numero_complet || '')}
+                              onClick={() => downloadPdf(inv.id)}
                               className="p-1.5 rounded-lg text-brand-600 hover:text-brand-800 hover:bg-brand-50 transition-colors"
-                              title="Descarregar PDF oficial"
+                              title="Veure / Imprimir factura oficial"
                             >
                               <Download className="w-4 h-4" />
                             </button>

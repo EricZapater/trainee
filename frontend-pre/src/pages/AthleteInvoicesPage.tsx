@@ -9,7 +9,7 @@ import {
   Building2,
   ExternalLink
 } from 'lucide-react'
-import { listMyFactures, type FinFacturaVenda } from '../api/finances'
+import { listMyFactures, openFacturaDocument, type FinFacturaVenda } from '../api/finances'
 
 export const AthleteInvoicesPage: React.FC = () => {
   const [factures, setFactures] = useState<FinFacturaVenda[]>([])
@@ -108,7 +108,6 @@ export const AthleteInvoicesPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {factures.map(f => {
             const numFact = f.numero_complet || `F-${f.id.substring(0, 8)}`
-            const pdfUrl = `/api/finances/factures/${f.id}/pdf`
             return (
               <div key={f.id} className="glass-card p-5 border border-border-light hover:border-brand-300 transition-all flex flex-col justify-between">
                 <div>
@@ -156,16 +155,15 @@ export const AthleteInvoicesPage: React.FC = () => {
                     )}
                   </div>
 
-                  <a
-                    href={pdfUrl}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => openFacturaDocument(f.id)}
                     className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5 bg-brand-500 hover:bg-brand-600 shadow-sm"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Veure / Imprimir</span>
                     <ExternalLink className="w-3 h-3 opacity-60" />
-                  </a>
+                  </button>
                 </div>
               </div>
             )
