@@ -1,0 +1,30 @@
+backend/cmd/server/main.go
+  h_42175f19913982 394
+backend/internal/handlers/finances.go
+  h_42175f19913982 1168-1314
+backend/internal/mailer/mailer.go
+  h_42175f19913982 986,990,1003,1005,1008,1027,1056-1071,1074
+backend/internal/models/finances.go
+  h_42175f19913982 765-766,768-776,780-794
+backend/internal/store/finances_phase2.go
+  h_42175f19913982 196-202,205-212,216-223,226,231-232,238-245,247,249,252-266,268-270,278,286-287,289,292-307,311,313-315,317,320,328-329,331,334-340,343,345,349,356-364,366-367,369,372-382,391,396-397,401-412
+frontend-pre/src/api/finances.ts
+  h_42175f19913982 621-622,624-632,650,666-679,683-685,689-727
+frontend-pre/src/pages/AthleteInvoicesPage.tsx
+  h_42175f19913982 12,158-160,166
+frontend-pre/src/pages/FinanceAdminPage.tsx
+  h_42175f19913982 80,82-83,100-101,285-319,1836-1838,1843,2457-2465,2470,3104-3106,3110,3216-3220,3222-3224,3227-3268,3270-3272,3493-3518,3520-3526,3536-3561,3563-3569,5865-5996
+frontend-pre/src/pages/ProfilePage.tsx
+  h_42175f19913982 18-19,146,148,150,523,525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a42828a9c46a58bdd399ba389eb24a0dc1a3f85f",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
