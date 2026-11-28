@@ -663,10 +663,13 @@ export interface FinLiquidacioComissioDetall {
   ambit_descripcio: string
   base_calcul_regla: 'ambdues' | 'total' | 'base'
   percentatge: number
+  volum_venut_total: number
+  volum_venut_base: number
   volum_cobrat_total: number
   volum_cobrat_base: number
   import_sobre_total: number
   import_sobre_base: number
+  import_previst_venut: number
   import_aplicat: number
 }
 
@@ -687,6 +690,8 @@ export interface FinLiquidacioEntrenadorRow {
   net_sobre_cobrat: number
   comissio_cedida: number
   comissio_rebuda: number
+  comissio_cedida_prevista: number
+  comissio_rebuda_prevista: number
   liquidacio_final: number
   per_article: FinLiquidacioArticleGroup[]
   detall_comissions: FinLiquidacioComissioDetall[]
@@ -695,6 +700,7 @@ export interface FinLiquidacioEntrenadorRow {
 export interface FinLiquidacioEntrenadorsResponse {
   mes: string
   mode_calcul: 'total' | 'base'
+  num_regles_actives: number
   total_venut: number
   total_cobrat: number
   total_pendent: number
@@ -702,6 +708,7 @@ export interface FinLiquidacioEntrenadorsResponse {
   total_no_cobrat: number
   total_comprat: number
   total_comissions: number
+  total_comissions_previstes: number
   liquidacio_sobre_venut: number
   liquidacio_sobre_cobrat: number
   liquidacio_final_global: number

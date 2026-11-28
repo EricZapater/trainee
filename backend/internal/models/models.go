@@ -34,15 +34,16 @@ type Entrenador struct {
 }
 
 type Atleta struct {
-	ID           string    `json:"id"`
-	UsuariID     string    `json:"usuari_id"`
-	EntrenadorID string    `json:"entrenador_id"`
-	CreatedAt    time.Time `json:"created_at"`
-	Nom          string    `json:"nom,omitempty"`
-	Cognoms      string    `json:"cognoms,omitempty"`
-	Email        string    `json:"email,omitempty"`
-	Actiu        bool      `json:"actiu"`
-	Idioma       string    `json:"idioma,omitempty"`
+	ID            string    `json:"id"`
+	UsuariID      string    `json:"usuari_id"`
+	EntrenadorID  string    `json:"entrenador_id"`
+	EntrenadorNom string    `json:"entrenador_nom,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	Nom           string    `json:"nom,omitempty"`
+	Cognoms       string    `json:"cognoms,omitempty"`
+	Email         string    `json:"email,omitempty"`
+	Actiu         bool      `json:"actiu"`
+	Idioma        string    `json:"idioma,omitempty"`
 }
 
 type ReassignAtletaRequest struct {

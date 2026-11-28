@@ -296,14 +296,37 @@ func (s *PostgresStore) ReassignAtleta(ctx context.Context, atletaID, nouEntrena
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("atleta no trobat o no actualitzat")
 	}
+	// Sincronitzar subscripcions actives i esborranys de factura d'aquest atleta al nou entrenador
+	_, _ = s.pool.Exec(ctx, `
+		UPDATE fin_subscripcions
+		SET entrenador_id = $1
+		WHERE activa = TRUE
+		  AND client_id IN (
+			  SELECT fc.id FROM fin_clients fc
+			  JOIN atletes a ON a.usuari_id = fc.usuari_id
+			  WHERE a.id = $2
+		  )
+	`, nouEntrenadorID, atletaID)
+	_, _ = s.pool.Exec(ctx, `
+		UPDATE fin_factures_venda
+		SET entrenador_id = $1
+		WHERE estat_document = 'esborrany'
+		  AND client_id IN (
+			  SELECT fc.id FROM fin_clients fc
+			  JOIN atletes a ON a.usuari_id = fc.usuari_id
+			  WHERE a.id = $2
+		  )
+	`, nouEntrenadorID, atletaID)
 	return nil
 }
 
 func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenadorID string) ([]models.Atleta, error) {
 	rows, err := s.pool.Query(ctx,
-		`SELECT a.id, a.usuari_id, a.entrenador_id, a.created_at, u.nom, u.cognoms, u.email, u.actiu
+		`SELECT a.id, a.usuari_id, COALESCE(en.id::text, a.entrenador_id::text), COALESCE(en.nom, ''),
+		        a.created_at, u.nom, u.cognoms, u.email, u.actiu
 		 FROM atletes a
 		 JOIN usuaris u ON u.id = a.usuari_id
+		 LEFT JOIN entrenadors en ON (en.id = a.entrenador_id OR en.usuari_id = a.entrenador_id)
 		 WHERE a.entrenador_id = $1
 		    OR a.entrenador_id IN (SELECT id FROM entrenadors WHERE usuari_id = $1 OR id = $1)
 		    OR a.entrenador_id IN (SELECT usuari_id FROM entrenadors WHERE id = $1 OR usuari_id = $1)
@@ -318,7 +341,32 @@ func (s *PostgresStore) ListAtletesByEntrenadorID(ctx context.Context, entrenado
 	atletes := []models.Atleta{}
 	for rows.Next() {
 		var a models.Atleta
-		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.CreatedAt, &a.Nom, &a.Cognoms, &a.Email, &a.Actiu); err != nil {
+		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.EntrenadorNom, &a.CreatedAt, &a.Nom, &a.Cognoms, &a.Email, &a.Actiu); err != nil {
+			return nil, err
+		}
+		atletes = append(atletes, a)
+	}
+	return atletes, rows.Err()
+}
+
+func (s *PostgresStore) ListAllAtletes(ctx context.Context) ([]models.Atleta, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT a.id, a.usuari_id, COALESCE(en.id::text, a.entrenador_id::text), COALESCE(en.nom, ''),
+		        a.created_at, u.nom, u.cognoms, u.email, u.actiu
+		 FROM atletes a
+		 JOIN usuaris u ON u.id = a.usuari_id
+		 LEFT JOIN entrenadors en ON (en.id = a.entrenador_id OR en.usuari_id = a.entrenador_id)
+		 ORDER BY u.nom, u.cognoms`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	atletes := []models.Atleta{}
+	for rows.Next() {
+		var a models.Atleta
+		if err := rows.Scan(&a.ID, &a.UsuariID, &a.EntrenadorID, &a.EntrenadorNom, &a.CreatedAt, &a.Nom, &a.Cognoms, &a.Email, &a.Actiu); err != nil {
 			return nil, err
 		}
 		atletes = append(atletes, a)

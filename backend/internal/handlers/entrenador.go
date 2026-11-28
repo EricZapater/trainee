@@ -83,15 +83,20 @@ func (h *Handler) GetInformeAtleta(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, informe)
 }
 
-func (h *Handler) ListAtletes(ctx *gin.Context) {
+func (h *Handler) resolveAccessibleAtletes(ctx *gin.Context) ([]models.Atleta, error) {
+	if ctx.GetString("rol") == "admin" {
+		return h.Store.ListAllAtletes(ctx.Request.Context())
+	}
 	usuariID := ctx.GetString("user_id")
 	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
-		return
+		return nil, err
 	}
+	return h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+}
 
-	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+func (h *Handler) ListAtletes(ctx *gin.Context) {
+	atletes, err := h.resolveAccessibleAtletes(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error llistant atletes"})
 		return
@@ -102,15 +107,8 @@ func (h *Handler) ListAtletes(ctx *gin.Context) {
 
 func (h *Handler) ToggleAtletaStatus(ctx *gin.Context) {
 	usuariID := ctx.GetString("user_id")
-	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
-		return
-	}
-
 	atletaID := ctx.Param("id")
-	// Verify athlete belongs to this coach
-	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+	atletes, err := h.resolveAccessibleAtletes(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error validant permisos"})
 		return
@@ -144,15 +142,8 @@ func (h *Handler) ToggleAtletaStatus(ctx *gin.Context) {
 }
 
 func (h *Handler) GetAtletaStatusHistory(ctx *gin.Context) {
-	usuariID := ctx.GetString("user_id")
-	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
-		return
-	}
-
 	atletaID := ctx.Param("id")
-	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+	atletes, err := h.resolveAccessibleAtletes(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error validant permisos"})
 		return
@@ -183,16 +174,8 @@ func (h *Handler) GetAtletaStatusHistory(ctx *gin.Context) {
 }
 
 func (h *Handler) ReasignarAtleta(ctx *gin.Context) {
-	usuariID := ctx.GetString("user_id")
-	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
-		return
-	}
-
 	atletaID := ctx.Param("id")
-	// Verify athlete belongs to this coach (so they can reassign them)
-	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+	atletes, err := h.resolveAccessibleAtletes(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error validant permisos"})
 		return
@@ -264,16 +247,8 @@ func (h *Handler) ToggleSubmissionGestionat(ctx *gin.Context) {
 }
 
 func (h *Handler) UpdateAtletaDetails(ctx *gin.Context) {
-	usuariID := ctx.GetString("user_id")
-	entrenador, err := h.Store.GetEntrenadorByUsuariID(ctx.Request.Context(), usuariID)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error identificant l'entrenador"})
-		return
-	}
-
 	atletaID := ctx.Param("id")
-	// Verify athlete belongs to this coach
-	atletes, err := h.Store.ListAtletesByEntrenadorID(ctx.Request.Context(), entrenador.ID)
+	atletes, err := h.resolveAccessibleAtletes(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error validant permisos"})
 		return

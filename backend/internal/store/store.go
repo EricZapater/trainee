@@ -36,6 +36,7 @@ type Store interface {
 	GetAtletaByUsuariID(ctx context.Context, usuariID string) (*models.Atleta, error)
 	GetUsuariByAtletaID(ctx context.Context, atletaID string) (*models.Usuari, error)
 	ListAtletesByEntrenadorID(ctx context.Context, entrenadorID string) ([]models.Atleta, error)
+	ListAllAtletes(ctx context.Context) ([]models.Atleta, error)
 	ListAllActiveAtletes(ctx context.Context) ([]models.Atleta, error)
 	ReassignAtleta(ctx context.Context, atletaID, nouEntrenadorID string) error
 	UpdateAtletaDetails(ctx context.Context, usuariID, nom, cognoms string) error

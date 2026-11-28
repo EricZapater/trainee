@@ -39,6 +39,8 @@ import type { UserStatusHistory } from '../types'
 interface AtletaItem {
   id: string
   usuari_id?: string
+  entrenador_id?: string
+  entrenador_nom?: string
   nom: string
   cognoms: string
   email: string
@@ -226,11 +228,18 @@ export const AthletesManagerPage: React.FC = () => {
   // Open reassign modal
   const openReassignModal = async (atleta: AtletaItem) => {
     setReassignAtletaItem(atleta)
-    setSelectedEntrenadorId('')
+    setSelectedEntrenadorId(atleta.entrenador_id || '')
     try {
-      if (entrenadorsList.length === 0) {
-        const coaches = await getEntrenadorsList()
-        setEntrenadorsList(coaches || [])
+      let coaches = entrenadorsList
+      if (coaches.length === 0) {
+        coaches = (await getEntrenadorsList()) || []
+        setEntrenadorsList(coaches)
+      }
+      if (atleta.entrenador_id && coaches.some(c => c.id === atleta.entrenador_id)) {
+        setSelectedEntrenadorId(atleta.entrenador_id)
+      } else if (atleta.entrenador_nom) {
+        const matched = coaches.find(c => c.nom === atleta.entrenador_nom)
+        if (matched) setSelectedEntrenadorId(matched.id)
       }
     } catch (err) {
       showToast('Error carregant la llista d\'entrenadors', 'error')
@@ -397,6 +406,11 @@ export const AthletesManagerPage: React.FC = () => {
                         {atleta.nom} {atleta.cognoms}
                       </p>
                       <p className="text-xs text-text-muted truncate">{atleta.email}</p>
+                      {atleta.entrenador_nom && (
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/70 text-[10px] font-bold">
+                          Entrenador: {atleta.entrenador_nom}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -478,6 +492,7 @@ export const AthletesManagerPage: React.FC = () => {
                   <tr className="bg-bg-surface/80 border-b border-border text-xs font-bold text-text-secondary uppercase tracking-wider">
                     <th className="py-3.5 px-4">Atleta</th>
                     <th className="py-3.5 px-4">Correu Electrònic</th>
+                    <th className="py-3.5 px-4">Entrenador Actual</th>
                     <th className="py-3.5 px-4 text-center">Estat</th>
                     <th className="py-3.5 px-4 text-right">Accions</th>
                   </tr>
@@ -507,6 +522,11 @@ export const AthletesManagerPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-text-secondary text-xs">
                         {atleta.email}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/70">
+                          {atleta.entrenador_nom || entrenadorsList.find(c => c.id === atleta.entrenador_id)?.nom || 'Assignat'}
+                        </span>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="inline-flex items-center gap-2">
@@ -725,67 +745,87 @@ export const AthletesManagerPage: React.FC = () => {
       )}
 
       {/* Modal: Reassign Coach */}
-      {reassignAtletaItem && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-          <div className="glass-card bg-bg-surface w-full max-w-md p-6 rounded-2xl shadow-2xl border border-border space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
-              <h3 className="text-base font-black text-text-primary flex items-center gap-2">
-                <ArrowLeftRight className="w-4 h-4 text-amber-500" />
-                Reassignar Atleta
-              </h3>
-              <button
-                onClick={() => setReassignAtletaItem(null)}
-                className="text-text-muted hover:text-text-primary p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {reassignAtletaItem && (() => {
+        const currentCoachNom =
+          reassignAtletaItem.entrenador_nom ||
+          entrenadorsList.find(c => c.id === reassignAtletaItem.entrenador_id)?.nom ||
+          'Sense especificar'
+        const isUnchanged = !!reassignAtletaItem.entrenador_id && selectedEntrenadorId === reassignAtletaItem.entrenador_id
 
-            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <p>
-                En traspassar a <strong>{reassignAtletaItem.nom} {reassignAtletaItem.cognoms}</strong>, 
-                l'atleta passarà a estar sota la gestió exclusiva del nou entrenador seleccionat.
-              </p>
-            </div>
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="glass-card bg-bg-surface w-full max-w-md p-6 rounded-2xl shadow-2xl border border-border space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <h3 className="text-base font-black text-text-primary flex items-center gap-2">
+                  <ArrowLeftRight className="w-4 h-4 text-amber-500" />
+                  Reassignar Entrenador
+                </h3>
+                <button
+                  onClick={() => setReassignAtletaItem(null)}
+                  className="text-text-muted hover:text-text-primary p-1 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-text-secondary uppercase">
-                Nou Entrenador
-              </label>
-              <select
-                value={selectedEntrenadorId}
-                onChange={e => setSelectedEntrenadorId(e.target.value)}
-                className="w-full px-3 py-2 bg-bg-base border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-              >
-                <option value="">Selecciona un entrenador...</option>
-                {entrenadorsList.map(coach => (
-                  <option key={coach.id} value={coach.id}>
-                    {coach.nom}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="p-3 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between text-xs">
+                <span className="font-bold text-indigo-900 uppercase tracking-wide text-[11px]">Entrenador actual</span>
+                <span className="font-black text-indigo-950 bg-white px-2.5 py-1 rounded-lg border border-indigo-200">
+                  {currentCoachNom}
+                </span>
+              </div>
 
-            <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
-              <button
-                onClick={() => setReassignAtletaItem(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-text-secondary hover:bg-bg-hover transition-colors"
-              >
-                Cancel·lar
-              </button>
-              <button
-                onClick={handleConfirmReassign}
-                disabled={reassigning || !selectedEntrenadorId}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
-              >
-                {reassigning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowLeftRight className="w-3.5 h-3.5" />}
-                Confirmar Reassignació
-              </button>
+              <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  En traspassar a <strong>{reassignAtletaItem.nom} {reassignAtletaItem.cognoms}</strong>, 
+                  l'atleta i les seves quotes futures passaran a estar vinculats a l'entrenador seleccionat.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-text-secondary uppercase">
+                  Entrenador Assignat
+                </label>
+                <select
+                  value={selectedEntrenadorId}
+                  onChange={e => setSelectedEntrenadorId(e.target.value)}
+                  className="w-full px-3 py-2 bg-bg-base border border-border rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                >
+                  <option value="">Selecciona un entrenador...</option>
+                  {entrenadorsList.map(coach => (
+                    <option key={coach.id} value={coach.id}>
+                      {coach.nom}{coach.id === reassignAtletaItem.entrenador_id ? ' (Actual)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {isUnchanged && (
+                  <p className="text-[11px] text-slate-500">
+                    Aquest és l'entrenador actual de l'atleta. Selecciona'n un de diferent per fer el traspàs.
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-border flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setReassignAtletaItem(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-text-secondary hover:bg-bg-hover transition-colors"
+                >
+                  Cancel·lar
+                </button>
+                <button
+                  onClick={handleConfirmReassign}
+                  disabled={reassigning || !selectedEntrenadorId || isUnchanged}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  {reassigning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowLeftRight className="w-3.5 h-3.5" />}
+                  Confirmar Reassignació
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
       {/* MODAL CONFIGURACIÓ ECONÒMICA & QUOTA */}
       {economicaAtleta && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">

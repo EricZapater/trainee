@@ -433,8 +433,12 @@ export const FinanceAdminPage: React.FC = () => {
     const targetMode = mode || liquidacioModeCalcul
     try {
       setLiquidacioLoading(true)
-      const data = await getFinLiquidacioEntrenadors(targetMes, targetMode)
+      const [data, coms] = await Promise.all([
+        getFinLiquidacioEntrenadors(targetMes, targetMode),
+        listFinEntrenadorComissions().catch(() => null)
+      ])
       setLiquidacioData(data)
+      if (coms) setComissionsEntrenadors(coms)
     } catch (err: any) {
       showNotify('error', err.response?.data?.error || 'Error carregant la liquidació per entrenador')
     } finally {
@@ -1365,7 +1369,7 @@ export const FinanceAdminPage: React.FC = () => {
       ambit: 'tot_comissionable',
       unitat_negoci_id: unitats[0]?.id || '',
       article_id: articles.find(a => a.tipus !== 'compra')?.id || '',
-      mes_inici: `${new Date().getFullYear()}-01`,
+      mes_inici: '2025-01',
       mes_fi: '',
       actiu: true,
       notes: ''
@@ -3294,14 +3298,11 @@ export const FinanceAdminPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: 'config' })
-                  setActiveConfigSubtab('comissions')
-                }}
-                className="px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 hover:bg-indigo-100 text-xs font-bold flex items-center gap-1.5"
-                title="Configurar jerarquia i regles de comissió entre entrenadors"
+                onClick={() => openCreateComissio()}
+                className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white shadow-sm text-xs font-bold flex items-center gap-1.5"
+                title="Afegir una regla de comissió entre entrenadors"
               >
-                <ArrowRightLeft className="w-3.5 h-3.5" /> Regles Comissió
+                <Plus className="w-3.5 h-3.5" /> Nova Comissió
               </button>
 
               <button
@@ -3312,6 +3313,76 @@ export const FinanceAdminPage: React.FC = () => {
                 <Download className="w-3.5 h-3.5" /> Exportar CSV
               </button>
             </div>
+          </div>
+
+          {/* Panell de Jerarquia de Comissions Directament a Liquidació */}
+          <div className="glass-card p-4 border border-purple-200/80 bg-purple-50/30">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                  <ArrowRightLeft className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-purple-950 uppercase tracking-wide">
+                    Jerarquia de Comissions entre Entrenadors ({comissionsEntrenadors.filter(r => r.actiu).length} regles actives)
+                  </h3>
+                  <p className="text-[11px] text-slate-600">
+                    Les comissions s'apliquen sobre les factures <strong>cobrades</strong> (i es mostren com a previstes mentre estan pendents de cobrament).
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => openCreateComissio()}
+                  className="px-2.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Afegir Regla
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchParams({ tab: 'config' })
+                    setActiveConfigSubtab('comissions')
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-purple-50 text-purple-800 border border-purple-200 text-[11px] font-bold"
+                >
+                  Gestionar Taula Completa →
+                </button>
+              </div>
+            </div>
+
+            {comissionsEntrenadors.filter(r => r.actiu).length === 0 ? (
+              <div className="mt-3 p-3 rounded-xl bg-white border border-dashed border-purple-300 text-xs text-purple-900 flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  ⚠️ <strong>Encara no hi ha cap regla de comissió configurada.</strong> Fes clic a <strong>"+ Afegir Regla"</strong> per definir quin % paga cada entrenador als seus comissionistes (Creador, Primer Entrenador, etc.).
+                </span>
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {comissionsEntrenadors.filter(r => r.actiu).map(r => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => openEditComissio(r)}
+                    title="Fes clic per editar aquesta regla de comissió"
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-purple-50 border border-purple-200 shadow-sm text-[11px] flex items-center gap-1.5 transition-colors"
+                  >
+                    <span className="font-bold text-slate-900">{r.entrenador_origen_nom || 'Entrenador'}</span>
+                    <span className="text-purple-600 font-black">→ {r.percentatge}%</span>
+                    <span className="font-semibold text-purple-900">
+                      {r.tipus_beneficiari === 'estructura' ? '🏛️ Estructura' : (r.entrenador_beneficiari_nom || 'Entrenador')}
+                    </span>
+                    {r.ambit !== 'tot_comissionable' && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                        {r.ambit === 'unitat_negoci' ? r.unitat_negoci_nom : r.article_nom}
+                      </span>
+                    )}
+                    <Pencil className="w-3 h-3 text-slate-400 ml-0.5" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {liquidacioData && (
@@ -3341,10 +3412,10 @@ export const FinanceAdminPage: React.FC = () => {
               </div>
 
               <div className="glass-card p-4 border-l-4 border-l-purple-500">
-                <div className="text-[11px] font-bold uppercase text-slate-400">Comissions Jerarquia</div>
+                <div className="text-[11px] font-bold uppercase text-slate-400">Comissions s/ Cobrat</div>
                 <div className="text-xl font-black text-purple-800 mt-1">{(liquidacioData.total_comissions || 0).toFixed(2)} €</div>
                 <div className="text-[11px] text-purple-600 font-semibold mt-0.5">
-                  Repartides sobre cobrat
+                  Previst s/ venut: {(liquidacioData.total_comissions_previstes || 0).toFixed(2)} €
                 </div>
               </div>
 
@@ -3394,6 +3465,10 @@ export const FinanceAdminPage: React.FC = () => {
                     const isExpanded = !!expandedLiquidacioCoach[row.entrenador_id]
                     const comCedida = row.comissio_cedida || 0
                     const comRebuda = row.comissio_rebuda || 0
+                    const comCedidaPrev = row.comissio_cedida_prevista || 0
+                    const comRebudaPrev = row.comissio_rebuda_prevista || 0
+                    const hasCedidaRule = (row.detall_comissions || []).some(d => d.direccio === 'cedida')
+                    const hasRebudaRule = (row.detall_comissions || []).some(d => d.direccio === 'rebuda')
                     const liqFinal = row.liquidacio_final !== undefined ? row.liquidacio_final : row.net_sobre_cobrat
                     const numComissions = row.detall_comissions?.length || 0
                     return (
@@ -3416,7 +3491,7 @@ export const FinanceAdminPage: React.FC = () => {
                                   <span>{row.entrenador_nom}</span>
                                   {numComissions > 0 && (
                                     <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800">
-                                      {numComissions} com.
+                                      {numComissions} regles com.
                                     </span>
                                   )}
                                 </div>
@@ -3440,11 +3515,33 @@ export const FinanceAdminPage: React.FC = () => {
                           <td className={`py-3.5 px-3 text-right font-mono font-bold ${row.net_sobre_cobrat >= 0 ? 'text-slate-800' : 'text-rose-600'}`}>
                             {row.net_sobre_cobrat.toFixed(2)} €
                           </td>
-                          <td className="py-3.5 px-3 text-right font-mono font-bold text-rose-700">
-                            {comCedida > 0 ? `-${comCedida.toFixed(2)} €` : '—'}
+                          <td className="py-3.5 px-3 text-right font-mono">
+                            {comCedida > 0 ? (
+                              <div className="font-bold text-rose-700">-{comCedida.toFixed(2)} €</div>
+                            ) : hasCedidaRule ? (
+                              <div className="font-semibold text-slate-500">0.00 €</div>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                            {comCedidaPrev > comCedida + 0.009 && (
+                              <div className="text-[10px] text-amber-700 font-semibold" title="Comissió prevista quan es cobrin les factures pendents">
+                                Prev: -{comCedidaPrev.toFixed(2)} €
+                              </div>
+                            )}
                           </td>
-                          <td className="py-3.5 px-3 text-right font-mono font-bold text-emerald-700">
-                            {comRebuda > 0 ? `+${comRebuda.toFixed(2)} €` : '—'}
+                          <td className="py-3.5 px-3 text-right font-mono">
+                            {comRebuda > 0 ? (
+                              <div className="font-bold text-emerald-700">+{comRebuda.toFixed(2)} €</div>
+                            ) : hasRebudaRule ? (
+                              <div className="font-semibold text-slate-500">0.00 €</div>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                            {comRebudaPrev > comRebuda + 0.009 && (
+                              <div className="text-[10px] text-amber-700 font-semibold" title="Comissió prevista quan es cobrin les factures pendents">
+                                Prev: +{comRebudaPrev.toFixed(2)} €
+                              </div>
+                            )}
                           </td>
                           <td className="py-3.5 px-4 text-right bg-indigo-50/40">
                             <span className={`font-mono font-black text-sm px-2.5 py-1 rounded-lg ${
@@ -3532,23 +3629,39 @@ export const FinanceAdminPage: React.FC = () => {
                                 )}
                               </div>
 
-                              {/* 2. Desglossament de Comissions Cedides i Rebudes */}
-                              {row.detall_comissions && row.detall_comissions.length > 0 && (
-                                <div className="bg-white rounded-xl border border-purple-200 overflow-hidden">
-                                  <div className="px-4 py-2.5 bg-purple-50/70 border-b border-purple-200 flex flex-wrap items-center justify-between gap-2">
-                                    <h4 className="font-bold text-xs text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
-                                      <ArrowRightLeft className="w-3.5 h-3.5 text-purple-700" />
-                                      Detall de Comissions sobre Volum Cobrat ({row.entrenador_nom})
-                                    </h4>
-                                    <div className="flex items-center gap-3 text-[11px] font-mono font-bold">
-                                      <span className="text-rose-700">Cedida: -{comCedida.toFixed(2)} €</span>
-                                      <span className="text-emerald-700">Rebuda: +{comRebuda.toFixed(2)} €</span>
-                                      <span className="text-indigo-950 bg-white px-2 py-0.5 rounded border border-purple-200">
-                                        Liquidació Final: {liqFinal.toFixed(2)} €
-                                      </span>
-                                    </div>
+                              {/* 2. Desglossament de Comissions Cedides i Rebudes (sempre visible en expandir) */}
+                              <div className="bg-white rounded-xl border border-purple-200 overflow-hidden">
+                                <div className="px-4 py-2.5 bg-purple-50/70 border-b border-purple-200 flex flex-wrap items-center justify-between gap-2">
+                                  <h4 className="font-bold text-xs text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                                    <ArrowRightLeft className="w-3.5 h-3.5 text-purple-700" />
+                                    Comissions d'Entrenadors sobre Volum Cobrat ({row.entrenador_nom})
+                                  </h4>
+                                  <div className="flex items-center gap-3 text-[11px] font-mono font-bold">
+                                    <span className="text-rose-700">Cedida: -{comCedida.toFixed(2)} €</span>
+                                    <span className="text-emerald-700">Rebuda: +{comRebuda.toFixed(2)} €</span>
+                                    <span className="text-indigo-950 bg-white px-2 py-0.5 rounded border border-purple-200">
+                                      Liquidació Final: {liqFinal.toFixed(2)} €
+                                    </span>
+                                    {row.entrenador_id !== '__none__' && row.entrenador_id !== '__estructura__' && (
+                                      <button
+                                        type="button"
+                                        onClick={e => {
+                                          e.stopPropagation()
+                                          openCreateComissio(row.entrenador_id)
+                                        }}
+                                        className="font-sans px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-bold flex items-center gap-1"
+                                      >
+                                        <Plus className="w-3 h-3" /> Afegir Comissionista
+                                      </button>
+                                    )}
                                   </div>
+                                </div>
 
+                                {!row.detall_comissions || row.detall_comissions.length === 0 ? (
+                                  <div className="p-4 text-center text-xs text-slate-500">
+                                    Cap regla de comissió activa vinculada a <strong>{row.entrenador_nom}</strong> per al mes {liquidacioMes}.
+                                  </div>
+                                ) : (
                                   <table className="w-full text-left text-[11px]">
                                     <thead>
                                       <tr className="border-b border-purple-100 text-slate-400 uppercase text-[10px] font-bold">
@@ -3556,9 +3669,10 @@ export const FinanceAdminPage: React.FC = () => {
                                         <th className="py-2 px-3">Àmbit Aplicat</th>
                                         <th className="py-2 px-3 text-right">% Com.</th>
                                         <th className="py-2 px-3 text-right">Cobrat Base / Total</th>
-                                        <th className="py-2 px-3 text-right">Com. s/ Base (sense IVA)</th>
-                                        <th className="py-2 px-3 text-right">Com. s/ Total (amb IVA)</th>
-                                        <th className="py-2 px-4 text-right text-purple-950">Import Aplicat</th>
+                                        <th className="py-2 px-3 text-right">Com. s/ Base</th>
+                                        <th className="py-2 px-3 text-right">Com. s/ Total</th>
+                                        <th className="py-2 px-3 text-right text-amber-800">Previst s/ Venut</th>
+                                        <th className="py-2 px-4 text-right text-purple-950">Aplicat (s/ Cobrat)</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-purple-50 font-medium">
@@ -3581,7 +3695,10 @@ export const FinanceAdminPage: React.FC = () => {
                                           <td className="py-2.5 px-3 text-slate-600">{dc.ambit_descripcio}</td>
                                           <td className="py-2.5 px-3 text-right font-mono font-bold text-purple-800">{dc.percentatge.toFixed(2)} %</td>
                                           <td className="py-2.5 px-3 text-right font-mono text-slate-600">
-                                            {dc.volum_cobrat_base.toFixed(2)} € <span className="text-slate-400">/</span> {dc.volum_cobrat_total.toFixed(2)} €
+                                            <div>{dc.volum_cobrat_base.toFixed(2)} € <span className="text-slate-400">/</span> {dc.volum_cobrat_total.toFixed(2)} €</div>
+                                            {dc.volum_venut_total > dc.volum_cobrat_total + 0.009 && (
+                                              <div className="text-[10px] text-amber-700">Venut: {dc.volum_venut_total.toFixed(2)} €</div>
+                                            )}
                                           </td>
                                           <td className={`py-2.5 px-3 text-right font-mono ${liquidacioModeCalcul === 'base' || dc.base_calcul_regla === 'base' ? 'font-bold text-amber-800' : 'text-slate-500'}`}>
                                             {dc.import_sobre_base.toFixed(2)} €
@@ -3589,17 +3706,28 @@ export const FinanceAdminPage: React.FC = () => {
                                           <td className={`py-2.5 px-3 text-right font-mono ${liquidacioModeCalcul === 'total' || dc.base_calcul_regla === 'total' ? 'font-bold text-indigo-800' : 'text-slate-500'}`}>
                                             {dc.import_sobre_total.toFixed(2)} €
                                           </td>
+                                          <td className="py-2.5 px-3 text-right font-mono text-amber-800 font-semibold">
+                                            {dc.direccio === 'cedida' ? `-${(dc.import_previst_venut || 0).toFixed(2)} €` : `+${(dc.import_previst_venut || 0).toFixed(2)} €`}
+                                          </td>
                                           <td className={`py-2.5 px-4 text-right font-mono font-black ${
-                                            dc.direccio === 'cedida' ? 'text-rose-700' : 'text-emerald-700'
+                                            dc.import_aplicat === 0
+                                              ? 'text-slate-500'
+                                              : dc.direccio === 'cedida'
+                                              ? 'text-rose-700'
+                                              : 'text-emerald-700'
                                           }`}>
-                                            {dc.direccio === 'cedida' ? `-${dc.import_aplicat.toFixed(2)} €` : `+${dc.import_aplicat.toFixed(2)} €`}
+                                            {dc.import_aplicat === 0
+                                              ? '0.00 €'
+                                              : dc.direccio === 'cedida'
+                                              ? `-${dc.import_aplicat.toFixed(2)} €`
+                                              : `+${dc.import_aplicat.toFixed(2)} €`}
                                           </td>
                                         </tr>
                                       ))}
                                     </tbody>
                                   </table>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )}

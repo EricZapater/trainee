@@ -432,8 +432,10 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 		return g
 	}
 
-	// Accumulator per regla de comissió (sobre import cobrat!)
+	// Accumulator per regla de comissió (sobre import cobrat i previsió sobre venut!)
 	type ruleVolumeAcc struct {
+		venutTotal  float64
+		venutBase   float64
 		cobratTotal float64
 		cobratBase  float64
 	}
@@ -442,18 +444,26 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 		ruleVolumes[r.ID] = &ruleVolumeAcc{}
 	}
 
-	// 1. Vendes emeses del mes seleccionat
+	// 1. Vendes emeses del mes seleccionat (amb fallback d'entrenador des de fin_clients -> atletes -> entrenadors)
 	rowsV, err := s.pool.Query(ctx, `
 		SELECT fv.unitat_negoci_id::text, COALESCE(un.comissionable, FALSE),
 		       fv.article_id::text, COALESCE(NULLIF(ar.nom, ''), 'Altres vendes sense article'),
-		       COALESCE(ar.comissionable, un.comissionable, FALSE),
+		       CASE
+		           WHEN fv.article_id IS NOT NULL THEN (COALESCE(ar.comissionable, FALSE) OR COALESCE(un.comissionable, FALSE))
+		           ELSE COALESCE(un.comissionable, FALSE)
+		       END,
 		       fv.estat_cobrament,
 		       fv.base_imposable::float8, fv.total_factura::float8, fv.import_cobrat::float8, fv.import_pendent::float8,
-		       fv.entrenador_id, en.nom
+		       en.id::text, en.nom
 		FROM fin_factures_venda fv
 		JOIN fin_unitats_negoci un ON un.id = fv.unitat_negoci_id
 		LEFT JOIN fin_articles ar ON ar.id = fv.article_id
-		LEFT JOIN entrenadors en ON en.id = fv.entrenador_id
+		LEFT JOIN fin_clients fc ON fc.id = fv.client_id
+		LEFT JOIN atletes atl ON atl.usuari_id = fc.usuari_id
+		LEFT JOIN entrenadors en ON (
+			en.id = COALESCE(fv.entrenador_id, atl.entrenador_id)
+			OR en.usuari_id = COALESCE(fv.entrenador_id, atl.entrenador_id)
+		)
 		WHERE fv.estat_document = 'emesa'
 		  AND TO_CHAR(fv.data_emissio, 'YYYY-MM') = $1
 		ORDER BY ar.nom ASC NULLS LAST
@@ -472,11 +482,15 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 			return nil, err
 		}
 
-		// Calcular fracció cobrada per desglossar exactament tant en mode Total com en mode Base Imposable
+		// Garantir consistència d'imports cobrats i pendents en mode Total i en mode Base Imposable
 		ratioCobrat := 0.0
 		if estatCob == "pagada" {
+			cobratTotal = totalF
+			pendentTotal = 0
 			ratioCobrat = 1.0
 		} else if estatCob == "compensada" || totalF == 0 {
+			cobratTotal = 0
+			pendentTotal = 0
 			ratioCobrat = 0.0
 		} else if totalF > 0 {
 			ratioCobrat = math.Max(0, math.Min(1, cobratTotal/totalF))
@@ -519,8 +533,8 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 			g.Pendent += pendentVal
 		}
 
-		// Avaluar regles de comissió sobre COBRAT si la factura té entrenador origen i import cobrat != 0
-		if cID != nil && *cID != "" && (cobratTotal != 0 || cobratBase != 0) {
+		// Acumular tant el volum venut comissionable (previst) com el cobrat real per a cada regla activa
+		if cID != nil && *cID != "" {
 			for _, rule := range activeRules {
 				if rule.EntrenadorOrigenID != *cID {
 					continue
@@ -530,12 +544,14 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 				case "tot_comissionable":
 					matches = isComiss
 				case "unitat_negoci":
-					matches = rule.UnitatNegociID != nil && *rule.UnitatNegociID == unID && (isComiss || unComiss)
+					matches = rule.UnitatNegociID != nil && *rule.UnitatNegociID == unID
 				case "article":
 					matches = rule.ArticleID != nil && artID != nil && *rule.ArticleID == *artID
 				}
 				if matches {
 					rv := ruleVolumes[rule.ID]
+					rv.venutTotal += totalF
+					rv.venutBase += baseF
 					rv.cobratTotal += cobratTotal
 					rv.cobratBase += cobratBase
 				}
@@ -621,34 +637,41 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 		g.Comprat += impTotal
 	}
 
-	// 4. Aplicar el repartiment de Comissions entre Entrenadors sobre l'import COBRAT
+	// 4. Aplicar el repartiment de Comissions entre Entrenadors sobre l'import COBRAT (mostrant també el previst sobre venut)
 	totalComissionsMogudes := 0.0
+	totalComissionsPrevistes := 0.0
 	for _, rule := range activeRules {
 		rv := ruleVolumes[rule.ID]
-		if rv == nil || (rv.cobratTotal == 0 && rv.cobratBase == 0) {
-			continue
+		if rv == nil {
+			rv = &ruleVolumeAcc{}
 		}
+		volVenutTotal := roundCurrency(rv.venutTotal)
+		volVenutBase := roundCurrency(rv.venutBase)
 		volTotal := roundCurrency(rv.cobratTotal)
 		volBase := roundCurrency(rv.cobratBase)
+
 		impTotal := roundCurrency(volTotal * rule.Percentatge / 100.0)
 		impBase := roundCurrency(volBase * rule.Percentatge / 100.0)
+		prevTotal := roundCurrency(volVenutTotal * rule.Percentatge / 100.0)
+		prevBase := roundCurrency(volVenutBase * rule.Percentatge / 100.0)
 
 		impAplicat := impTotal
+		impPrevist := prevTotal
 		switch rule.BaseCalcul {
 		case "base":
 			impAplicat = impBase
+			impPrevist = prevBase
 		case "total":
 			impAplicat = impTotal
+			impPrevist = prevTotal
 		default: // "ambdues" -> segueix el modeCalcul actiu de la liquidació
 			if modeCalcul == "base" {
 				impAplicat = impBase
+				impPrevist = prevBase
 			} else {
 				impAplicat = impTotal
+				impPrevist = prevTotal
 			}
-		}
-
-		if impAplicat == 0 && impTotal == 0 && impBase == 0 {
-			continue
 		}
 
 		ambitDesc := "Tot el comissionable"
@@ -672,42 +695,52 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 		}
 
 		origAcc.row.ComissioCedida += impAplicat
+		origAcc.row.ComissioCedidaPrevista += impPrevist
 		origAcc.row.DetallComissions = append(origAcc.row.DetallComissions, models.FinLiquidacioComissioDetall{
-			ReglaID:          rule.ID,
-			Direccio:         "cedida",
-			ContrapartNom:    benefNom,
-			AmbitDescripcio:  ambitDesc,
-			BaseCalculRegla:  rule.BaseCalcul,
-			Percentatge:      rule.Percentatge,
-			VolumCobratTotal: volTotal,
-			VolumCobratBase:  volBase,
-			ImportSobreTotal: impTotal,
-			ImportSobreBase:  impBase,
-			ImportAplicat:    impAplicat,
+			ReglaID:            rule.ID,
+			Direccio:           "cedida",
+			ContrapartNom:      benefNom,
+			AmbitDescripcio:    ambitDesc,
+			BaseCalculRegla:    rule.BaseCalcul,
+			Percentatge:        rule.Percentatge,
+			VolumVenutTotal:    volVenutTotal,
+			VolumVenutBase:     volVenutBase,
+			VolumCobratTotal:   volTotal,
+			VolumCobratBase:    volBase,
+			ImportSobreTotal:   impTotal,
+			ImportSobreBase:    impBase,
+			ImportPrevistVenut: impPrevist,
+			ImportAplicat:      impAplicat,
 		})
 
 		benefAcc.row.ComissioRebuda += impAplicat
+		benefAcc.row.ComissioRebudaPrevista += impPrevist
 		benefAcc.row.DetallComissions = append(benefAcc.row.DetallComissions, models.FinLiquidacioComissioDetall{
-			ReglaID:          rule.ID,
-			Direccio:         "rebuda",
-			ContrapartNom:    origNom,
-			AmbitDescripcio:  ambitDesc,
-			BaseCalculRegla:  rule.BaseCalcul,
-			Percentatge:      rule.Percentatge,
-			VolumCobratTotal: volTotal,
-			VolumCobratBase:  volBase,
-			ImportSobreTotal: impTotal,
-			ImportSobreBase:  impBase,
-			ImportAplicat:    impAplicat,
+			ReglaID:            rule.ID,
+			Direccio:           "rebuda",
+			ContrapartNom:      origNom,
+			AmbitDescripcio:    ambitDesc,
+			BaseCalculRegla:    rule.BaseCalcul,
+			Percentatge:        rule.Percentatge,
+			VolumVenutTotal:    volVenutTotal,
+			VolumVenutBase:     volVenutBase,
+			VolumCobratTotal:   volTotal,
+			VolumCobratBase:    volBase,
+			ImportSobreTotal:   impTotal,
+			ImportSobreBase:    impBase,
+			ImportPrevistVenut: impPrevist,
+			ImportAplicat:      impAplicat,
 		})
 
 		totalComissionsMogudes += impAplicat
+		totalComissionsPrevistes += impPrevist
 	}
 
 	resp := &models.FinLiquidacioEntrenadorsResponse{
-		Mes:        mes,
-		ModeCalcul: modeCalcul,
-		Files:      []models.FinLiquidacioEntrenadorRow{},
+		Mes:              mes,
+		ModeCalcul:       modeCalcul,
+		NumReglesActives: len(activeRules),
+		Files:            []models.FinLiquidacioEntrenadorRow{},
 	}
 
 	sort.SliceStable(orderedIDs, func(i, j int) bool {
@@ -718,7 +751,7 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 	for _, key := range allKeys {
 		acc := byCoach[key]
 		r := acc.row
-		if key == "__none__" && r.NumFacturesVenda == 0 && r.NumCompresDespeses == 0 && r.ComissioRebuda == 0 && r.ComissioCedida == 0 {
+		if key == "__none__" && r.NumFacturesVenda == 0 && r.NumCompresDespeses == 0 && len(r.DetallComissions) == 0 {
 			continue
 		}
 		for _, aKey := range acc.artOrder {
@@ -745,6 +778,8 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 		r.NetSobreCobrat = roundCurrency(r.Cobrat - r.Comprat)
 		r.ComissioCedida = roundCurrency(r.ComissioCedida)
 		r.ComissioRebuda = roundCurrency(r.ComissioRebuda)
+		r.ComissioCedidaPrevista = roundCurrency(r.ComissioCedidaPrevista)
+		r.ComissioRebudaPrevista = roundCurrency(r.ComissioRebudaPrevista)
 		r.LiquidacioFinal = roundCurrency(r.NetSobreCobrat - r.ComissioCedida + r.ComissioRebuda)
 
 		resp.TotalVenut += r.Venut
@@ -764,6 +799,7 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, mo
 	resp.TotalNoCobrat = roundCurrency(resp.TotalPendent + resp.TotalImpagat)
 	resp.TotalComprat = roundCurrency(resp.TotalComprat)
 	resp.TotalComissions = roundCurrency(totalComissionsMogudes)
+	resp.TotalComissionsPrevistes = roundCurrency(totalComissionsPrevistes)
 	resp.LiquidacioSobreVenut = roundCurrency(resp.TotalVenut - resp.TotalComprat)
 	resp.LiquidacioSobreCobrat = roundCurrency(resp.TotalCobrat - resp.TotalComprat)
 	resp.LiquidacioFinalGlobal = roundCurrency(resp.LiquidacioFinalGlobal)
