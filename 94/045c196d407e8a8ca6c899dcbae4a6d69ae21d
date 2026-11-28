@@ -1,0 +1,36 @@
+backend/internal/handlers/entrenador.go
+  h_42175f19913982 86-89,93,95-96,98-99,111,146,178,251
+backend/internal/models/finances.go
+  h_42175f19913982 821-834,838-858,862-876
+backend/internal/models/models.go
+  h_42175f19913982 37-46
+backend/internal/store/finances_phase2.go
+  h_42175f19913982 435,437-438,447,451-454,457,461-466,485,488-489,492-493,536-537,547,553-554,640,642,645-646,648-649,652,655-656,659,663,666,670,673,698,700-713,717,719-732,736,740-743,754,781-782,802
+backend/internal/store/store.go
+  h_42175f19913982 39
+backend/internal/store/usuaris.go
+  h_42175f19913982 299-319,325-326,329,344-369
+backend/migrations/000049_fix_commissions_visibility.down.sql
+  h_42175f19913982 1-2
+backend/migrations/000049_fix_commissions_visibility.up.sql
+  h_42175f19913982 1-20
+frontend-pre/src/api/entrenador.ts
+  h_42175f19913982 127-128
+frontend-pre/src/api/finances.ts
+  h_42175f19913982 666-667,672,693-694,703,711
+frontend-pre/src/pages/AthletesManagerPage.tsx
+  h_42175f19913982 42-43,231,233-242,409-413,495,526-530,748-769,771-776,778-784,786-824,827-828
+frontend-pre/src/pages/FinanceAdminPage.tsx
+  h_42175f19913982 436-439,441,1372,3301-3303,3305,3318-3387,3415,3418,3468-3471,3494,3518-3530,3532-3544,3632-3656,3658,3660-3664,3672-3675,3698-3701,3709-3711,3713-3717,3719-3723,3729-3730
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "94045c196d407e8a8ca6c899dcbae4a6d69ae21d",
+  "prompts": {},
+  "humans": {
+    "h_42175f19913982": {
+      "author": "Èric Zapater <ericzm@ext.inditex.com>"
+    }
+  }
+}
