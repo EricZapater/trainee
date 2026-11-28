@@ -269,8 +269,12 @@ type Store interface {
 	CreateFinFacturaCobrament(ctx context.Context, facturaID string, req models.CreateFinFacturaCobramentRequest, createdBy *string) (*models.FinFacturaVenda, error)
 	DeleteFinFacturaCobrament(ctx context.Context, facturaID, cobramentID string) (*models.FinFacturaVenda, error)
 
-	// Liquidació per Entrenador
-	GetFinLiquidacioEntrenadors(ctx context.Context, mes string) (*models.FinLiquidacioEntrenadorsResponse, error)
+	// Comissions entre entrenadors i Liquidació per Entrenador
+	ListFinEntrenadorComissions(ctx context.Context) ([]models.FinEntrenadorComissio, error)
+	CreateFinEntrenadorComissio(ctx context.Context, req models.UpsertFinEntrenadorComissioRequest) (*models.FinEntrenadorComissio, error)
+	UpdateFinEntrenadorComissio(ctx context.Context, id string, req models.UpsertFinEntrenadorComissioRequest) (*models.FinEntrenadorComissio, error)
+	DeleteFinEntrenadorComissio(ctx context.Context, id string) error
+	GetFinLiquidacioEntrenadors(ctx context.Context, mes, modeCalcul string) (*models.FinLiquidacioEntrenadorsResponse, error)
 
 	// Avisos automàtics de cobrament (Dia Límit i Dia Límit + 1)
 	GetPendingCoachBillingNotices(ctx context.Context, cutoffDate, anyMes string) ([]models.CoachBillingNoticeGroup, error)

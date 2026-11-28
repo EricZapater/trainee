@@ -53,6 +53,7 @@ export interface FinUnitatNegoci {
   descripcio: string
   serie_defecte_id?: string | null
   serie_codi?: string
+  comissionable?: boolean
   activa: boolean
   ordre: number
 }
@@ -113,6 +114,7 @@ export interface FinArticle {
   iva_percentatge: number
   irpf_percentatge: number
   causa_exempcio: string
+  comissionable?: boolean
   actiu: boolean
 }
 
@@ -618,10 +620,32 @@ export const generarDespesesRecurrentsMes = (mes?: string) =>
 export const getDynamicCashflow = (past?: number, future?: number) =>
   api.get<DynamicCashflowForecast>('/finances/tresoreria/dynamic-cashflow', { params: { past, future } }).then(r => r.data)
 
+export interface FinEntrenadorComissio {
+  id: string
+  entrenador_origen_id: string
+  entrenador_origen_nom?: string
+  tipus_beneficiari: 'entrenador' | 'estructura'
+  entrenador_beneficiari_id?: string | null
+  entrenador_beneficiari_nom?: string
+  percentatge: number
+  base_calcul: 'ambdues' | 'total' | 'base'
+  ambit: 'tot_comissionable' | 'unitat_negoci' | 'article'
+  unitat_negoci_id?: string | null
+  unitat_negoci_nom?: string | null
+  article_id?: string | null
+  article_nom?: string | null
+  mes_inici: string
+  mes_fi?: string | null
+  actiu: boolean
+  notes: string
+  created_at?: string
+}
+
 export interface FinLiquidacioArticleGroup {
   key: string
   article_nom: string
   tipus: 'venda' | 'compra' | 'despesa'
+  comissionable: boolean
   num_moviments: number
   venut: number
   cobrat: number
@@ -630,6 +654,20 @@ export interface FinLiquidacioArticleGroup {
   comprat: number
   net_sobre_venut: number
   net_sobre_cobrat: number
+}
+
+export interface FinLiquidacioComissioDetall {
+  regla_id: string
+  direccio: 'cedida' | 'rebuda'
+  contrapart_nom: string
+  ambit_descripcio: string
+  base_calcul_regla: 'ambdues' | 'total' | 'base'
+  percentatge: number
+  volum_cobrat_total: number
+  volum_cobrat_base: number
+  import_sobre_total: number
+  import_sobre_base: number
+  import_aplicat: number
 }
 
 export interface FinLiquidacioEntrenadorRow {
@@ -647,19 +685,26 @@ export interface FinLiquidacioEntrenadorRow {
   comprat: number
   net_sobre_venut: number
   net_sobre_cobrat: number
+  comissio_cedida: number
+  comissio_rebuda: number
+  liquidacio_final: number
   per_article: FinLiquidacioArticleGroup[]
+  detall_comissions: FinLiquidacioComissioDetall[]
 }
 
 export interface FinLiquidacioEntrenadorsResponse {
   mes: string
+  mode_calcul: 'total' | 'base'
   total_venut: number
   total_cobrat: number
   total_pendent: number
   total_impagat: number
   total_no_cobrat: number
   total_comprat: number
+  total_comissions: number
   liquidacio_sobre_venut: number
   liquidacio_sobre_cobrat: number
+  liquidacio_final_global: number
   files: FinLiquidacioEntrenadorRow[]
 }
 
@@ -677,8 +722,20 @@ export interface BillingEmailPreviewResponse {
   previews: BillingEmailPreviewItem[]
 }
 
-export const getFinLiquidacioEntrenadors = (mes?: string) =>
-  api.get<FinLiquidacioEntrenadorsResponse>('/finances/liquidacio-entrenadors', { params: { mes } }).then(r => r.data)
+export const listFinEntrenadorComissions = () =>
+  api.get<FinEntrenadorComissio[]>('/finances/comissions-entrenadors').then(r => r.data)
+
+export const createFinEntrenadorComissio = (data: Partial<FinEntrenadorComissio>) =>
+  api.post<FinEntrenadorComissio>('/finances/comissions-entrenadors', data).then(r => r.data)
+
+export const updateFinEntrenadorComissio = (id: string, data: Partial<FinEntrenadorComissio>) =>
+  api.put<FinEntrenadorComissio>(`/finances/comissions-entrenadors/${id}`, data).then(r => r.data)
+
+export const deleteFinEntrenadorComissio = (id: string) =>
+  api.delete(`/finances/comissions-entrenadors/${id}`).then(r => r.data)
+
+export const getFinLiquidacioEntrenadors = (mes?: string, mode_calcul: 'total' | 'base' = 'total') =>
+  api.get<FinLiquidacioEntrenadorsResponse>('/finances/liquidacio-entrenadors', { params: { mes, mode_calcul } }).then(r => r.data)
 
 export const previewAvisosCobrament = (mode: 'entrenadors' | 'atletes', idioma?: 'CAT' | 'ESP' | 'ENG') =>
   api.get<BillingEmailPreviewResponse>('/finances/avisos-cobrament/preview', { params: { mode, idioma } }).then(r => r.data)

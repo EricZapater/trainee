@@ -184,13 +184,178 @@ func (s *PostgresStore) DeleteFinFacturaCobrament(ctx context.Context, facturaID
 }
 
 // ============================================================
-// 2. Liquidació Mensual per Entrenador (Total Factura IVA inclòs)
+// 2. Regles de Comissió entre Entrenadors & Liquidació Mensual
 // ============================================================
 
-func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes string) (*models.FinLiquidacioEntrenadorsResponse, error) {
+func normalizeComissioReq(req *models.UpsertFinEntrenadorComissioRequest) error {
+	if req.TipusBeneficiari != "estructura" {
+		req.TipusBeneficiari = "entrenador"
+	}
+	if req.TipusBeneficiari == "entrenador" {
+		if req.EntrenadorBeneficiariID == nil || *req.EntrenadorBeneficiariID == "" {
+			return fmt.Errorf("cal seleccionar l'entrenador beneficiari de la comissió")
+		}
+		if *req.EntrenadorBeneficiariID == req.EntrenadorOrigenID {
+			return fmt.Errorf("un entrenador no pot ser comissionista de si mateix")
+		}
+	} else {
+		req.EntrenadorBeneficiariID = nil
+	}
+
+	if req.BaseCalcul != "total" && req.BaseCalcul != "base" {
+		req.BaseCalcul = "ambdues"
+	}
+	if req.Ambit != "unitat_negoci" && req.Ambit != "article" {
+		req.Ambit = "tot_comissionable"
+	}
+	if req.Ambit == "tot_comissionable" {
+		req.UnitatNegociID = nil
+		req.ArticleID = nil
+	} else if req.Ambit == "unitat_negoci" {
+		req.ArticleID = nil
+		if req.UnitatNegociID == nil || *req.UnitatNegociID == "" {
+			return fmt.Errorf("cal seleccionar la Unitat de Negoci per a aquest àmbit")
+		}
+	} else if req.Ambit == "article" {
+		req.UnitatNegociID = nil
+		if req.ArticleID == nil || *req.ArticleID == "" {
+			return fmt.Errorf("cal seleccionar l'Article per a aquest àmbit")
+		}
+	}
+	if req.MesFi != nil && *req.MesFi == "" {
+		req.MesFi = nil
+	}
+	if req.MesFi != nil && *req.MesFi < req.MesInici {
+		return fmt.Errorf("el mes de fi de vigència no pot ser anterior al mes d'inici")
+	}
+	return nil
+}
+
+func (s *PostgresStore) ListFinEntrenadorComissions(ctx context.Context) ([]models.FinEntrenadorComissio, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT ec.id, ec.entrenador_origen_id, eo.nom,
+		       ec.tipus_beneficiari, ec.entrenador_beneficiari_id, COALESCE(eb.nom, 'Estructura / Empresa'),
+		       ec.percentatge::float8, ec.base_calcul, ec.ambit,
+		       ec.unitat_negoci_id, un.nom, ec.article_id, ar.nom,
+		       ec.mes_inici, ec.mes_fi, ec.actiu, ec.notes, ec.created_at
+		FROM fin_entrenador_comissions ec
+		JOIN entrenadors eo ON eo.id = ec.entrenador_origen_id
+		LEFT JOIN entrenadors eb ON eb.id = ec.entrenador_beneficiari_id
+		LEFT JOIN fin_unitats_negoci un ON un.id = ec.unitat_negoci_id
+		LEFT JOIN fin_articles ar ON ar.id = ec.article_id
+		ORDER BY eo.nom ASC, ec.actiu DESC, ec.mes_inici DESC, ec.created_at ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := []models.FinEntrenadorComissio{}
+	for rows.Next() {
+		var it models.FinEntrenadorComissio
+		if err := rows.Scan(
+			&it.ID, &it.EntrenadorOrigenID, &it.EntrenadorOrigenNom,
+			&it.TipusBeneficiari, &it.EntrenadorBeneficiariID, &it.EntrenadorBeneficiariNom,
+			&it.Percentatge, &it.BaseCalcul, &it.Ambit,
+			&it.UnitatNegociID, &it.UnitatNegociNom, &it.ArticleID, &it.ArticleNom,
+			&it.MesInici, &it.MesFi, &it.Actiu, &it.Notes, &it.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		list = append(list, it)
+	}
+	return list, rows.Err()
+}
+
+func (s *PostgresStore) CreateFinEntrenadorComissio(ctx context.Context, req models.UpsertFinEntrenadorComissioRequest) (*models.FinEntrenadorComissio, error) {
+	if err := normalizeComissioReq(&req); err != nil {
+		return nil, err
+	}
+	var id string
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO fin_entrenador_comissions (
+			entrenador_origen_id, tipus_beneficiari, entrenador_beneficiari_id,
+			percentatge, base_calcul, ambit, unitat_negoci_id, article_id,
+			mes_inici, mes_fi, actiu, notes
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+		RETURNING id
+	`,
+		req.EntrenadorOrigenID, req.TipusBeneficiari, nullableUUID(req.EntrenadorBeneficiariID),
+		roundCurrency(req.Percentatge), req.BaseCalcul, req.Ambit,
+		nullableUUID(req.UnitatNegociID), nullableUUID(req.ArticleID),
+		req.MesInici, req.MesFi, req.Actiu, req.Notes,
+	).Scan(&id)
+	if err != nil {
+		return nil, err
+	}
+	list, err := s.ListFinEntrenadorComissions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, it := range list {
+		if it.ID == id {
+			return &it, nil
+		}
+	}
+	return nil, nil
+}
+
+func (s *PostgresStore) UpdateFinEntrenadorComissio(ctx context.Context, id string, req models.UpsertFinEntrenadorComissioRequest) (*models.FinEntrenadorComissio, error) {
+	if err := normalizeComissioReq(&req); err != nil {
+		return nil, err
+	}
+	_, err := s.pool.Exec(ctx, `
+		UPDATE fin_entrenador_comissions
+		SET entrenador_origen_id = $1, tipus_beneficiari = $2, entrenador_beneficiari_id = $3,
+		    percentatge = $4, base_calcul = $5, ambit = $6, unitat_negoci_id = $7, article_id = $8,
+		    mes_inici = $9, mes_fi = $10, actiu = $11, notes = $12, updated_at = now()
+		WHERE id = $13
+	`,
+		req.EntrenadorOrigenID, req.TipusBeneficiari, nullableUUID(req.EntrenadorBeneficiariID),
+		roundCurrency(req.Percentatge), req.BaseCalcul, req.Ambit,
+		nullableUUID(req.UnitatNegociID), nullableUUID(req.ArticleID),
+		req.MesInici, req.MesFi, req.Actiu, req.Notes, id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	list, _ := s.ListFinEntrenadorComissions(ctx)
+	for _, it := range list {
+		if it.ID == id {
+			return &it, nil
+		}
+	}
+	return nil, nil
+}
+
+func (s *PostgresStore) DeleteFinEntrenadorComissio(ctx context.Context, id string) error {
+	_, err := s.pool.Exec(ctx, `DELETE FROM fin_entrenador_comissions WHERE id = $1`, id)
+	return err
+}
+
+func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes, modeCalcul string) (*models.FinLiquidacioEntrenadorsResponse, error) {
+	if modeCalcul != "base" {
+		modeCalcul = "total"
+	}
+
 	entrenadors, err := s.ListEntrenadors(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	allRules, err := s.ListFinEntrenadorComissions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	activeRules := []models.FinEntrenadorComissio{}
+	for _, r := range allRules {
+		if !r.Actiu || r.MesInici > mes {
+			continue
+		}
+		if r.MesFi != nil && *r.MesFi != "" && *r.MesFi < mes {
+			continue
+		}
+		activeRules = append(activeRules, r)
 	}
 
 	type coachAcc struct {
@@ -204,9 +369,10 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 	for _, e := range entrenadors {
 		byCoach[e.ID] = &coachAcc{
 			row: &models.FinLiquidacioEntrenadorRow{
-				EntrenadorID:  e.ID,
-				EntrenadorNom: e.Nom,
-				PerArticle:    []models.FinLiquidacioArticleGroup{},
+				EntrenadorID:     e.ID,
+				EntrenadorNom:    e.Nom,
+				PerArticle:       []models.FinLiquidacioArticleGroup{},
+				DetallComissions: []models.FinLiquidacioComissioDetall{},
 			},
 			artMap:   map[string]*models.FinLiquidacioArticleGroup{},
 			artOrder: []string{},
@@ -215,9 +381,10 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 	}
 	byCoach["__none__"] = &coachAcc{
 		row: &models.FinLiquidacioEntrenadorRow{
-			EntrenadorID:  "__none__",
-			EntrenadorNom: "Sense Entrenador / Estructura",
-			PerArticle:    []models.FinLiquidacioArticleGroup{},
+			EntrenadorID:     "__none__",
+			EntrenadorNom:    "Sense Entrenador / Estructura",
+			PerArticle:       []models.FinLiquidacioArticleGroup{},
+			DetallComissions: []models.FinLiquidacioComissioDetall{},
 		},
 		artMap:   map[string]*models.FinLiquidacioArticleGroup{},
 		artOrder: []string{},
@@ -237,9 +404,10 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 		}
 		acc := &coachAcc{
 			row: &models.FinLiquidacioEntrenadorRow{
-				EntrenadorID:  key,
-				EntrenadorNom: nom,
-				PerArticle:    []models.FinLiquidacioArticleGroup{},
+				EntrenadorID:     key,
+				EntrenadorNom:    nom,
+				PerArticle:       []models.FinLiquidacioArticleGroup{},
+				DetallComissions: []models.FinLiquidacioComissioDetall{},
 			},
 			artMap:   map[string]*models.FinLiquidacioArticleGroup{},
 			artOrder: []string{},
@@ -249,28 +417,41 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 		return acc
 	}
 
-	getArt := func(acc *coachAcc, key, nom, tipus string) *models.FinLiquidacioArticleGroup {
+	getArt := func(acc *coachAcc, key, nom, tipus string, comissionable bool) *models.FinLiquidacioArticleGroup {
 		if g, ok := acc.artMap[key]; ok {
 			return g
 		}
 		g := &models.FinLiquidacioArticleGroup{
-			Key:        key,
-			ArticleNom: nom,
-			Tipus:      tipus,
+			Key:           key,
+			ArticleNom:    nom,
+			Tipus:         tipus,
+			Comissionable: comissionable,
 		}
 		acc.artMap[key] = g
 		acc.artOrder = append(acc.artOrder, key)
 		return g
 	}
 
-	// 1. Vendes emeses del mes seleccionat (sempre sobre Total Factura IVA inclòs), agrupades per article
+	// Accumulator per regla de comissió (sobre import cobrat!)
+	type ruleVolumeAcc struct {
+		cobratTotal float64
+		cobratBase  float64
+	}
+	ruleVolumes := map[string]*ruleVolumeAcc{}
+	for _, r := range activeRules {
+		ruleVolumes[r.ID] = &ruleVolumeAcc{}
+	}
+
+	// 1. Vendes emeses del mes seleccionat
 	rowsV, err := s.pool.Query(ctx, `
-		SELECT COALESCE(fv.article_id::text, '__venda_sense_art__'),
-		       COALESCE(NULLIF(ar.nom, ''), ' Altres vendes sense article'),
+		SELECT fv.unitat_negoci_id::text, COALESCE(un.comissionable, FALSE),
+		       fv.article_id::text, COALESCE(NULLIF(ar.nom, ''), 'Altres vendes sense article'),
+		       COALESCE(ar.comissionable, un.comissionable, FALSE),
 		       fv.estat_cobrament,
-		       fv.total_factura::float8, fv.import_cobrat::float8, fv.import_pendent::float8,
+		       fv.base_imposable::float8, fv.total_factura::float8, fv.import_cobrat::float8, fv.import_pendent::float8,
 		       fv.entrenador_id, en.nom
 		FROM fin_factures_venda fv
+		JOIN fin_unitats_negoci un ON un.id = fv.unitat_negoci_id
 		LEFT JOIN fin_articles ar ON ar.id = fv.article_id
 		LEFT JOIN entrenadors en ON en.id = fv.entrenador_id
 		WHERE fv.estat_document = 'emesa'
@@ -283,36 +464,90 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 	defer rowsV.Close()
 
 	for rowsV.Next() {
-		var artKey, artNom, estatCob string
-		var totalF, cobratF, pendentF float64
-		var cID, cNom *string
-		if err := rowsV.Scan(&artKey, &artNom, &estatCob, &totalF, &cobratF, &pendentF, &cID, &cNom); err != nil {
+		var unID, artNom, estatCob string
+		var unComiss, isComiss bool
+		var artID, cID, cNom *string
+		var baseF, totalF, cobratTotal, pendentTotal float64
+		if err := rowsV.Scan(&unID, &unComiss, &artID, &artNom, &isComiss, &estatCob, &baseF, &totalF, &cobratTotal, &pendentTotal, &cID, &cNom); err != nil {
 			return nil, err
 		}
+
+		// Calcular fracció cobrada per desglossar exactament tant en mode Total com en mode Base Imposable
+		ratioCobrat := 0.0
+		if estatCob == "pagada" {
+			ratioCobrat = 1.0
+		} else if estatCob == "compensada" || totalF == 0 {
+			ratioCobrat = 0.0
+		} else if totalF > 0 {
+			ratioCobrat = math.Max(0, math.Min(1, cobratTotal/totalF))
+		}
+		cobratBase := roundCurrency(baseF * ratioCobrat)
+		pendentBase := 0.0
+		if estatCob != "pagada" && estatCob != "compensada" {
+			pendentBase = roundCurrency(baseF - cobratBase)
+		}
+
+		venutVal := totalF
+		cobratVal := cobratTotal
+		pendentVal := pendentTotal
+		if modeCalcul == "base" {
+			venutVal = baseF
+			cobratVal = cobratBase
+			pendentVal = pendentBase
+		}
+
+		artKey := "__venda_sense_art__"
+		if artID != nil && *artID != "" {
+			artKey = *artID
+		}
+
 		acc := getAcc(cID, cNom)
 		acc.row.NumFacturesVenda++
-		acc.row.Venut += totalF
-		acc.row.Cobrat += cobratF
+		acc.row.Venut += venutVal
+		acc.row.Cobrat += cobratVal
 
-		g := getArt(acc, "venda:"+artKey, artNom, "venda")
+		g := getArt(acc, "venda:"+artKey, artNom, "venda", isComiss)
 		g.NumMoviments++
-		g.Venut += totalF
-		g.Cobrat += cobratF
+		g.Venut += venutVal
+		g.Cobrat += cobratVal
 
 		if estatCob == "impagada" {
-			acc.row.Impagat += pendentF
-			g.Impagat += pendentF
+			acc.row.Impagat += pendentVal
+			g.Impagat += pendentVal
 		} else if estatCob != "compensada" && estatCob != "pagada" {
-			acc.row.Pendent += pendentF
-			g.Pendent += pendentF
+			acc.row.Pendent += pendentVal
+			g.Pendent += pendentVal
+		}
+
+		// Avaluar regles de comissió sobre COBRAT si la factura té entrenador origen i import cobrat != 0
+		if cID != nil && *cID != "" && (cobratTotal != 0 || cobratBase != 0) {
+			for _, rule := range activeRules {
+				if rule.EntrenadorOrigenID != *cID {
+					continue
+				}
+				matches := false
+				switch rule.Ambit {
+				case "tot_comissionable":
+					matches = isComiss
+				case "unitat_negoci":
+					matches = rule.UnitatNegociID != nil && *rule.UnitatNegociID == unID && (isComiss || unComiss)
+				case "article":
+					matches = rule.ArticleID != nil && artID != nil && *rule.ArticleID == *artID
+				}
+				if matches {
+					rv := ruleVolumes[rule.ID]
+					rv.cobratTotal += cobratTotal
+					rv.cobratBase += cobratBase
+				}
+			}
 		}
 	}
 
-	// 2. Factures de Compra del mes (Total a pagar IVA inclòs), agrupades per article
+	// 2. Factures de Compra del mes, agrupades per article
 	rowsC, err := s.pool.Query(ctx, `
 		SELECT COALESCE(c.article_id::text, '__compra_general__'),
 		       COALESCE(NULLIF(ar.nom, ''), 'Factures de Compra (General)'),
-		       c.total_pagar::float8, c.entrenador_id, en.nom
+		       c.base_imposable::float8, c.total_pagar::float8, c.entrenador_id, en.nom
 		FROM fin_compres c
 		LEFT JOIN fin_articles ar ON ar.id = c.article_id
 		LEFT JOIN entrenadors en ON en.id = c.entrenador_id
@@ -326,21 +561,25 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 
 	for rowsC.Next() {
 		var artKey, artNom string
-		var totalP float64
+		var baseC, totalP float64
 		var cID, cNom *string
-		if err := rowsC.Scan(&artKey, &artNom, &totalP, &cID, &cNom); err != nil {
+		if err := rowsC.Scan(&artKey, &artNom, &baseC, &totalP, &cID, &cNom); err != nil {
 			return nil, err
+		}
+		compraVal := totalP
+		if modeCalcul == "base" {
+			compraVal = baseC
 		}
 		acc := getAcc(cID, cNom)
 		acc.row.NumCompresDespeses++
-		acc.row.CompresFactures += totalP
+		acc.row.CompresFactures += compraVal
 
-		g := getArt(acc, "compra:"+artKey, artNom, "compra")
+		g := getArt(acc, "compra:"+artKey, artNom, "compra", false)
 		g.NumMoviments++
-		g.Comprat += totalP
+		g.Comprat += compraVal
 	}
 
-	// 3. Despeses Operatives del mes (Import Total), agrupades per categoria
+	// 3. Despeses Operatives del mes (no porten IVA deduïble -> mateix import), agrupades per categoria
 	rowsD, err := s.pool.Query(ctx, `
 		SELECT d.categoria, d.import_total::float8, d.entrenador_id, en.nom
 		FROM fin_despeses d
@@ -377,14 +616,98 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 		if label == "" {
 			label = "Despesa: " + cat
 		}
-		g := getArt(acc, "despesa:"+cat, label, "despesa")
+		g := getArt(acc, "despesa:"+cat, label, "despesa", false)
 		g.NumMoviments++
 		g.Comprat += impTotal
 	}
 
+	// 4. Aplicar el repartiment de Comissions entre Entrenadors sobre l'import COBRAT
+	totalComissionsMogudes := 0.0
+	for _, rule := range activeRules {
+		rv := ruleVolumes[rule.ID]
+		if rv == nil || (rv.cobratTotal == 0 && rv.cobratBase == 0) {
+			continue
+		}
+		volTotal := roundCurrency(rv.cobratTotal)
+		volBase := roundCurrency(rv.cobratBase)
+		impTotal := roundCurrency(volTotal * rule.Percentatge / 100.0)
+		impBase := roundCurrency(volBase * rule.Percentatge / 100.0)
+
+		impAplicat := impTotal
+		switch rule.BaseCalcul {
+		case "base":
+			impAplicat = impBase
+		case "total":
+			impAplicat = impTotal
+		default: // "ambdues" -> segueix el modeCalcul actiu de la liquidació
+			if modeCalcul == "base" {
+				impAplicat = impBase
+			} else {
+				impAplicat = impTotal
+			}
+		}
+
+		if impAplicat == 0 && impTotal == 0 && impBase == 0 {
+			continue
+		}
+
+		ambitDesc := "Tot el comissionable"
+		if rule.Ambit == "unitat_negoci" && rule.UnitatNegociNom != nil {
+			ambitDesc = "UNE: " + *rule.UnitatNegociNom
+		} else if rule.Ambit == "article" && rule.ArticleNom != nil {
+			ambitDesc = "Article: " + *rule.ArticleNom
+		}
+
+		origID := rule.EntrenadorOrigenID
+		origNom := rule.EntrenadorOrigenNom
+		origAcc := getAcc(&origID, &origNom)
+
+		var benefAcc *coachAcc
+		benefNom := rule.EntrenadorBeneficiariNom
+		if rule.TipusBeneficiari == "entrenador" && rule.EntrenadorBeneficiariID != nil && *rule.EntrenadorBeneficiariID != "" {
+			benefAcc = getAcc(rule.EntrenadorBeneficiariID, &benefNom)
+		} else {
+			benefNom = "Estructura / Empresa"
+			benefAcc = getAcc(nil, nil)
+		}
+
+		origAcc.row.ComissioCedida += impAplicat
+		origAcc.row.DetallComissions = append(origAcc.row.DetallComissions, models.FinLiquidacioComissioDetall{
+			ReglaID:          rule.ID,
+			Direccio:         "cedida",
+			ContrapartNom:    benefNom,
+			AmbitDescripcio:  ambitDesc,
+			BaseCalculRegla:  rule.BaseCalcul,
+			Percentatge:      rule.Percentatge,
+			VolumCobratTotal: volTotal,
+			VolumCobratBase:  volBase,
+			ImportSobreTotal: impTotal,
+			ImportSobreBase:  impBase,
+			ImportAplicat:    impAplicat,
+		})
+
+		benefAcc.row.ComissioRebuda += impAplicat
+		benefAcc.row.DetallComissions = append(benefAcc.row.DetallComissions, models.FinLiquidacioComissioDetall{
+			ReglaID:          rule.ID,
+			Direccio:         "rebuda",
+			ContrapartNom:    origNom,
+			AmbitDescripcio:  ambitDesc,
+			BaseCalculRegla:  rule.BaseCalcul,
+			Percentatge:      rule.Percentatge,
+			VolumCobratTotal: volTotal,
+			VolumCobratBase:  volBase,
+			ImportSobreTotal: impTotal,
+			ImportSobreBase:  impBase,
+			ImportAplicat:    impAplicat,
+		})
+
+		totalComissionsMogudes += impAplicat
+	}
+
 	resp := &models.FinLiquidacioEntrenadorsResponse{
-		Mes:   mes,
-		Files: []models.FinLiquidacioEntrenadorRow{},
+		Mes:        mes,
+		ModeCalcul: modeCalcul,
+		Files:      []models.FinLiquidacioEntrenadorRow{},
 	}
 
 	sort.SliceStable(orderedIDs, func(i, j int) bool {
@@ -395,7 +718,7 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 	for _, key := range allKeys {
 		acc := byCoach[key]
 		r := acc.row
-		if key == "__none__" && r.NumFacturesVenda == 0 && r.NumCompresDespeses == 0 {
+		if key == "__none__" && r.NumFacturesVenda == 0 && r.NumCompresDespeses == 0 && r.ComissioRebuda == 0 && r.ComissioCedida == 0 {
 			continue
 		}
 		for _, aKey := range acc.artOrder {
@@ -420,12 +743,16 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 		r.Comprat = roundCurrency(r.CompresFactures + r.DespesesOperatives)
 		r.NetSobreVenut = roundCurrency(r.Venut - r.Comprat)
 		r.NetSobreCobrat = roundCurrency(r.Cobrat - r.Comprat)
+		r.ComissioCedida = roundCurrency(r.ComissioCedida)
+		r.ComissioRebuda = roundCurrency(r.ComissioRebuda)
+		r.LiquidacioFinal = roundCurrency(r.NetSobreCobrat - r.ComissioCedida + r.ComissioRebuda)
 
 		resp.TotalVenut += r.Venut
 		resp.TotalCobrat += r.Cobrat
 		resp.TotalPendent += r.Pendent
 		resp.TotalImpagat += r.Impagat
 		resp.TotalComprat += r.Comprat
+		resp.LiquidacioFinalGlobal += r.LiquidacioFinal
 
 		resp.Files = append(resp.Files, *r)
 	}
@@ -436,8 +763,10 @@ func (s *PostgresStore) GetFinLiquidacioEntrenadors(ctx context.Context, mes str
 	resp.TotalImpagat = roundCurrency(resp.TotalImpagat)
 	resp.TotalNoCobrat = roundCurrency(resp.TotalPendent + resp.TotalImpagat)
 	resp.TotalComprat = roundCurrency(resp.TotalComprat)
+	resp.TotalComissions = roundCurrency(totalComissionsMogudes)
 	resp.LiquidacioSobreVenut = roundCurrency(resp.TotalVenut - resp.TotalComprat)
 	resp.LiquidacioSobreCobrat = roundCurrency(resp.TotalCobrat - resp.TotalComprat)
+	resp.LiquidacioFinalGlobal = roundCurrency(resp.LiquidacioFinalGlobal)
 
 	return resp, nil
 }

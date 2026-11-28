@@ -239,7 +239,7 @@ func (s *PostgresStore) UpdateFinSerie(ctx context.Context, id string, req model
 
 func (s *PostgresStore) ListFinUnitatsNegoci(ctx context.Context) ([]models.FinUnitatNegoci, error) {
 	rows, err := s.pool.Query(ctx, `
-		SELECT u.id, u.codi, u.nom, u.descripcio, u.serie_defecte_id, sr.codi, u.activa, u.ordre, u.created_at
+		SELECT u.id, u.codi, u.nom, u.descripcio, u.serie_defecte_id, sr.codi, COALESCE(u.comissionable, FALSE), u.activa, u.ordre, u.created_at
 		FROM fin_unitats_negoci u
 		LEFT JOIN fin_series sr ON sr.id = u.serie_defecte_id
 		ORDER BY u.ordre ASC, u.nom ASC
@@ -252,7 +252,7 @@ func (s *PostgresStore) ListFinUnitatsNegoci(ctx context.Context) ([]models.FinU
 	list := []models.FinUnitatNegoci{}
 	for rows.Next() {
 		var un models.FinUnitatNegoci
-		if err := rows.Scan(&un.ID, &un.Codi, &un.Nom, &un.Descripcio, &un.SerieDefecteID, &un.SerieCodi, &un.Activa, &un.Ordre, &un.CreatedAt); err != nil {
+		if err := rows.Scan(&un.ID, &un.Codi, &un.Nom, &un.Descripcio, &un.SerieDefecteID, &un.SerieCodi, &un.Comissionable, &un.Activa, &un.Ordre, &un.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, un)
@@ -263,11 +263,11 @@ func (s *PostgresStore) ListFinUnitatsNegoci(ctx context.Context) ([]models.FinU
 func (s *PostgresStore) CreateFinUnitatNegoci(ctx context.Context, req models.UpsertFinUnitatNegociRequest) (*models.FinUnitatNegoci, error) {
 	var un models.FinUnitatNegoci
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO fin_unitats_negoci (codi, nom, descripcio, serie_defecte_id, activa, ordre)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, codi, nom, descripcio, serie_defecte_id, activa, ordre, created_at
-	`, req.Codi, req.Nom, req.Descripcio, nullableUUID(req.SerieDefecteID), req.Activa, req.Ordre).Scan(
-		&un.ID, &un.Codi, &un.Nom, &un.Descripcio, &un.SerieDefecteID, &un.Activa, &un.Ordre, &un.CreatedAt,
+		INSERT INTO fin_unitats_negoci (codi, nom, descripcio, serie_defecte_id, comissionable, activa, ordre)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, codi, nom, descripcio, serie_defecte_id, comissionable, activa, ordre, created_at
+	`, req.Codi, req.Nom, req.Descripcio, nullableUUID(req.SerieDefecteID), req.Comissionable, req.Activa, req.Ordre).Scan(
+		&un.ID, &un.Codi, &un.Nom, &un.Descripcio, &un.SerieDefecteID, &un.Comissionable, &un.Activa, &un.Ordre, &un.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -279,11 +279,11 @@ func (s *PostgresStore) UpdateFinUnitatNegoci(ctx context.Context, id string, re
 	var un models.FinUnitatNegoci
 	err := s.pool.QueryRow(ctx, `
 		UPDATE fin_unitats_negoci
-		SET codi = $1, nom = $2, descripcio = $3, serie_defecte_id = $4, activa = $5, ordre = $6
-		WHERE id = $7
-		RETURNING id, codi, nom, descripcio, serie_defecte_id, activa, ordre, created_at
-	`, req.Codi, req.Nom, req.Descripcio, nullableUUID(req.SerieDefecteID), req.Activa, req.Ordre, id).Scan(
-		&un.ID, &un.Codi, &un.Nom, &un.Descripcio, &un.SerieDefecteID, &un.Activa, &un.Ordre, &un.CreatedAt,
+		SET codi = $1, nom = $2, descripcio = $3, serie_defecte_id = $4, comissionable = $5, activa = $6, ordre = $7
+		WHERE id = $8
+		RETURNING id, codi, nom, descripcio, serie_defecte_id, comissionable, activa, ordre, created_at
+	`, req.Codi, req.Nom, req.Descripcio, nullableUUID(req.SerieDefecteID), req.Comissionable, req.Activa, req.Ordre, id).Scan(
+		&un.ID, &un.Codi, &un.Nom, &un.Descripcio, &un.SerieDefecteID, &un.Comissionable, &un.Activa, &un.Ordre, &un.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -543,7 +543,7 @@ func (s *PostgresStore) ListFinArticles(ctx context.Context) ([]models.FinArticl
 		       a.preu_base::float8,
 		       CASE WHEN a.preu_final <> 0 THEN a.preu_final::float8 ELSE ROUND((a.preu_base * (1.0 + a.iva_percentatge / 100.0))::numeric, 2)::float8 END,
 		       a.iva_percentatge::float8, a.irpf_percentatge::float8,
-		       a.causa_exempcio, a.actiu, a.created_at, a.updated_at
+		       a.causa_exempcio, COALESCE(a.comissionable, FALSE), a.actiu, a.created_at, a.updated_at
 		FROM fin_articles a
 		JOIN fin_unitats_negoci un ON un.id = a.unitat_negoci_id
 		ORDER BY a.es_recurrent DESC, a.nom ASC
@@ -560,7 +560,7 @@ func (s *PostgresStore) ListFinArticles(ctx context.Context) ([]models.FinArticl
 			&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Tipus, &ar.Categoria,
 			&ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID, &ar.UnitatNegociNom,
 			&ar.PreuBase, &ar.PreuFinal, &ar.IvaPercentatge, &ar.IrpfPercentatge,
-			&ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
+			&ar.CausaExempcio, &ar.Comissionable, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -577,15 +577,15 @@ func (s *PostgresStore) CreateFinArticle(ctx context.Context, req models.UpsertF
 	}
 	var ar models.FinArticle
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO fin_articles (codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base, preu_final, iva_percentatge, irpf_percentatge, causa_exempcio, actiu)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-		RETURNING id, codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base::float8, preu_final::float8, iva_percentatge::float8, irpf_percentatge::float8, causa_exempcio, actiu, created_at, updated_at
+		INSERT INTO fin_articles (codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base, preu_final, iva_percentatge, irpf_percentatge, causa_exempcio, comissionable, actiu)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		RETURNING id, codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base::float8, preu_final::float8, iva_percentatge::float8, irpf_percentatge::float8, causa_exempcio, comissionable, actiu, created_at, updated_at
 	`,
 		req.Codi, req.Nom, req.Descripcio, tipus, cat, req.EsRecurrent, req.PeriodicitatMesos, req.UnitatNegociID,
-		preuBase, preuFinal, ivaPct, roundCurrency(req.IrpfPercentatge), req.CausaExempcio, req.Actiu,
+		preuBase, preuFinal, ivaPct, roundCurrency(req.IrpfPercentatge), req.CausaExempcio, req.Comissionable, req.Actiu,
 	).Scan(
 		&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Tipus, &ar.Categoria, &ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID,
-		&ar.PreuBase, &ar.PreuFinal, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
+		&ar.PreuBase, &ar.PreuFinal, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Comissionable, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -603,15 +603,15 @@ func (s *PostgresStore) UpdateFinArticle(ctx context.Context, id string, req mod
 	err := s.pool.QueryRow(ctx, `
 		UPDATE fin_articles
 		SET codi = $1, nom = $2, descripcio = $3, tipus = $4, categoria = $5, es_recurrent = $6, periodicitat_mesos = $7, unitat_negoci_id = $8,
-		    preu_base = $9, preu_final = $10, iva_percentatge = $11, irpf_percentatge = $12, causa_exempcio = $13, actiu = $14, updated_at = now()
-		WHERE id = $15
-		RETURNING id, codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base::float8, preu_final::float8, iva_percentatge::float8, irpf_percentatge::float8, causa_exempcio, actiu, created_at, updated_at
+		    preu_base = $9, preu_final = $10, iva_percentatge = $11, irpf_percentatge = $12, causa_exempcio = $13, comissionable = $14, actiu = $15, updated_at = now()
+		WHERE id = $16
+		RETURNING id, codi, nom, descripcio, tipus, categoria, es_recurrent, periodicitat_mesos, unitat_negoci_id, preu_base::float8, preu_final::float8, iva_percentatge::float8, irpf_percentatge::float8, causa_exempcio, comissionable, actiu, created_at, updated_at
 	`,
 		req.Codi, req.Nom, req.Descripcio, tipus, cat, req.EsRecurrent, req.PeriodicitatMesos, req.UnitatNegociID,
-		preuBase, preuFinal, ivaPct, roundCurrency(req.IrpfPercentatge), req.CausaExempcio, req.Actiu, id,
+		preuBase, preuFinal, ivaPct, roundCurrency(req.IrpfPercentatge), req.CausaExempcio, req.Comissionable, req.Actiu, id,
 	).Scan(
 		&ar.ID, &ar.Codi, &ar.Nom, &ar.Descripcio, &ar.Tipus, &ar.Categoria, &ar.EsRecurrent, &ar.PeriodicitatMesos, &ar.UnitatNegociID,
-		&ar.PreuBase, &ar.PreuFinal, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
+		&ar.PreuBase, &ar.PreuFinal, &ar.IvaPercentatge, &ar.IrpfPercentatge, &ar.CausaExempcio, &ar.Comissionable, &ar.Actiu, &ar.CreatedAt, &ar.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err

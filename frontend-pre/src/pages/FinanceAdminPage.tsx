@@ -25,7 +25,8 @@ import {
   Filter,
   CreditCard,
   Bell,
-  Send
+  Send,
+  ArrowRightLeft
 } from 'lucide-react'
 import { getEntrenadorsList } from '../api/entrenador'
 import {
@@ -76,6 +77,10 @@ import {
   listFacturaCobraments,
   createFacturaCobrament,
   deleteFacturaCobrament,
+  listFinEntrenadorComissions,
+  createFinEntrenadorComissio,
+  updateFinEntrenadorComissio,
+  deleteFinEntrenadorComissio,
   getFinLiquidacioEntrenadors,
   previewAvisosCobrament,
   executarAvisosCobrament,
@@ -97,6 +102,7 @@ import {
   type GraellaMesResponse,
   type EmetreGraellaResponse,
   type DynamicCashflowForecast,
+  type FinEntrenadorComissio,
   type FinLiquidacioEntrenadorsResponse,
   type BillingEmailPreviewResponse
 } from '../api/finances'
@@ -180,13 +186,14 @@ export const FinanceAdminPage: React.FC = () => {
   const [articles, setArticles] = useState<FinArticle[]>([])
   const [clients, setClients] = useState<FinClient[]>([])
   const [proveidors, setProveidors] = useState<FinProveidor[]>([])
-  const [activeConfigSubtab, setActiveConfigSubtab] = useState<'empresa' | 'unitats' | 'series' | 'impostos' | 'articles' | 'clients' | 'proveidors'>('empresa')
+  const [comissionsEntrenadors, setComissionsEntrenadors] = useState<FinEntrenadorComissio[]>([])
+  const [activeConfigSubtab, setActiveConfigSubtab] = useState<'empresa' | 'unitats' | 'series' | 'impostos' | 'articles' | 'comissions' | 'clients' | 'proveidors'>('empresa')
   const [filterOnlySenseNif, setFilterOnlySenseNif] = useState(false)
 
   // Modals de mestres i edició
   const [showUnitatModal, setShowUnitatModal] = useState(false)
   const [editingUnitatId, setEditingUnitatId] = useState<string | null>(null)
-  const [newUnitat, setNewUnitat] = useState({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', activa: true, ordre: 1 })
+  const [newUnitat, setNewUnitat] = useState({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', comissionable: false, activa: true, ordre: 1 })
 
   const [showSerieModal, setShowSerieModal] = useState(false)
   const [editingSerieId, setEditingSerieId] = useState<string | null>(null)
@@ -198,7 +205,24 @@ export const FinanceAdminPage: React.FC = () => {
 
   const [showArticleModal, setShowArticleModal] = useState(false)
   const [editingArticleId, setEditingArticleId] = useState<string | null>(null)
-  const [newArticle, setNewArticle] = useState({ codi: '', nom: '', descripcio: '', tipus: 'venda' as 'venda' | 'compra' | 'ambdos', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: '', preu_base: 0, preu_final: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+  const [newArticle, setNewArticle] = useState({ codi: '', nom: '', descripcio: '', tipus: 'venda' as 'venda' | 'compra' | 'ambdos', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: '', preu_base: 0, preu_final: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', comissionable: true, actiu: true })
+
+  const [showComissioModal, setShowComissioModal] = useState(false)
+  const [editingComissioId, setEditingComissioId] = useState<string | null>(null)
+  const [newComissio, setNewComissio] = useState({
+    entrenador_origen_id: '',
+    tipus_beneficiari: 'entrenador' as 'entrenador' | 'estructura',
+    entrenador_beneficiari_id: '',
+    percentatge: 5,
+    base_calcul: 'ambdues' as 'ambdues' | 'total' | 'base',
+    ambit: 'tot_comissionable' as 'tot_comissionable' | 'unitat_negoci' | 'article',
+    unitat_negoci_id: '',
+    article_id: '',
+    mes_inici: `${new Date().getFullYear()}-01`,
+    mes_fi: '',
+    actiu: true,
+    notes: ''
+  })
 
   const [showClientModal, setShowClientModal] = useState(false)
   const [editingClientId, setEditingClientId] = useState<string | null>(null)
@@ -278,6 +302,7 @@ export const FinanceAdminPage: React.FC = () => {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   })
+  const [liquidacioModeCalcul, setLiquidacioModeCalcul] = useState<'total' | 'base'>('total')
   const [liquidacioData, setLiquidacioData] = useState<FinLiquidacioEntrenadorsResponse | null>(null)
   const [liquidacioLoading, setLiquidacioLoading] = useState(false)
   const [expandedLiquidacioCoach, setExpandedLiquidacioCoach] = useState<Record<string, boolean>>({})
@@ -403,11 +428,12 @@ export const FinanceAdminPage: React.FC = () => {
     if (activeTab === 'liquidacio') loadLiquidacio()
   }, [activeTab, reportMode, reportStart, reportEnd, horizonDies, inclouEndarrerits, cfPastMonths, cfFutureMonths])
 
-  const loadLiquidacio = async (mes?: string) => {
+  const loadLiquidacio = async (mes?: string, mode?: 'total' | 'base') => {
     const targetMes = mes || liquidacioMes
+    const targetMode = mode || liquidacioModeCalcul
     try {
       setLiquidacioLoading(true)
-      const data = await getFinLiquidacioEntrenadors(targetMes)
+      const data = await getFinLiquidacioEntrenadors(targetMes, targetMode)
       setLiquidacioData(data)
     } catch (err: any) {
       showNotify('error', err.response?.data?.error || 'Error carregant la liquidació per entrenador')
@@ -565,7 +591,7 @@ export const FinanceAdminPage: React.FC = () => {
 
   const loadInitialData = async () => {
     try {
-      const [cfg, impList, serList, un, cl, pr, artList, coaches] = await Promise.all([
+      const [cfg, impList, serList, un, cl, pr, artList, coaches, comList] = await Promise.all([
         getFinConfiguracio(),
         listFinImpostos(),
         listFinSeries(),
@@ -573,7 +599,8 @@ export const FinanceAdminPage: React.FC = () => {
         listFinClients(),
         listFinProveidors(),
         listFinArticles(),
-        getEntrenadorsList().catch(() => [])
+        getEntrenadorsList().catch(() => []),
+        listFinEntrenadorComissions().catch(() => [])
       ])
       setConfig(cfg)
       setImpostos(impList || [])
@@ -583,12 +610,13 @@ export const FinanceAdminPage: React.FC = () => {
       setProveidors(pr || [])
       setArticles(artList || [])
       setEntrenadorsList(coaches || [])
+      setComissionsEntrenadors(comList || [])
 
       if (un && un.length > 0) {
         setNewFactura(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
         setNewCompra(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
         setNewDespesa(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
-        setNewArticle(prev => ({ ...prev, unitat_negoci_id: un[0].id }))
+        setNewArticle(prev => ({ ...prev, unitat_negoci_id: un[0].id, comissionable: !!un[0].comissionable }))
       }
       if (cl && cl.length > 0) {
         setNewFactura(prev => ({ ...prev, client_id: cl[0].id }))
@@ -1178,12 +1206,12 @@ export const FinanceAdminPage: React.FC = () => {
   // 1. Unitats
   const openCreateUnitat = () => {
     setEditingUnitatId(null)
-    setNewUnitat({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', activa: true, ordre: unitats.length + 1 })
+    setNewUnitat({ codi: '', nom: '', descripcio: '', serie_defecte_id: '', comissionable: false, activa: true, ordre: unitats.length + 1 })
     setShowUnitatModal(true)
   }
   const openEditUnitat = (u: FinUnitatNegoci) => {
     setEditingUnitatId(u.id)
-    setNewUnitat({ codi: u.codi, nom: u.nom, descripcio: u.descripcio || '', serie_defecte_id: u.serie_defecte_id || '', activa: u.activa, ordre: u.ordre || 1 })
+    setNewUnitat({ codi: u.codi, nom: u.nom, descripcio: u.descripcio || '', serie_defecte_id: u.serie_defecte_id || '', comissionable: !!u.comissionable, activa: u.activa, ordre: u.ordre || 1 })
     setShowUnitatModal(true)
   }
   const handleSaveUnitat = async (e: React.FormEvent) => {
@@ -1292,14 +1320,15 @@ export const FinanceAdminPage: React.FC = () => {
   // 4. Articles
   const openCreateArticle = () => {
     setEditingArticleId(null)
-    setNewArticle({ codi: '', nom: '', descripcio: '', tipus: 'venda', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: unitats[0]?.id || '', preu_base: 0, preu_final: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', actiu: true })
+    const defaultUn = unitats[0]
+    setNewArticle({ codi: '', nom: '', descripcio: '', tipus: 'venda', categoria: 'entrenament_recurrent', es_recurrent: false, periodicitat_mesos: 1 as 1 | 3 | 6 | 12, unitat_negoci_id: defaultUn?.id || '', preu_base: 0, preu_final: 0, iva_percentatge: 21, irpf_percentatge: 0, causa_exempcio: '', comissionable: defaultUn ? !!defaultUn.comissionable : true, actiu: true })
     setShowArticleModal(true)
   }
   const openEditArticle = (a: FinArticle) => {
     setEditingArticleId(a.id)
     const pvp = a.preu_final || Number((a.preu_base * (1 + a.iva_percentatge / 100)).toFixed(2))
     const { base } = calcReverseVat(pvp, a.iva_percentatge)
-    setNewArticle({ codi: a.codi || '', nom: a.nom, descripcio: a.descripcio || '', tipus: (a.tipus || 'venda') as 'venda' | 'compra' | 'ambdos', categoria: a.categoria, es_recurrent: !!a.es_recurrent, periodicitat_mesos: (a.periodicitat_mesos || 1) as 1 | 3 | 6 | 12, unitat_negoci_id: a.unitat_negoci_id, preu_base: base, preu_final: pvp, iva_percentatge: a.iva_percentatge, irpf_percentatge: a.irpf_percentatge || 0, causa_exempcio: a.causa_exempcio || '', actiu: a.actiu })
+    setNewArticle({ codi: a.codi || '', nom: a.nom, descripcio: a.descripcio || '', tipus: (a.tipus || 'venda') as 'venda' | 'compra' | 'ambdos', categoria: a.categoria, es_recurrent: !!a.es_recurrent, periodicitat_mesos: (a.periodicitat_mesos || 1) as 1 | 3 | 6 | 12, unitat_negoci_id: a.unitat_negoci_id, preu_base: base, preu_final: pvp, iva_percentatge: a.iva_percentatge, irpf_percentatge: a.irpf_percentatge || 0, causa_exempcio: a.causa_exempcio || '', comissionable: a.comissionable !== undefined ? !!a.comissionable : false, actiu: a.actiu })
     setShowArticleModal(true)
   }
   const handleSaveArticle = async (e: React.FormEvent) => {
@@ -1320,6 +1349,127 @@ export const FinanceAdminPage: React.FC = () => {
     } catch (err: any) {
       showNotify('error', err.response?.data?.error || 'Error desant article')
     }
+  }
+
+  // 4B. Comissions entre Entrenadors
+  const openCreateComissio = (presetOrigenId?: string) => {
+    setEditingComissioId(null)
+    const origenId = presetOrigenId || entrenadorsList[0]?.id || ''
+    const altCoach = entrenadorsList.find(e => e.id !== origenId)
+    setNewComissio({
+      entrenador_origen_id: origenId,
+      tipus_beneficiari: altCoach ? 'entrenador' : 'estructura',
+      entrenador_beneficiari_id: altCoach?.id || '',
+      percentatge: 5,
+      base_calcul: 'ambdues',
+      ambit: 'tot_comissionable',
+      unitat_negoci_id: unitats[0]?.id || '',
+      article_id: articles.find(a => a.tipus !== 'compra')?.id || '',
+      mes_inici: `${new Date().getFullYear()}-01`,
+      mes_fi: '',
+      actiu: true,
+      notes: ''
+    })
+    setShowComissioModal(true)
+  }
+
+  const openEditComissio = (c: FinEntrenadorComissio) => {
+    setEditingComissioId(c.id)
+    setNewComissio({
+      entrenador_origen_id: c.entrenador_origen_id,
+      tipus_beneficiari: c.tipus_beneficiari || 'entrenador',
+      entrenador_beneficiari_id: c.entrenador_beneficiari_id || '',
+      percentatge: c.percentatge,
+      base_calcul: c.base_calcul || 'ambdues',
+      ambit: c.ambit || 'tot_comissionable',
+      unitat_negoci_id: c.unitat_negoci_id || unitats[0]?.id || '',
+      article_id: c.article_id || articles[0]?.id || '',
+      mes_inici: c.mes_inici || `${new Date().getFullYear()}-01`,
+      mes_fi: c.mes_fi || '',
+      actiu: c.actiu,
+      notes: c.notes || ''
+    })
+    setShowComissioModal(true)
+  }
+
+  const handleSaveComissio = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newComissio.entrenador_origen_id) {
+      showNotify('error', "Selecciona l'entrenador origen que cedeix la comissió")
+      return
+    }
+    if (newComissio.tipus_beneficiari === 'entrenador') {
+      if (!newComissio.entrenador_beneficiari_id) {
+        showNotify('error', "Selecciona l'entrenador beneficiari")
+        return
+      }
+      if (newComissio.entrenador_beneficiari_id === newComissio.entrenador_origen_id) {
+        showNotify('error', "L'entrenador origen i el beneficiari no poden ser la mateixa persona")
+        return
+      }
+    }
+    if (newComissio.ambit === 'unitat_negoci' && !newComissio.unitat_negoci_id) {
+      showNotify('error', 'Selecciona la unitat de negoci sobre la qual aplica la comissió')
+      return
+    }
+    if (newComissio.ambit === 'article' && !newComissio.article_id) {
+      showNotify('error', "Selecciona l'article sobre el qual aplica la comissió")
+      return
+    }
+    try {
+      const payload = {
+        entrenador_origen_id: newComissio.entrenador_origen_id,
+        tipus_beneficiari: newComissio.tipus_beneficiari,
+        entrenador_beneficiari_id: newComissio.tipus_beneficiari === 'entrenador' ? newComissio.entrenador_beneficiari_id : null,
+        percentatge: Number(newComissio.percentatge),
+        base_calcul: newComissio.base_calcul,
+        ambit: newComissio.ambit,
+        unitat_negoci_id: newComissio.ambit === 'unitat_negoci' ? newComissio.unitat_negoci_id : null,
+        article_id: newComissio.ambit === 'article' ? newComissio.article_id : null,
+        mes_inici: newComissio.mes_inici,
+        mes_fi: newComissio.mes_fi ? newComissio.mes_fi : null,
+        actiu: newComissio.actiu,
+        notes: newComissio.notes
+      }
+      if (editingComissioId) {
+        await updateFinEntrenadorComissio(editingComissioId, payload)
+        showNotify('success', 'Regla de comissió actualitzada!')
+      } else {
+        await createFinEntrenadorComissio(payload)
+        showNotify('success', 'Regla de comissió creada!')
+      }
+      setShowComissioModal(false)
+      const list = await listFinEntrenadorComissions()
+      setComissionsEntrenadors(list || [])
+      if (liquidacioData) loadLiquidacio(liquidacioMes, liquidacioModeCalcul)
+    } catch (err: any) {
+      showNotify('error', err.response?.data?.error || 'Error desant la regla de comissió')
+    }
+  }
+
+  const handleDeleteComissio = (c: FinEntrenadorComissio) => {
+    const desti = c.tipus_beneficiari === 'estructura' ? 'Estructura / Empresa' : (c.entrenador_beneficiari_nom || 'Entrenador')
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Eliminar Regla de Comissió',
+      message: `Vols eliminar la comissió del ${c.percentatge}% de ${c.entrenador_origen_nom || 'Entrenador'} cap a ${desti}? Si només vols tancar-la a partir d'un mes concret per conservar l'històric, et recomanem editar-la i informar el "Mes Fi".`,
+      confirmText: 'Eliminar Regla',
+      cancelText: 'Cancel·lar',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteFinEntrenadorComissio(c.id)
+          showNotify('success', 'Regla de comissió eliminada')
+          const list = await listFinEntrenadorComissions()
+          setComissionsEntrenadors(list || [])
+          if (liquidacioData) loadLiquidacio(liquidacioMes, liquidacioModeCalcul)
+        } catch (err: any) {
+          showNotify('error', err.response?.data?.error || 'Error eliminant la regla de comissió')
+        } finally {
+          setConfirmDialog(null)
+        }
+      }
+    })
   }
 
   // 5. Clients
@@ -3064,20 +3214,61 @@ export const FinanceAdminPage: React.FC = () => {
       {/* TAB 6: LIQUIDACIÓ PER ENTRENADOR */}
       {activeTab === 'liquidacio' && (
         <div className="space-y-5 animate-fade-in">
-          <div className="glass-card p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="glass-card p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
-                  Imports sobre Total Factura (IVA inclòs)
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${
+                  liquidacioModeCalcul === 'base'
+                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                }`}>
+                  {liquidacioModeCalcul === 'base'
+                    ? 'Imports sobre Base Imposable (Sense IVA)'
+                    : 'Imports sobre Total Factura (IVA inclòs)'}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Comissions calculades s/ Cobrat
                 </span>
               </div>
-              <h2 className="text-xl font-black text-slate-900 mt-1">Liquidació Mensual per Entrenador</h2>
+              <h2 className="text-xl font-black text-slate-900 mt-1">Liquidació Mensual i Comissions per Entrenador</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Desglossament complet de vendes emeses (venut, cobrat i pendent/impagat) menys compres i despeses associades a cada entrenador.
+                Desglossament de vendes (venut, cobrat i pendent/impagat), menys compres/despeses i repartiment jeràrquic de comissions sobre el volum cobrat.
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Toggle Amb IVA vs Sense IVA */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLiquidacioModeCalcul('total')
+                    loadLiquidacio(liquidacioMes, 'total')
+                  }}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${
+                    liquidacioModeCalcul === 'total'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Total (Amb IVA)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLiquidacioModeCalcul('base')
+                    loadLiquidacio(liquidacioMes, 'base')
+                  }}
+                  className={`px-2.5 py-1 rounded-lg transition-all ${
+                    liquidacioModeCalcul === 'base'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Base (Sense IVA)
+                </button>
+              </div>
+
               <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
                 <span className="font-bold text-slate-500">Mes-Any:</span>
                 <input
@@ -3085,7 +3276,7 @@ export const FinanceAdminPage: React.FC = () => {
                   value={liquidacioMes}
                   onChange={e => {
                     setLiquidacioMes(e.target.value)
-                    loadLiquidacio(e.target.value)
+                    loadLiquidacio(e.target.value, liquidacioModeCalcul)
                   }}
                   className="bg-transparent font-bold text-slate-900 outline-none"
                 />
@@ -3093,7 +3284,7 @@ export const FinanceAdminPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => loadLiquidacio(liquidacioMes)}
+                onClick={() => loadLiquidacio(liquidacioMes, liquidacioModeCalcul)}
                 disabled={liquidacioLoading}
                 className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors"
                 title="Refrescar liquidació"
@@ -3103,7 +3294,19 @@ export const FinanceAdminPage: React.FC = () => {
 
               <button
                 type="button"
-                onClick={() => downloadAuthenticatedCsv(`/finances/liquidacio-entrenadors/csv?mes=${liquidacioMes}`, `liquidacio_entrenadors_${liquidacioMes}.csv`)}
+                onClick={() => {
+                  setSearchParams({ tab: 'config' })
+                  setActiveConfigSubtab('comissions')
+                }}
+                className="px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 hover:bg-indigo-100 text-xs font-bold flex items-center gap-1.5"
+                title="Configurar jerarquia i regles de comissió entre entrenadors"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" /> Regles Comissió
+              </button>
+
+              <button
+                type="button"
+                onClick={() => downloadAuthenticatedCsv(`/finances/liquidacio-entrenadors/csv?mes=${liquidacioMes}&mode_calcul=${liquidacioModeCalcul}`, `liquidacio_entrenadors_${liquidacioMes}_${liquidacioModeCalcul}.csv`)}
                 className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-indigo-700 shadow-sm text-xs font-bold flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" /> Exportar CSV
@@ -3112,34 +3315,46 @@ export const FinanceAdminPage: React.FC = () => {
           </div>
 
           {liquidacioData && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="glass-card p-5 border-l-4 border-l-slate-700">
-                <div className="text-xs font-bold uppercase text-slate-400">Total Venut ({liquidacioMes})</div>
-                <div className="text-2xl font-black text-slate-900 mt-1">{liquidacioData.total_venut.toFixed(2)} €</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Factures emeses (IVA inclòs)</div>
-              </div>
-
-              <div className="glass-card p-5 border-l-4 border-l-emerald-500">
-                <div className="text-xs font-bold uppercase text-slate-400">Total Cobrat</div>
-                <div className="text-2xl font-black text-emerald-700 mt-1">{liquidacioData.total_cobrat.toFixed(2)} €</div>
-                <div className="text-[11px] text-amber-700 font-semibold mt-0.5">
-                  No cobrat: {liquidacioData.total_no_cobrat.toFixed(2)} € ({liquidacioData.total_impagat.toFixed(2)} € impagat)
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="glass-card p-4 border-l-4 border-l-slate-700">
+                <div className="text-[11px] font-bold uppercase text-slate-400">Total Venut ({liquidacioMes})</div>
+                <div className="text-xl font-black text-slate-900 mt-1">{liquidacioData.total_venut.toFixed(2)} €</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  {liquidacioModeCalcul === 'base' ? 'Base imposable emesa' : 'Factures emeses (IVA incl.)'}
                 </div>
               </div>
 
-              <div className="glass-card p-5 border-l-4 border-l-rose-500">
-                <div className="text-xs font-bold uppercase text-slate-400">Total Comprat + Despeses</div>
-                <div className="text-2xl font-black text-rose-700 mt-1">{liquidacioData.total_comprat.toFixed(2)} €</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Imputades al mes (IVA inclòs)</div>
+              <div className="glass-card p-4 border-l-4 border-l-emerald-500">
+                <div className="text-[11px] font-bold uppercase text-slate-400">Total Cobrat</div>
+                <div className="text-xl font-black text-emerald-700 mt-1">{liquidacioData.total_cobrat.toFixed(2)} €</div>
+                <div className="text-[11px] text-amber-700 font-semibold mt-0.5">
+                  No cobrat: {liquidacioData.total_no_cobrat.toFixed(2)} € ({liquidacioData.total_impagat.toFixed(2)} € imp.)
+                </div>
               </div>
 
-              <div className={`glass-card p-5 border-l-4 ${liquidacioData.liquidacio_sobre_cobrat >= 0 ? 'border-l-indigo-600' : 'border-l-rose-600'}`}>
-                <div className="text-xs font-bold uppercase text-slate-400">Liquidació Real (Cobrat - Comprat)</div>
-                <div className={`text-2xl font-black mt-1 ${liquidacioData.liquidacio_sobre_cobrat >= 0 ? 'text-indigo-900' : 'text-rose-600'}`}>
-                  {liquidacioData.liquidacio_sobre_cobrat.toFixed(2)} €
+              <div className="glass-card p-4 border-l-4 border-l-rose-500">
+                <div className="text-[11px] font-bold uppercase text-slate-400">Comprat + Despeses</div>
+                <div className="text-xl font-black text-rose-700 mt-1">{liquidacioData.total_comprat.toFixed(2)} €</div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  {liquidacioModeCalcul === 'base' ? 'Base compres + despeses' : 'Imputades al mes (IVA incl.)'}
+                </div>
+              </div>
+
+              <div className="glass-card p-4 border-l-4 border-l-purple-500">
+                <div className="text-[11px] font-bold uppercase text-slate-400">Comissions Jerarquia</div>
+                <div className="text-xl font-black text-purple-800 mt-1">{(liquidacioData.total_comissions || 0).toFixed(2)} €</div>
+                <div className="text-[11px] text-purple-600 font-semibold mt-0.5">
+                  Repartides sobre cobrat
+                </div>
+              </div>
+
+              <div className={`glass-card p-4 border-l-4 ${(liquidacioData.liquidacio_final_global ?? liquidacioData.liquidacio_sobre_cobrat) >= 0 ? 'border-l-indigo-600' : 'border-l-rose-600'}`}>
+                <div className="text-[11px] font-bold uppercase text-slate-400">Liquidació Final Global</div>
+                <div className={`text-xl font-black mt-1 ${(liquidacioData.liquidacio_final_global ?? liquidacioData.liquidacio_sobre_cobrat) >= 0 ? 'text-indigo-900' : 'text-rose-600'}`}>
+                  {(liquidacioData.liquidacio_final_global ?? liquidacioData.liquidacio_sobre_cobrat).toFixed(2)} €
                 </div>
                 <div className="text-[11px] font-bold text-slate-500 mt-0.5">
-                  Sobre venut: {liquidacioData.liquidacio_sobre_venut.toFixed(2)} €
+                  Operatiu pre-com.: {liquidacioData.liquidacio_sobre_cobrat.toFixed(2)} €
                 </div>
               </div>
             </div>
@@ -3147,72 +3362,103 @@ export const FinanceAdminPage: React.FC = () => {
 
           <div className="glass-card overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs min-w-[920px]">
+              <table className="w-full text-left text-xs min-w-[1060px]">
                 <thead>
                   <tr className="bg-slate-50 border-b border-border text-slate-500 uppercase text-[10px] font-bold">
-                    <th className="py-3 px-4">Entrenador</th>
-                    <th className="py-3 px-4 text-right">Venut (Facturat)</th>
-                    <th className="py-3 px-4 text-right">Cobrat</th>
-                    <th className="py-3 px-4 text-right">Pendent</th>
-                    <th className="py-3 px-4 text-right">Impagat</th>
-                    <th className="py-3 px-4 text-right">Comprat + Despeses</th>
-                    <th className="py-3 px-4 text-right">Net s/ Venut</th>
-                    <th className="py-3 px-4 text-right bg-indigo-50/60 text-indigo-900">Liquidació s/ Cobrat</th>
+                    <th className="py-3 px-4">Entrenador / Destí</th>
+                    <th className="py-3 px-3 text-right">Venut</th>
+                    <th className="py-3 px-3 text-right">Cobrat</th>
+                    <th className="py-3 px-3 text-right">Pendent / Impagat</th>
+                    <th className="py-3 px-3 text-right">Comprat + Desp.</th>
+                    <th className="py-3 px-3 text-right">Net s/ Cobrat</th>
+                    <th className="py-3 px-3 text-right text-rose-700">(-) Com. Cedida</th>
+                    <th className="py-3 px-3 text-right text-emerald-700">(+) Com. Rebuda</th>
+                    <th className="py-3 px-4 text-right bg-indigo-50/70 text-indigo-950">Liquidació Final</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border font-medium">
                   {liquidacioLoading ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
                         <RefreshCw className="w-6 h-6 animate-spin mx-auto text-indigo-600 mb-2" />
-                        Calculant liquidació del mes {liquidacioMes}...
+                        Calculant liquidació i comissions del mes {liquidacioMes}...
                       </td>
                     </tr>
                   ) : !liquidacioData || liquidacioData.files.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
                         No hi ha dades per al mes seleccionat.
                       </td>
                     </tr>
                   ) : liquidacioData.files.map(row => {
                     const isExpanded = !!expandedLiquidacioCoach[row.entrenador_id]
+                    const comCedida = row.comissio_cedida || 0
+                    const comRebuda = row.comissio_rebuda || 0
+                    const liqFinal = row.liquidacio_final !== undefined ? row.liquidacio_final : row.net_sobre_cobrat
+                    const numComissions = row.detall_comissions?.length || 0
                     return (
                       <React.Fragment key={row.entrenador_id}>
                         <tr
                           onClick={() => setExpandedLiquidacioCoach(prev => ({ ...prev, [row.entrenador_id]: !prev[row.entrenador_id] }))}
-                          className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${row.entrenador_id === '__none__' ? 'bg-slate-50/40' : ''}`}
+                          className={`cursor-pointer hover:bg-slate-50/80 transition-colors ${
+                            row.entrenador_id === '__estructura__'
+                              ? 'bg-purple-50/30'
+                              : row.entrenador_id === '__none__'
+                              ? 'bg-slate-50/40'
+                              : ''
+                          }`}
                         >
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-2">
                               {isExpanded ? <ChevronDown className="w-4 h-4 text-indigo-600 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
                               <div>
-                                <div className="font-bold text-slate-900">{row.entrenador_nom}</div>
+                                <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                  <span>{row.entrenador_nom}</span>
+                                  {numComissions > 0 && (
+                                    <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-purple-100 text-purple-800">
+                                      {numComissions} com.
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-[10px] text-slate-400">
                                   {row.num_factures_venda} vendes · {row.num_compres_despeses} compres/despeses
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">{row.venut.toFixed(2)} €</td>
-                          <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-700">{row.cobrat.toFixed(2)} €</td>
-                          <td className="py-3.5 px-4 text-right font-mono text-amber-700 font-semibold">{row.pendent.toFixed(2)} €</td>
-                          <td className="py-3.5 px-4 text-right font-mono text-rose-700 font-semibold">{row.impagat.toFixed(2)} €</td>
-                          <td className="py-3.5 px-4 text-right font-mono text-rose-700 font-bold">-{row.comprat.toFixed(2)} €</td>
-                          <td className={`py-3.5 px-4 text-right font-mono font-bold ${row.net_sobre_venut >= 0 ? 'text-slate-800' : 'text-rose-600'}`}>
-                            {row.net_sobre_venut.toFixed(2)} €
+                          <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900">{row.venut.toFixed(2)} €</td>
+                          <td className="py-3.5 px-3 text-right font-mono font-bold text-emerald-700">{row.cobrat.toFixed(2)} €</td>
+                          <td className="py-3.5 px-3 text-right font-mono">
+                            <div className="text-amber-700 font-semibold">{row.pendent.toFixed(2)} €</div>
+                            {row.impagat > 0 && (
+                              <div className="text-[10px] text-rose-700 font-bold">Imp: {row.impagat.toFixed(2)} €</div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-mono text-rose-700 font-bold">
+                            {row.comprat > 0 ? `-${row.comprat.toFixed(2)} €` : '0.00 €'}
+                          </td>
+                          <td className={`py-3.5 px-3 text-right font-mono font-bold ${row.net_sobre_cobrat >= 0 ? 'text-slate-800' : 'text-rose-600'}`}>
+                            {row.net_sobre_cobrat.toFixed(2)} €
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-mono font-bold text-rose-700">
+                            {comCedida > 0 ? `-${comCedida.toFixed(2)} €` : '—'}
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-mono font-bold text-emerald-700">
+                            {comRebuda > 0 ? `+${comRebuda.toFixed(2)} €` : '—'}
                           </td>
                           <td className="py-3.5 px-4 text-right bg-indigo-50/40">
                             <span className={`font-mono font-black text-sm px-2.5 py-1 rounded-lg ${
-                              row.net_sobre_cobrat >= 0 ? 'bg-indigo-100 text-indigo-950' : 'bg-rose-100 text-rose-900'
+                              liqFinal >= 0 ? 'bg-indigo-100 text-indigo-950' : 'bg-rose-100 text-rose-900'
                             }`}>
-                              {row.net_sobre_cobrat.toFixed(2)} €
+                              {liqFinal.toFixed(2)} €
                             </span>
                           </td>
                         </tr>
 
                         {isExpanded && (
                           <tr className="bg-slate-50/70">
-                            <td colSpan={8} className="p-4">
+                            <td colSpan={9} className="p-4 space-y-3">
+                              {/* 1. Taula agrupada per Article */}
                               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                                 <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                                   <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -3225,13 +3471,14 @@ export const FinanceAdminPage: React.FC = () => {
                                 </div>
 
                                 {!row.per_article || row.per_article.length === 0 ? (
-                                  <p className="text-xs text-slate-400 italic p-4 text-center">Cap article facturat ni compra/despesa aquest mes.</p>
+                                  <p className="text-xs text-slate-400 italic p-4 text-center">Cap article facturat ni compra/despesa directa aquest mes.</p>
                                 ) : (
                                   <table className="w-full text-left text-[11px]">
                                     <thead>
                                       <tr className="border-b border-slate-100 text-slate-400 uppercase text-[10px] font-bold">
                                         <th className="py-2 px-4">Article / Concepte Agrupat</th>
                                         <th className="py-2 px-3 text-center">Tipus</th>
+                                        <th className="py-2 px-3 text-center">Comissiona</th>
                                         <th className="py-2 px-3 text-center">Docs</th>
                                         <th className="py-2 px-3 text-right">Venut</th>
                                         <th className="py-2 px-3 text-right">Cobrat</th>
@@ -3256,6 +3503,19 @@ export const FinanceAdminPage: React.FC = () => {
                                               {ag.tipus}
                                             </span>
                                           </td>
+                                          <td className="py-2.5 px-3 text-center">
+                                            {ag.tipus === 'venda' ? (
+                                              ag.comissionable ? (
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                                  ⚡ Sí
+                                                </span>
+                                              ) : (
+                                                <span className="text-[10px] text-slate-400">No</span>
+                                              )
+                                            ) : (
+                                              <span className="text-[10px] text-slate-300">—</span>
+                                            )}
+                                          </td>
                                           <td className="py-2.5 px-3 text-center font-mono text-slate-500">{ag.num_moviments}</td>
                                           <td className="py-2.5 px-3 text-right font-mono text-slate-900">{ag.venut > 0 ? `${ag.venut.toFixed(2)} €` : '—'}</td>
                                           <td className="py-2.5 px-3 text-right font-mono text-emerald-700 font-bold">{ag.cobrat > 0 ? `${ag.cobrat.toFixed(2)} €` : '—'}</td>
@@ -3271,6 +3531,75 @@ export const FinanceAdminPage: React.FC = () => {
                                   </table>
                                 )}
                               </div>
+
+                              {/* 2. Desglossament de Comissions Cedides i Rebudes */}
+                              {row.detall_comissions && row.detall_comissions.length > 0 && (
+                                <div className="bg-white rounded-xl border border-purple-200 overflow-hidden">
+                                  <div className="px-4 py-2.5 bg-purple-50/70 border-b border-purple-200 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 className="font-bold text-xs text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                                      <ArrowRightLeft className="w-3.5 h-3.5 text-purple-700" />
+                                      Detall de Comissions sobre Volum Cobrat ({row.entrenador_nom})
+                                    </h4>
+                                    <div className="flex items-center gap-3 text-[11px] font-mono font-bold">
+                                      <span className="text-rose-700">Cedida: -{comCedida.toFixed(2)} €</span>
+                                      <span className="text-emerald-700">Rebuda: +{comRebuda.toFixed(2)} €</span>
+                                      <span className="text-indigo-950 bg-white px-2 py-0.5 rounded border border-purple-200">
+                                        Liquidació Final: {liqFinal.toFixed(2)} €
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <table className="w-full text-left text-[11px]">
+                                    <thead>
+                                      <tr className="border-b border-purple-100 text-slate-400 uppercase text-[10px] font-bold">
+                                        <th className="py-2 px-4">Direcció & Contrapart</th>
+                                        <th className="py-2 px-3">Àmbit Aplicat</th>
+                                        <th className="py-2 px-3 text-right">% Com.</th>
+                                        <th className="py-2 px-3 text-right">Cobrat Base / Total</th>
+                                        <th className="py-2 px-3 text-right">Com. s/ Base (sense IVA)</th>
+                                        <th className="py-2 px-3 text-right">Com. s/ Total (amb IVA)</th>
+                                        <th className="py-2 px-4 text-right text-purple-950">Import Aplicat</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-purple-50 font-medium">
+                                      {row.detall_comissions.map((dc, idx) => (
+                                        <tr key={`${dc.regla_id}-${dc.direccio}-${idx}`} className="hover:bg-purple-50/30">
+                                          <td className="py-2.5 px-4">
+                                            <div className="flex items-center gap-2">
+                                              {dc.direccio === 'cedida' ? (
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                                                  📤 Cedeix a
+                                                </span>
+                                              ) : (
+                                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                  📥 Rep de
+                                                </span>
+                                              )}
+                                              <span className="font-bold text-slate-900">{dc.contrapart_nom}</span>
+                                            </div>
+                                          </td>
+                                          <td className="py-2.5 px-3 text-slate-600">{dc.ambit_descripcio}</td>
+                                          <td className="py-2.5 px-3 text-right font-mono font-bold text-purple-800">{dc.percentatge.toFixed(2)} %</td>
+                                          <td className="py-2.5 px-3 text-right font-mono text-slate-600">
+                                            {dc.volum_cobrat_base.toFixed(2)} € <span className="text-slate-400">/</span> {dc.volum_cobrat_total.toFixed(2)} €
+                                          </td>
+                                          <td className={`py-2.5 px-3 text-right font-mono ${liquidacioModeCalcul === 'base' || dc.base_calcul_regla === 'base' ? 'font-bold text-amber-800' : 'text-slate-500'}`}>
+                                            {dc.import_sobre_base.toFixed(2)} €
+                                          </td>
+                                          <td className={`py-2.5 px-3 text-right font-mono ${liquidacioModeCalcul === 'total' || dc.base_calcul_regla === 'total' ? 'font-bold text-indigo-800' : 'text-slate-500'}`}>
+                                            {dc.import_sobre_total.toFixed(2)} €
+                                          </td>
+                                          <td className={`py-2.5 px-4 text-right font-mono font-black ${
+                                            dc.direccio === 'cedida' ? 'text-rose-700' : 'text-emerald-700'
+                                          }`}>
+                                            {dc.direccio === 'cedida' ? `-${dc.import_aplicat.toFixed(2)} €` : `+${dc.import_aplicat.toFixed(2)} €`}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         )}
@@ -3292,9 +3621,10 @@ export const FinanceAdminPage: React.FC = () => {
             {[
               { id: 'empresa', label: 'Empresa & Emissor', icon: Building2 },
               { id: 'unitats', label: 'Unitats de Negoci', icon: Briefcase },
+              { id: 'articles', label: 'Catàleg d\'Articles', icon: Package },
+              { id: 'comissions', label: 'Comissions d\'Entrenadors', icon: ArrowRightLeft, badge: comissionsEntrenadors.filter(c => c.actiu).length },
               { id: 'series', label: 'Sèries & Comptadors', icon: Hash },
               { id: 'impostos', label: 'Tipus d\'IVA & Retencions', icon: Percent },
-              { id: 'articles', label: 'Catàleg d\'Articles', icon: Package },
               { id: 'clients', label: 'Xivato NIF (Atletes)', icon: Users, badge: clients.filter(c => !c.nif_cif || c.nif_cif.trim() === '').length },
               { id: 'proveidors', label: 'Proveïdors', icon: Tag },
             ].map(tab => {
@@ -3599,6 +3929,7 @@ export const FinanceAdminPage: React.FC = () => {
                       <th className="p-3">Nom de la Unitat</th>
                       <th className="p-3">Descripció</th>
                       <th className="p-3">Sèrie Defecte</th>
+                      <th className="p-3 text-center">Comissiona</th>
                       <th className="p-3 text-center">Estat</th>
                       <th className="p-3 text-right">Accions</th>
                     </tr>
@@ -3610,6 +3941,13 @@ export const FinanceAdminPage: React.FC = () => {
                         <td className="p-3 font-bold text-slate-900">{u.nom}</td>
                         <td className="p-3 text-slate-600">{u.descripcio || '—'}</td>
                         <td className="p-3 font-mono text-slate-500">{u.serie_codi || 'Per defecte'}</td>
+                        <td className="p-3 text-center">
+                          {u.comissionable ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">⚡ Sí</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">No</span>
+                          )}
+                        </td>
                         <td className="p-3 text-center">
                           {u.activa ? (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Activa</span>
@@ -3817,6 +4155,7 @@ export const FinanceAdminPage: React.FC = () => {
                         <th className="p-3">Tipus</th>
                         <th className="p-3">Categoria</th>
                         <th className="p-3">Unitat Negoci</th>
+                        <th className="p-3 text-center">Comissiona</th>
                         <th className="p-3 text-right">Preu Final (IVA incl.)</th>
                         <th className="p-3 text-right">Base Imposable</th>
                         <th className="p-3 text-right">Quota IVA</th>
@@ -3855,6 +4194,13 @@ export const FinanceAdminPage: React.FC = () => {
                               )}
                             </td>
                             <td className="p-3 text-slate-600">{art.unitat_negoci_nom || '—'}</td>
+                            <td className="p-3 text-center">
+                              {art.comissionable ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">⚡ Sí</span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">No</span>
+                              )}
+                            </td>
                             <td className="p-3 text-right font-mono font-black text-emerald-700 text-sm">{pvp.toFixed(2)} €</td>
                             <td className="p-3 text-right font-mono text-slate-700">{base.toFixed(2)} €</td>
                             <td className="p-3 text-right font-mono text-slate-500">{iva.toFixed(2)} € ({art.iva_percentatge}%)</td>
@@ -3883,6 +4229,191 @@ export const FinanceAdminPage: React.FC = () => {
                 </div>
             </div>
           )}
+
+          {/* SUBTAB 5B: COMISSIONS D'ENTRENADORS */}
+          {activeConfigSubtab === 'comissions' && (() => {
+            const byCoach = new Map<string, { origenId: string; origenNom: string; rules: FinEntrenadorComissio[] }>()
+            entrenadorsList.forEach(en => {
+              byCoach.set(en.id, { origenId: en.id, origenNom: en.nom, rules: [] })
+            })
+            comissionsEntrenadors.forEach(rule => {
+              const existing = byCoach.get(rule.entrenador_origen_id)
+              if (existing) {
+                existing.rules.push(rule)
+              } else {
+                byCoach.set(rule.entrenador_origen_id, {
+                  origenId: rule.entrenador_origen_id,
+                  origenNom: rule.entrenador_origen_nom || 'Entrenador',
+                  rules: [rule]
+                })
+              }
+            })
+            const coachGroups = Array.from(byCoach.values())
+
+            return (
+              <div className="glass-card p-6 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b">
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                      <ArrowRightLeft className="w-5 h-5 text-purple-600" /> Jerarquia i Regles de Comissió entre Entrenadors
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Defineix <strong>0, 1 o N comissionistes</strong> per cada entrenador sobre el volum <strong>cobrat</strong> d'articles/UNEs comissionables, amb vigència per mesos perquè l'històric mai s'alteri.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openCreateComissio()}
+                    className="btn-primary text-xs py-2 px-3.5 bg-purple-600 hover:bg-purple-700 flex items-center gap-1.5 shrink-0"
+                  >
+                    <Plus className="w-4 h-4" /> Nova Regla de Comissió
+                  </button>
+                </div>
+
+                {/* Resum ràpid d'articles/UNEs comissionables */}
+                <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-200 text-xs text-purple-950 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <span className="font-bold">⚡ Què entra a la borsa comissionable?</span>{' '}
+                    <span>
+                      Només les factures <strong>cobrades</strong> (totalment o en la part cobrada dels pagos parcials) l'article o unitat de negoci de les quals estigui marcat amb <strong>Comissiona = Sí</strong> ({articles.filter(a => a.comissionable && a.actiu).length} articles actius marcats).
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveConfigSubtab('articles')}
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-[11px]"
+                  >
+                    Revisar Articles →
+                  </button>
+                </div>
+
+                {coachGroups.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-slate-400">
+                    No hi ha entrenadors registrats al sistema.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {coachGroups.map(group => {
+                      const activePctSum = group.rules
+                        .filter(r => r.actiu && r.ambit === 'tot_comissionable')
+                        .reduce((acc, r) => acc + (r.percentatge || 0), 0)
+
+                      return (
+                        <div key={group.origenId} className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+                          <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-800 font-black text-xs flex items-center justify-center">
+                                {group.origenNom.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-bold text-xs text-slate-900">{group.origenNom}</div>
+                                <div className="text-[11px] text-slate-500">
+                                  {group.rules.length === 0
+                                    ? 'Cap comissió cedida (0% — p. ex. Creador / Cap jerarquia)'
+                                    : `${group.rules.filter(r => r.actiu).length} regles actives${activePctSum > 0 ? ` · Cedeix ${activePctSum.toFixed(2)}% general` : ''}`}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => openCreateComissio(group.origenId)}
+                              className="px-2.5 py-1 rounded-lg bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[11px] flex items-center gap-1"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Afegir Comissionista
+                            </button>
+                          </div>
+
+                          {group.rules.length > 0 && (
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-50/40 text-slate-400 uppercase text-[10px] font-bold border-b border-slate-100">
+                                  <tr>
+                                    <th className="py-2 px-4">Beneficiari (Qui rep)</th>
+                                    <th className="py-2 px-3 text-right">% Comissió</th>
+                                    <th className="py-2 px-3">Base d'Impostos</th>
+                                    <th className="py-2 px-3">Àmbit Aplicació</th>
+                                    <th className="py-2 px-3">Vigència (Mesos)</th>
+                                    <th className="py-2 px-3 text-center">Estat</th>
+                                    <th className="py-2 px-4 text-right">Accions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {group.rules.map(r => (
+                                    <tr key={r.id} className="hover:bg-slate-50/60">
+                                      <td className="py-2.5 px-4">
+                                        {r.tipus_beneficiari === 'estructura' ? (
+                                          <span className="font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg text-[11px]">
+                                            🏛️ Estructura / Empresa
+                                          </span>
+                                        ) : (
+                                          <span className="font-bold text-slate-900">
+                                            🎯 {r.entrenador_beneficiari_nom || 'Entrenador'}
+                                          </span>
+                                        )}
+                                        {r.notes && <div className="text-[10px] text-slate-400 mt-0.5">{r.notes}</div>}
+                                      </td>
+                                      <td className="py-2.5 px-3 text-right font-mono font-black text-purple-700 text-sm">
+                                        {r.percentatge.toFixed(2)} %
+                                      </td>
+                                      <td className="py-2.5 px-3">
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                                          {r.base_calcul === 'total'
+                                            ? 'Sempre Total (amb IVA)'
+                                            : r.base_calcul === 'base'
+                                            ? 'Sempre Base (sense IVA)'
+                                            : 'Ambdues (segons vista)'}
+                                        </span>
+                                      </td>
+                                      <td className="py-2.5 px-3 text-slate-700 font-medium">
+                                        {r.ambit === 'unitat_negoci'
+                                          ? `UNE: ${r.unitat_negoci_nom || 'Unitat'}`
+                                          : r.ambit === 'article'
+                                          ? `Article: ${r.article_nom || 'Article'}`
+                                          : 'Tot el comissionable'}
+                                      </td>
+                                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">
+                                        {r.mes_inici} → {r.mes_fi || 'Actualitat'}
+                                      </td>
+                                      <td className="py-2.5 px-3 text-center">
+                                        {r.actiu ? (
+                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Activa</span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">Inactiva</span>
+                                        )}
+                                      </td>
+                                      <td className="py-2.5 px-4 text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => openEditComissio(r)}
+                                            className="p-1.5 rounded-lg text-purple-700 hover:bg-purple-50 font-bold text-[11px] inline-flex items-center gap-1"
+                                          >
+                                            <Pencil className="w-3.5 h-3.5" /> Editar
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteComissio(r)}
+                                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                            title="Eliminar regla"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* SUBTAB 6: XIVATO D'ATLETES & CONTROL DE NIF */}
           {activeConfigSubtab === 'clients' && (() => {
@@ -4861,6 +5392,20 @@ export const FinanceAdminPage: React.FC = () => {
                   Les noves factures i subscripcions associades a aquesta unitat faran servir aquesta sèrie de manera automàtica.
                 </p>
               </div>
+              <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-200 space-y-1">
+                <label className="flex items-center gap-2 font-bold text-purple-950 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newUnitat.comissionable}
+                    onChange={e => setNewUnitat({ ...newUnitat, comissionable: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded"
+                  />
+                  <span>⚡ Unitat comissionable entre entrenadors per defecte</span>
+                </label>
+                <p className="text-[10px] text-purple-700 pl-6">
+                  Els nous articles creats dins d'aquesta unitat heretaran aquesta marca per al càlcul de comissions.
+                </p>
+              </div>
               <div className="flex items-center gap-2 pt-1">
                 <label className="flex items-center gap-2 font-bold text-slate-700">
                   <input
@@ -5186,15 +5731,37 @@ export const FinanceAdminPage: React.FC = () => {
                 <label className="font-bold text-slate-700">Unitat de Negoci *</label>
                 <select
                   value={newArticle.unitat_negoci_id}
-                  onChange={e => setNewArticle({ ...newArticle, unitat_negoci_id: e.target.value })}
+                  onChange={e => {
+                    const nextUnId = e.target.value
+                    const selUn = unitats.find(u => u.id === nextUnId)
+                    setNewArticle({
+                      ...newArticle,
+                      unitat_negoci_id: nextUnId,
+                      comissionable: !editingArticleId && selUn ? !!selUn.comissionable : newArticle.comissionable
+                    })
+                  }}
                   className="w-full mt-1 p-2 border rounded-xl"
                   required
                 >
                   <option value="">-- Selecciona unitat de negoci --</option>
                   {unitats.map(u => (
-                    <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
+                    <option key={u.id} value={u.id}>{u.nom} ({u.codi}){u.comissionable ? ' · ⚡ Comissiona' : ''}</option>
                   ))}
                 </select>
+              </div>
+              <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-200 flex items-center justify-between gap-2">
+                <label className="flex items-center gap-2 font-bold text-purple-950 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newArticle.comissionable}
+                    onChange={e => setNewArticle({ ...newArticle, comissionable: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded"
+                  />
+                  <span>⚡ Article comissionable en la jerarquia d'entrenadors</span>
+                </label>
+                {newArticle.comissionable && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800">Comissiona</span>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -5291,6 +5858,226 @@ export const FinanceAdminPage: React.FC = () => {
                 </button>
                 <button type="submit" className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700">
                   {editingArticleId ? 'Desar Canvis' : 'Desar Article'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL REGLA DE COMISSIÓ ENTRE ENTRENADORS (CREAR / EDITAR) */}
+      {showComissioModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <ArrowRightLeft className="w-4 h-4 text-purple-600" />
+                  {editingComissioId ? 'Editar Regla de Comissió' : 'Nova Regla de Comissió entre Entrenadors'}
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Calculada automàticament sobre l'import cobrat de les factures del mes.
+                </p>
+              </div>
+              <button onClick={() => setShowComissioModal(false)}><X className="w-5 h-5 text-slate-400" /></button>
+            </div>
+
+            <form onSubmit={handleSaveComissio} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700">Entrenador que cedeix la comissió (Origen) *</label>
+                <select
+                  value={newComissio.entrenador_origen_id}
+                  onChange={e => setNewComissio({ ...newComissio, entrenador_origen_id: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl font-bold text-slate-900"
+                  required
+                >
+                  <option value="">-- Selecciona entrenador origen --</option>
+                  {entrenadorsList.map(en => (
+                    <option key={en.id} value={en.id}>{en.nom}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="p-3 bg-purple-50/50 border border-purple-200 rounded-xl space-y-3">
+                <div>
+                  <label className="font-bold text-purple-950 block mb-1.5">Tipus de Comissionista (Qui rep el %) *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewComissio({ ...newComissio, tipus_beneficiari: 'entrenador' })}
+                      className={`p-2 rounded-xl border font-bold text-left transition-all ${
+                        newComissio.tipus_beneficiari === 'entrenador'
+                          ? 'bg-white border-purple-500 text-purple-950 shadow-sm'
+                          : 'bg-transparent border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      🎯 Un altre Entrenador
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewComissio({ ...newComissio, tipus_beneficiari: 'estructura' })}
+                      className={`p-2 rounded-xl border font-bold text-left transition-all ${
+                        newComissio.tipus_beneficiari === 'estructura'
+                          ? 'bg-white border-amber-500 text-amber-950 shadow-sm'
+                          : 'bg-transparent border-slate-200 text-slate-600'
+                      }`}
+                    >
+                      🏛️ Estructura / Empresa
+                    </button>
+                  </div>
+                </div>
+
+                {newComissio.tipus_beneficiari === 'entrenador' && (
+                  <div>
+                    <label className="font-bold text-slate-700">Entrenador Beneficiari *</label>
+                    <select
+                      value={newComissio.entrenador_beneficiari_id}
+                      onChange={e => setNewComissio({ ...newComissio, entrenador_beneficiari_id: e.target.value })}
+                      className="w-full mt-1 p-2 border border-purple-300 bg-white rounded-xl font-bold text-slate-900"
+                      required
+                    >
+                      <option value="">-- Selecciona entrenador beneficiari --</option>
+                      {entrenadorsList
+                        .filter(en => en.id !== newComissio.entrenador_origen_id)
+                        .map(en => (
+                          <option key={en.id} value={en.id}>{en.nom}</option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="font-bold text-purple-900">Percentatge de Comissió (%) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="100"
+                    required
+                    value={newComissio.percentatge}
+                    onChange={e => setNewComissio({ ...newComissio, percentatge: parseFloat(e.target.value) || 0 })}
+                    className="w-full mt-1 p-2 border border-purple-300 bg-purple-50/30 rounded-xl font-black font-mono text-sm text-purple-900"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Base de Càlcul (IVA)</label>
+                  <select
+                    value={newComissio.base_calcul}
+                    onChange={e => setNewComissio({ ...newComissio, base_calcul: e.target.value as any })}
+                    className="w-full mt-1 p-2 border rounded-xl font-bold"
+                  >
+                    <option value="ambdues">Ambdues (segueix vista Amb/Sense IVA)</option>
+                    <option value="total">Sempre s/ Total Factura (IVA inclòs)</option>
+                    <option value="base">Sempre s/ Base Imposable (sense IVA)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-bold text-slate-700 block">Àmbit d'Aplicació de la Regla</label>
+                <select
+                  value={newComissio.ambit}
+                  onChange={e => setNewComissio({ ...newComissio, ambit: e.target.value as any })}
+                  className="w-full p-2 border rounded-xl font-bold"
+                >
+                  <option value="tot_comissionable">⚡ Tot el volum marcat com a Comissionable</option>
+                  <option value="unitat_negoci">📁 Només una Unitat de Negoci concreta</option>
+                  <option value="article">📦 Només un Article / Servei concret</option>
+                </select>
+
+                {newComissio.ambit === 'unitat_negoci' && (
+                  <div>
+                    <label className="font-bold text-slate-600">Unitat de Negoci *</label>
+                    <select
+                      value={newComissio.unitat_negoci_id}
+                      onChange={e => setNewComissio({ ...newComissio, unitat_negoci_id: e.target.value })}
+                      className="w-full mt-1 p-2 border rounded-xl"
+                      required
+                    >
+                      <option value="">-- Selecciona unitat --</option>
+                      {unitats.map(u => (
+                        <option key={u.id} value={u.id}>{u.nom} ({u.codi})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {newComissio.ambit === 'article' && (
+                  <div>
+                    <label className="font-bold text-slate-600">Article del Catàleg *</label>
+                    <select
+                      value={newComissio.article_id}
+                      onChange={e => setNewComissio({ ...newComissio, article_id: e.target.value })}
+                      className="w-full mt-1 p-2 border rounded-xl"
+                      required
+                    >
+                      <option value="">-- Selecciona article --</option>
+                      {articles.filter(a => a.tipus !== 'compra').map(a => (
+                        <option key={a.id} value={a.id}>{a.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="font-bold text-slate-700">Mes d'Inici Vigència *</label>
+                  <input
+                    type="month"
+                    required
+                    value={newComissio.mes_inici}
+                    onChange={e => setNewComissio({ ...newComissio, mes_inici: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700">Mes Fi Vigència (Opcional)</label>
+                  <input
+                    type="month"
+                    value={newComissio.mes_fi}
+                    onChange={e => setNewComissio({ ...newComissio, mes_fi: e.target.value })}
+                    className="w-full mt-1 p-2 border rounded-xl font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Buit = vigent indefinidament</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700">Notes o Condicions de l'Acord</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Acord incorporació 5% Creador + 5% Mentor..."
+                  value={newComissio.notes}
+                  onChange={e => setNewComissio({ ...newComissio, notes: e.target.value })}
+                  className="w-full mt-1 p-2 border rounded-xl"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newComissio.actiu}
+                    onChange={e => setNewComissio({ ...newComissio, actiu: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded"
+                  />
+                  <span>Regla Activa</span>
+                </label>
+              </div>
+
+              <div className="pt-3 border-t flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowComissioModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl"
+                >
+                  Cancel·lar
+                </button>
+                <button type="submit" className="btn-primary py-2 px-4 bg-purple-600 hover:bg-purple-700">
+                  {editingComissioId ? 'Desar Canvis' : 'Crear Regla'}
                 </button>
               </div>
             </form>

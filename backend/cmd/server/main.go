@@ -389,6 +389,11 @@ func main() {
 		financesRoutes.GET("/informes/resultats/csv", financesHandler.ExportInformeCSV)
 		financesRoutes.GET("/tresoreria/cashflow", financesHandler.GetCashflowForecast)
 		financesRoutes.GET("/tresoreria/dynamic-cashflow", financesHandler.GetDynamicCashflow)
+		financesRoutes.GET("/comissions-entrenadors", financesHandler.ListEntrenadorComissions)
+		financesRoutes.POST("/comissions-entrenadors", financesHandler.CreateEntrenadorComissio)
+		financesRoutes.PUT("/comissions-entrenadors/:id", financesHandler.UpdateEntrenadorComissio)
+		financesRoutes.DELETE("/comissions-entrenadors/:id", financesHandler.DeleteEntrenadorComissio)
+
 		financesRoutes.GET("/liquidacio-entrenadors", financesHandler.GetLiquidacioEntrenadors)
 		financesRoutes.GET("/liquidacio-entrenadors/csv", financesHandler.ExportLiquidacioEntrenadorsCSV)
 		financesRoutes.GET("/avisos-cobrament/preview", financesHandler.PreviewAvisosCobrament)

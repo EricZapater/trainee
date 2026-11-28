@@ -1078,12 +1078,60 @@ func (h *FinancesHandler) DeleteFacturaCobrament(c *gin.Context) {
 	c.JSON(http.StatusOK, fv)
 }
 
+func (h *FinancesHandler) ListEntrenadorComissions(c *gin.Context) {
+	list, err := h.Store.ListFinEntrenadorComissions(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+func (h *FinancesHandler) CreateEntrenadorComissio(c *gin.Context) {
+	var req models.UpsertFinEntrenadorComissioRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := h.Store.CreateFinEntrenadorComissio(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, res)
+}
+
+func (h *FinancesHandler) UpdateEntrenadorComissio(c *gin.Context) {
+	id := c.Param("id")
+	var req models.UpsertFinEntrenadorComissioRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := h.Store.UpdateFinEntrenadorComissio(c.Request.Context(), id, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *FinancesHandler) DeleteEntrenadorComissio(c *gin.Context) {
+	id := c.Param("id")
+	if err := h.Store.DeleteFinEntrenadorComissio(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "regla de comissió eliminada"})
+}
+
 func (h *FinancesHandler) GetLiquidacioEntrenadors(c *gin.Context) {
 	mes := c.Query("mes")
 	if mes == "" {
 		mes = time.Now().Format("2006-01")
 	}
-	res, err := h.Store.GetFinLiquidacioEntrenadors(c.Request.Context(), mes)
+	modeCalcul := c.Query("mode_calcul")
+	res, err := h.Store.GetFinLiquidacioEntrenadors(c.Request.Context(), mes, modeCalcul)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -1096,27 +1144,37 @@ func (h *FinancesHandler) ExportLiquidacioEntrenadorsCSV(c *gin.Context) {
 	if mes == "" {
 		mes = time.Now().Format("2006-01")
 	}
-	res, err := h.Store.GetFinLiquidacioEntrenadors(c.Request.Context(), mes)
+	modeCalcul := c.Query("mode_calcul")
+	if modeCalcul != "base" {
+		modeCalcul = "total"
+	}
+	res, err := h.Store.GetFinLiquidacioEntrenadors(c.Request.Context(), mes, modeCalcul)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.Header("Content-Type", "text/csv; charset=utf-8")
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=liquidacio_entrenadors_%s.csv", mes))
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=liquidacio_entrenadors_%s_%s.csv", mes, modeCalcul))
+
+	labelIva := "Total IVA incl."
+	if modeCalcul == "base" {
+		labelIva = "Base sense IVA"
+	}
 
 	writer := csv.NewWriter(c.Writer)
 	_ = writer.Write([]string{
 		"Entrenador",
 		"Núm. Factures Venda",
-		"Venut Total IVA incl. (€)",
-		"Cobrat (€)",
+		fmt.Sprintf("Venut (%s) (€)", labelIva),
+		fmt.Sprintf("Cobrat (%s) (€)", labelIva),
 		"Pendent En Curs (€)",
 		"Impagat (€)",
-		"Total No Cobrat (€)",
 		"Compres + Despeses (€)",
-		"Balanç s/ Venut (€)",
-		"Liquidació Neta s/ Cobrat (€)",
+		"Net Operatiu s/ Cobrat (€)",
+		"Comissió Cedida (-) (€)",
+		"Comissió Rebuda (+) (€)",
+		"Liquidació Final Neta (€)",
 	})
 
 	for _, r := range res.Files {
@@ -1127,24 +1185,26 @@ func (h *FinancesHandler) ExportLiquidacioEntrenadorsCSV(c *gin.Context) {
 			fmt.Sprintf("%.2f", r.Cobrat),
 			fmt.Sprintf("%.2f", r.Pendent),
 			fmt.Sprintf("%.2f", r.Impagat),
-			fmt.Sprintf("%.2f", r.NoCobratTotal),
 			fmt.Sprintf("%.2f", r.Comprat),
-			fmt.Sprintf("%.2f", r.NetSobreVenut),
 			fmt.Sprintf("%.2f", r.NetSobreCobrat),
+			fmt.Sprintf("%.2f", -r.ComissioCedida),
+			fmt.Sprintf("%.2f", r.ComissioRebuda),
+			fmt.Sprintf("%.2f", r.LiquidacioFinal),
 		})
 	}
 
 	_ = writer.Write([]string{
-		"TOTAL GLOBAL (" + mes + ")",
+		"TOTAL GLOBAL (" + mes + " · " + labelIva + ")",
 		"-",
 		fmt.Sprintf("%.2f", res.TotalVenut),
 		fmt.Sprintf("%.2f", res.TotalCobrat),
 		fmt.Sprintf("%.2f", res.TotalPendent),
 		fmt.Sprintf("%.2f", res.TotalImpagat),
-		fmt.Sprintf("%.2f", res.TotalNoCobrat),
 		fmt.Sprintf("%.2f", res.TotalComprat),
-		fmt.Sprintf("%.2f", res.LiquidacioSobreVenut),
 		fmt.Sprintf("%.2f", res.LiquidacioSobreCobrat),
+		"0.00",
+		"0.00",
+		fmt.Sprintf("%.2f", res.LiquidacioFinalGlobal),
 	})
 
 	writer.Flush()

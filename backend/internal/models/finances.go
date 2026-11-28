@@ -82,6 +82,7 @@ type FinUnitatNegoci struct {
 	Descripcio     string    `json:"descripcio"`
 	SerieDefecteID *string   `json:"serie_defecte_id"`
 	SerieCodi      *string   `json:"serie_codi,omitempty"`
+	Comissionable  bool      `json:"comissionable"`
 	Activa         bool      `json:"activa"`
 	Ordre          int       `json:"ordre"`
 	CreatedAt      time.Time `json:"created_at"`
@@ -92,6 +93,7 @@ type UpsertFinUnitatNegociRequest struct {
 	Nom            string  `json:"nom" binding:"required"`
 	Descripcio     string  `json:"descripcio"`
 	SerieDefecteID *string `json:"serie_defecte_id"`
+	Comissionable  bool    `json:"comissionable"`
 	Activa         bool    `json:"activa"`
 	Ordre          int     `json:"ordre"`
 }
@@ -191,6 +193,7 @@ type FinArticle struct {
 	IvaPercentatge    float64   `json:"iva_percentatge"`
 	IrpfPercentatge   float64   `json:"irpf_percentatge"`
 	CausaExempcio     string    `json:"causa_exempcio"`
+	Comissionable     bool      `json:"comissionable"`
 	Actiu             bool      `json:"actiu"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
@@ -210,6 +213,7 @@ type UpsertFinArticleRequest struct {
 	IvaPercentatge    float64 `json:"iva_percentatge"`
 	IrpfPercentatge   float64 `json:"irpf_percentatge"`
 	CausaExempcio     string  `json:"causa_exempcio"`
+	Comissionable     bool    `json:"comissionable"`
 	Actiu             bool    `json:"actiu"`
 }
 
@@ -759,13 +763,50 @@ type DynamicCashflowForecast struct {
 }
 
 // ============================================================
-// Liquidació Mensual per Entrenador (Total Factura IVA inclòs)
+// Comissions entre Entrenadors i Liquidació Mensual
 // ============================================================
+
+type FinEntrenadorComissio struct {
+	ID                       string    `json:"id"`
+	EntrenadorOrigenID       string    `json:"entrenador_origen_id"`
+	EntrenadorOrigenNom      string    `json:"entrenador_origen_nom,omitempty"`
+	TipusBeneficiari         string    `json:"tipus_beneficiari"` // "entrenador" | "estructura"
+	EntrenadorBeneficiariID  *string   `json:"entrenador_beneficiari_id"`
+	EntrenadorBeneficiariNom string    `json:"entrenador_beneficiari_nom,omitempty"`
+	Percentatge              float64   `json:"percentatge"`
+	BaseCalcul               string    `json:"base_calcul"` // "ambdues" | "total" | "base"
+	Ambit                    string    `json:"ambit"`       // "tot_comissionable" | "unitat_negoci" | "article"
+	UnitatNegociID           *string   `json:"unitat_negoci_id"`
+	UnitatNegociNom          *string   `json:"unitat_negoci_nom,omitempty"`
+	ArticleID                *string   `json:"article_id"`
+	ArticleNom               *string   `json:"article_nom,omitempty"`
+	MesInici                 string    `json:"mes_inici"`
+	MesFi                    *string   `json:"mes_fi"`
+	Actiu                    bool      `json:"actiu"`
+	Notes                    string    `json:"notes"`
+	CreatedAt                time.Time `json:"created_at"`
+}
+
+type UpsertFinEntrenadorComissioRequest struct {
+	EntrenadorOrigenID      string  `json:"entrenador_origen_id" binding:"required"`
+	TipusBeneficiari        string  `json:"tipus_beneficiari"`
+	EntrenadorBeneficiariID *string `json:"entrenador_beneficiari_id"`
+	Percentatge             float64 `json:"percentatge" binding:"required,gt=0,lte=100"`
+	BaseCalcul              string  `json:"base_calcul"`
+	Ambit                   string  `json:"ambit"`
+	UnitatNegociID          *string `json:"unitat_negoci_id"`
+	ArticleID               *string `json:"article_id"`
+	MesInici                string  `json:"mes_inici" binding:"required"`
+	MesFi                   *string `json:"mes_fi"`
+	Actiu                   bool    `json:"actiu"`
+	Notes                   string  `json:"notes"`
+}
 
 type FinLiquidacioArticleGroup struct {
 	Key            string  `json:"key"`
 	ArticleNom     string  `json:"article_nom"`
 	Tipus          string  `json:"tipus"` // "venda" | "compra" | "despesa"
+	Comissionable  bool    `json:"comissionable"`
 	NumMoviments   int     `json:"num_moviments"`
 	Venut          float64 `json:"venut"`
 	Cobrat         float64 `json:"cobrat"`
@@ -776,34 +817,55 @@ type FinLiquidacioArticleGroup struct {
 	NetSobreCobrat float64 `json:"net_sobre_cobrat"`
 }
 
+type FinLiquidacioComissioDetall struct {
+	ReglaID          string  `json:"regla_id"`
+	Direccio         string  `json:"direccio"` // "cedida" | "rebuda"
+	ContrapartNom    string  `json:"contrapart_nom"`
+	AmbitDescripcio  string  `json:"ambit_descripcio"`
+	BaseCalculRegla  string  `json:"base_calcul_regla"`
+	Percentatge      float64 `json:"percentatge"`
+	VolumCobratTotal float64 `json:"volum_cobrat_total"`
+	VolumCobratBase  float64 `json:"volum_cobrat_base"`
+	ImportSobreTotal float64 `json:"import_sobre_total"`
+	ImportSobreBase  float64 `json:"import_sobre_base"`
+	ImportAplicat    float64 `json:"import_aplicat"`
+}
+
 type FinLiquidacioEntrenadorRow struct {
-	EntrenadorID       string                      `json:"entrenador_id"`
-	EntrenadorNom      string                      `json:"entrenador_nom"`
-	NumFacturesVenda   int                         `json:"num_factures_venda"`
-	NumCompresDespeses int                         `json:"num_compres_despeses"`
-	Venut              float64                     `json:"venut"`
-	Cobrat             float64                     `json:"cobrat"`
-	Pendent            float64                     `json:"pendent"`
-	Impagat            float64                     `json:"impagat"`
-	NoCobratTotal      float64                     `json:"no_cobrat_total"`
-	CompresFactures    float64                     `json:"compres_factures"`
-	DespesesOperatives float64                     `json:"despeses_operatives"`
-	Comprat            float64                     `json:"comprat"`
-	NetSobreVenut      float64                     `json:"net_sobre_venut"`
-	NetSobreCobrat     float64                     `json:"net_sobre_cobrat"`
-	PerArticle         []FinLiquidacioArticleGroup `json:"per_article"`
+	EntrenadorID       string                        `json:"entrenador_id"`
+	EntrenadorNom      string                        `json:"entrenador_nom"`
+	NumFacturesVenda   int                           `json:"num_factures_venda"`
+	NumCompresDespeses int                           `json:"num_compres_despeses"`
+	Venut              float64                       `json:"venut"`
+	Cobrat             float64                       `json:"cobrat"`
+	Pendent            float64                       `json:"pendent"`
+	Impagat            float64                       `json:"impagat"`
+	NoCobratTotal      float64                       `json:"no_cobrat_total"`
+	CompresFactures    float64                       `json:"compres_factures"`
+	DespesesOperatives float64                       `json:"despeses_operatives"`
+	Comprat            float64                       `json:"comprat"`
+	NetSobreVenut      float64                       `json:"net_sobre_venut"`
+	NetSobreCobrat     float64                       `json:"net_sobre_cobrat"`
+	ComissioCedida     float64                       `json:"comissio_cedida"`
+	ComissioRebuda     float64                       `json:"comissio_rebuda"`
+	LiquidacioFinal    float64                       `json:"liquidacio_final"`
+	PerArticle         []FinLiquidacioArticleGroup   `json:"per_article"`
+	DetallComissions   []FinLiquidacioComissioDetall `json:"detall_comissions"`
 }
 
 type FinLiquidacioEntrenadorsResponse struct {
 	Mes                   string                       `json:"mes"`
+	ModeCalcul            string                       `json:"mode_calcul"` // "total" | "base"
 	TotalVenut            float64                      `json:"total_venut"`
 	TotalCobrat           float64                      `json:"total_cobrat"`
 	TotalPendent          float64                      `json:"total_pendent"`
 	TotalImpagat          float64                      `json:"total_impagat"`
 	TotalNoCobrat         float64                      `json:"total_no_cobrat"`
 	TotalComprat          float64                      `json:"total_comprat"`
+	TotalComissions       float64                      `json:"total_comissions"`
 	LiquidacioSobreVenut  float64                      `json:"liquidacio_sobre_venut"`
 	LiquidacioSobreCobrat float64                      `json:"liquidacio_sobre_cobrat"`
+	LiquidacioFinalGlobal float64                      `json:"liquidacio_final_global"`
 	Files                 []FinLiquidacioEntrenadorRow `json:"files"`
 }
 
